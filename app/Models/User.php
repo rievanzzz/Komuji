@@ -19,16 +19,16 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
-        'no_handphone',
         'password',
+        'role',
+        'no_handphone',
         'alamat',
         'pendidikan_terakhir',
-        'status_akun',
         'otp',
         'otp_expires_at',
+        'status_akun',
         'verification_token',
-        'verification_token_expires_at',
-        'role',
+        'verification_token_expires_at'
     ];
 
     protected $dates = [
@@ -66,6 +66,99 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sendEmailVerificationNotification()
     {
         $this->notify(new VerifyEmailNotification($this));
+    }
+
+    /**
+     * Get the user's registrations.
+     */
+    public function registrations()
+    {
+        return $this->hasMany(Registration::class);
+    }
+
+    /**
+     * Get the events that the user has registered for.
+     */
+    public function events()
+    {
+        return $this->belongsToMany(Event::class, 'registrations')
+            ->withPivot('status', 'kode_pendaftaran')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the user's attendances through registrations.
+     */
+    public function attendances()
+    {
+        return $this->hasManyThrough(
+            Attendance::class,
+            Registration::class,
+            'user_id',
+            'registration_id',
+            'id',
+            'id'
+        );
+    }
+
+    /**
+     * Get the user's certificates through registrations.
+     */
+    public function certificates()
+    {
+        return $this->hasManyThrough(
+            Certificate::class,
+            Registration::class,
+            'user_id',
+            'registration_id',
+            'id',
+            'id'
+        );
+    }
+
+    /**
+     * Check if user has registered for an event.
+     */
+    public function hasRegisteredForEvent($eventId)
+    {
+        return $this->registrations()
+            ->where('event_id', $eventId)
+            ->exists();
+    }
+
+    /**
+     * Check if user has attended an event.
+     */
+    public function hasAttendedEvent($eventId)
+    {
+        return $this->attendances()
+            ->whereHas('registration', function($query) use ($eventId) {
+                $query->where('event_id', $eventId);
+            })
+            ->where('is_verified', true)
+            ->exists();
+    }
+
+    /**
+     * Get the URL to the user's profile photo.
+     */
+    public function getProfilePhotoUrlAttribute()
+    {
+        return $this->profile_photo_path
+                    ? Storage::url($this->profile_photo_path)
+                    : $this->defaultProfilePhotoUrl();
+    }
+
+    /**
+     * Get the default profile photo URL if no profile photo has been uploaded.
+     */
+    protected function defaultProfilePhotoUrl()
+    {
+        $name = trim(collect(explode(' ', $this->name))->map(function ($segment) {
+            return mb_substr($segment, 0, 1);
+        })->join(' '));
+
+        return 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
     }
 
     public function sendOtpNotification($otp)
