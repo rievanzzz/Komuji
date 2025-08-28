@@ -20,6 +20,19 @@ use App\Http\Controllers\Api\RegistrationController;
 // Include authentication routes
 require __DIR__.'/auth.php';
 
+// Password reset routes
+Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLink']);
+Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset']);
+
+// Add this route for the password reset link
+Route::get('/reset-password/{token}', function ($token) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Silakan gunakan token ini untuk mereset password',
+        'token' => $token
+    ]);
+})->name('password.reset');
+
 // Public routes
 Route::get('/test', function () {
     return response()->json(['message' => 'API is working!']);

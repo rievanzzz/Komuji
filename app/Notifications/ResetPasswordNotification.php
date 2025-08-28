@@ -3,23 +3,43 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
+use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\URL;
 
-class ResetPassword extends ResetPasswordNotification implements ShouldQueue
+class ResetPasswordNotification extends Notification
 {
     use Queueable;
 
+    public $token;
+
+    public function __construct($token)
+    {
+        $this->token = $token;
+    }
+
+    public function via($notifiable)
+    {
+        return ['mail'];
+    }
+
     public function toMail($notifiable)
     {
-        $url = url(config('app.frontend_url').'/reset-password?token='.$this->token.'&email='.urlencode($notifiable->email));
+        // Generate URL untuk reset password
+        $resetUrl = url(route('password.reset', [
+            'token' => $this->token,
+            'email' => $notifiable->email,
+        ], false));
 
+        // Kirim email dengan link reset password
         return (new MailMessage)
             ->subject('Reset Kata Sandi')
             ->line('Anda menerima email ini karena kami menerima permintaan reset kata sandi untuk akun Anda.')
-            ->action('Reset Kata Sandi', $url)
+            ->line('Berikut adalah token reset password Anda:')
+            ->line('**' . $this->token . '**')
+            ->line('Gunakan token di atas untuk mereset password Anda melalui aplikasi.')
+            ->action('Reset Password', $resetUrl)
             ->line('Link reset password ini akan kedaluwarsa dalam 60 menit.')
-            ->line('Jika Anda tidak meminta reset kata sandi, tidak ada tindakan lebih lanjut yang diperlukan.');
+            ->line('Jika Anda tidak meminta reset password, abaikan email ini.');
     }
 }
