@@ -7,6 +7,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Debug route for testing event updates
+Route::get('/debug/event/{id}/update', [\App\Http\Controllers\Test\EventTestController::class, 'debugUpdate'])
+    ->name('debug.event.update');
+
 // Test Routes
 Route::prefix('test')->group(function () {
     // Event routes

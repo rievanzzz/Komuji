@@ -58,6 +58,28 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Test route for debugging update
+    Route::get('/test-update/{event}', function (\App\Models\Event $event) {
+        // Simulate an update request
+        $request = new \Illuminate\Http\Request([
+            'judul' => 'Updated Test Event ' . now()->format('H:i:s'),
+            'deskripsi' => 'This is an updated test event',
+            'tanggal_mulai' => '2025-01-01',
+            'tanggal_selesai' => '2025-01-02',
+            'waktu_mulai' => '09:00:00',
+            'waktu_selesai' => '17:00:00',
+            'lokasi' => 'Test Location Updated',
+            'kuota' => 100,
+            'is_published' => true
+        ]);
+        
+        $controller = new \App\Http\Controllers\Api\EventController();
+        return $controller->update(
+            new \App\Http\Requests\Event\UpdateEventRequest($request->all()),
+            $event
+        );
+    });
+
     // Admin routes
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/dashboard', function () {
@@ -83,8 +105,8 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/registrations/{registration}/certificate', [RegistrationController::class, 'generateCertificate']);
     });
 
-    // Panitia routes
-    Route::middleware('role:panitia')->group(function () {
+    // Panitia routes - allow both panitia and admin
+    Route::middleware('role:panitia,admin')->group(function () {
         // Event management
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update']);

@@ -13,6 +13,114 @@ use Illuminate\Support\Str;
 
 class EventTestController extends Controller
 {
+    /**
+     * Debug method to test event update functionality
+     */
+    public function debugUpdate($id)
+    {
+        try {
+            $event = Event::findOrFail($id);
+            
+            // Log the current state of the event
+            Log::info('Current event data:', $event->toArray());
+            
+            // Create a test update request
+            $requestData = [
+                'judul' => 'Updated Test Event ' . now()->format('H:i:s'),
+                'deskripsi' => 'This is an updated test event',
+                'tanggal_mulai' => '2025-01-01',
+                'tanggal_selesai' => '2025-01-02',
+                'waktu_mulai' => '09:00:00',
+                'waktu_selesai' => '17:00:00',
+                'lokasi' => 'Test Location Updated',
+                'kuota' => 100,
+                'is_published' => true,
+                'kategori_id' => 1,
+                'harga_tiket' => '0.00',
+                'approval_type' => 'auto'
+            ];
+            
+            // Log the update data
+            Log::info('Update data:', $requestData);
+            
+            // Check each field for changes
+            $changes = [];
+            $hasChanges = false;
+            
+            foreach ($requestData as $key => $newValue) {
+                $currentValue = $event->$key;
+                
+                // Log the comparison
+                Log::info(sprintf(
+                    'Comparing %s: [%s] (%s) vs [%s] (%s)',
+                    $key,
+                    var_export($currentValue, true),
+                    gettype($currentValue),
+                    var_export($newValue, true),
+                    gettype($newValue)
+                ));
+                
+                // Simple strict comparison first
+                if ($currentValue === $newValue) {
+                    Log::debug('Values are identical (===)');
+                    continue;
+                }
+                
+                // If not strictly equal, try loose comparison
+                if ($currentValue == $newValue) {
+                    Log::debug('Values are equal but not identical (==)');
+                    continue;
+                }
+                
+                // For string values, compare trimmed versions
+                if (is_string($currentValue) && is_string($newValue)) {
+                    if (trim($currentValue) === trim($newValue)) {
+                        Log::debug('String values match after trimming');
+                        continue;
+                    }
+                }
+                
+                // If we get here, the values are different
+                $changes[$key] = [
+                    'old' => $currentValue,
+                    'new' => $newValue
+                ];
+                $hasChanges = true;
+                Log::info('Values are different - marking as changed');
+            }
+            
+            Log::info('Detected changes:', $changes);
+            
+            if (!$hasChanges) {
+                return response()->json([
+                    'message' => 'No changes detected',
+                    'success' => true,
+                    'changes' => []
+                ]);
+            }
+            
+            // Update the event
+            $event->update($requestData);
+            
+            return response()->json([
+                'message' => 'Event updated successfully',
+                'success' => true,
+                'changes' => $changes,
+                'event' => $event->fresh()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Debug update error: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Error: ' . $e->getMessage(),
+                'success' => false,
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+    
     public function create()
     {
         $categories = Category::all();
