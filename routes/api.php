@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,9 +51,9 @@ Route::get('/events/{event}', [EventController::class, 'show']);
 // Protected routes
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // User routes
-    Route::get('/user', function (Request $request) {
-        return response()->json($request->user());
-    });
+    Route::get('/user', [UserController::class, 'profile']);
+    Route::put('/user/profile', [UserController::class, 'updateProfile']);
+    Route::post('/user/change-password', [UserController::class, 'changePassword']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -68,8 +69,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
     // Peserta routes
     Route::middleware('role:peserta')->group(function () {
+        // Event registration
         Route::get('/my-registrations', [RegistrationController::class, 'myRegistrations']);
         Route::post('/events/{event}/register', [RegistrationController::class, 'register']);
+        
+        // Registration management
+        Route::delete('/registrations/{registration}/cancel', [RegistrationController::class, 'cancelRegistration']);
+        
+        // Attendance
         Route::post('/validate-attendance', [RegistrationController::class, 'validateAttendance']);
     });
 
