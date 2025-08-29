@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Event\StoreEventRequest;
+use App\Http\Requests\Event\UpdateEventRequest;
 use App\Models\Event;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -43,64 +47,198 @@ class EventController extends Controller
         return response()->json($event->loadCount('registrations'));
     }
 
-    public function store(Request $request)
+    /**
+     * Store a newly created event in storage.
+     */
+    public function store(StoreEventRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'judul' => 'required|string|max:255',
-            'deskripsi' => 'required|string',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'waktu_mulai' => 'required|date_format:H:i',
-            'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
-            'lokasi' => 'required|string|max:255',
-            'kuota' => 'required|integer|min:1',
-            'is_published' => 'boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+        DB::beginTransaction();
+        try {
+            $data = $request->validated();
+            $data['created_by'] = auth()->id();
+            
+            // Set default values
+            $data['terdaftar'] = 0;
+            $data['is_published'] = $data['is_published'] ?? false;
+            $data['approval_type'] = $data['approval_type'] ?? 'auto';
+            
+            // Handle file uploads
+            if ($request->hasFile('flyer')) {
+                $data['flyer_path'] = $request->file('flyer')->store('events/flyers', 'public');
+                if (!$data['flyer_path']) {
+                    throw new \Exception('Gagal mengunggah flyer');
+                }
+            }
+            
+            if ($request->hasFile('sertifikat_template')) {
+                $data['sertifikat_template_path'] = $request->file('sertifikat_template')
+                    ->store('events/certificate_templates', 'public');
+                if (!$data['sertifikat_template_path']) {
+                    throw new \Exception('Gagal mengunggah template sertifikat');
+                }
+            }
+            
+            $event = Event::create($data);
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Event berhasil dibuat',
+                'data' => $event->load('category')
+            ], 201);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error creating event: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Gagal membuat event: ' . $e->getMessage(),
+                'error' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
-
-        $event = Event::create($request->all());
-
-        return response()->json([
-            'message' => 'Event berhasil dibuat',
-            'data' => $event
-        ], 201);
     }
 
-    public function update(Request $request, Event $event)
+    /**
+     * Update the specified event in storage.
+     */
+    public function update(UpdateEventRequest $request, Event $event)
     {
-        $validator = Validator::make($request->all(), [
-            'judul' => 'sometimes|required|string|max:255',
-            'deskripsi' => 'sometimes|required|string',
-            'tanggal_mulai' => 'sometimes|required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'waktu_mulai' => 'sometimes|required|date_format:H:i',
-            'waktu_selesai' => 'sometimes|required|date_format:H:i|after:waktu_mulai',
-            'lokasi' => 'sometimes|required|string|max:255',
-            'kuota' => 'sometimes|required|integer|min:1',
-            'is_published' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+        $data = $request->validated();
+        
+        // Handle file uploads
+        if ($request->hasFile('flyer')) {
+            // Delete old flyer if exists
+            if ($event->flyer_path) {
+                Storage::disk('public')->delete($event->flyer_path);
+            }
+            $data['flyer_path'] = $request->file('flyer')->store('events/flyers', 'public');
         }
-
-        $event->update($request->all());
-
+        
+        if ($request->hasFile('sertifikat_template')) {
+            // Delete old template if exists
+            if ($event->sertifikat_template_path) {
+                Storage::disk('public')->delete($event->sertifikat_template_path);
+            }
+            $data['sertifikat_template_path'] = $request->file('sertifikat_template')
+                ->store('events/certificate_templates', 'public');
+        }
+        
+        $event->update($data);
+        
         return response()->json([
             'message' => 'Event berhasil diperbarui',
-            'data' => $event
+            'data' => $event->load('category')
         ]);
     }
 
+    /**
+     * Remove the specified event from storage.
+     */
     public function destroy(Event $event)
     {
+        // Check if user is the creator or admin
+        if (auth()->user()->role !== 'admin' && $event->created_by !== auth()->id()) {
+            return response()->json([
+                'message' => 'Unauthorized. Anda hanya dapat menghapus event yang Anda buat.'
+            ], 403);
+        }
+        
+        // Soft delete the event
         $event->delete();
-
+        
         return response()->json([
             'message' => 'Event berhasil dihapus'
         ]);
     }
-}
+    
+    /**
+     * Get all registrations for an event.
+     */
+    public function registrations(Event $event)
+    {
+        // Check if user is the creator or admin
+        if (auth()->user()->role !== 'admin' && $event->created_by !== auth()->id()) {
+            return response()->json([
+                'message' => 'Unauthorized. Anda hanya dapat melihat peserta event yang Anda buat.'
+            ], 403);
+        }
+        
+        $registrations = $event->registrations()
+            ->with(['user:id,name,email', 'attendance'])
+            ->get()
+            ->map(function($registration) {
+                return [
+                    'id' => $registration->id,
+                    'user_name' => $registration->user->name,
+                    'user_email' => $registration->user->email,
+                    'status' => $registration->status,
+                    'waktu_daftar' => $registration->created_at,
+                    'kehadiran' => $registration->attendance ? [
+                        'status' => $registration->attendance->is_verified ? 'Hadir' : 'Belum Hadir',
+                        'waktu_hadir' => $registration->attendance->waktu_hadir,
+                        'token' => $registration->attendance->token
+                    ] : null
+                ];
+            });
+            
+        return response()->json([
+            'data' => $registrations
+        ]);
+    }
+    
+    /**
+     * Export attendance report for an event.
+     */
+    public function exportAttendance(Event $event)
+    {
+        // Check if user is the creator or admin
+        if (auth()->user()->role !== 'admin' && $event->created_by !== auth()->id()) {
+            return response()->json([
+                'message' => 'Unauthorized. Anda hanya dapat mengekspor laporan event yang Anda buat.'
+            ], 403);
+        }
+        
+        $registrations = $event->registrations()
+            ->with(['user:id,name,email', 'attendance'])
+            ->get();
+            
+        $headers = [
+            'Nama Peserta',
+            'Email',
+            'Status Pendaftaran',
+            'Status Kehadiran',
+            'Waktu Hadir',
+            'Token Absensi'
+        ];
+        
+        $data = [];
+        
+        foreach ($registrations as $registration) {
+            $data[] = [
+                $registration->user->name,
+                $registration->user->email,
+                ucfirst($registration->status),
+                $registration->attendance ? ($registration->attendance->is_verified ? 'Hadir' : 'Tidak Hadir') : 'Belum Absen',
+                $registration->attendance ? $registration->attendance->waktu_hadir : '-',
+                $registration->attendance ? $registration->attendance->token : '-',
+            ];
+        }
+        
+        $filename = 'laporan_absensi_' . Str::slug($event->judul) . '_' . now()->format('Y-m-d') . '.csv';
+        
+        return response()->streamDownload(function() use ($headers, $data) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, $headers);
+            
+            foreach ($data as $row) {
+                fputcsv($handle, $row);
+            }
+            
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+    }

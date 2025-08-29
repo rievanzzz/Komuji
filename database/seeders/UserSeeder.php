@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
         User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
-            'role' => 'admin_aplikasi',
+            'role' => 'admin',
             'password' => Hash::make('admin123'),
             'no_handphone' => '081234567890',
             'alamat' => 'Jl. Contoh No. 123',
@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
             'name' => 'Admin Acara',
             'email' => 'adminacara@example.com',
             'password' => Hash::make('admin123'),
-            'role' => 'admin_acara',
+            'role' => 'panitia',
             'no_handphone' => '081234567891',
             'alamat' => 'Jl. Contoh No. 124',
             'pendidikan_terakhir' => 'S1',

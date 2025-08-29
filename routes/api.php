@@ -58,11 +58,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Admin Aplikasi routes
-    Route::middleware('role:admin_aplikasi')->group(function () {
-        Route::get('/admin-aplikasi/dashboard', function () {
+    // Admin routes
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/dashboard', function () {
             return response()->json([
-                'message' => 'Halo Admin Aplikasi, kamu punya semua akses.'
+                'message' => 'Halo Admin, kamu punya semua akses.'
             ]);
         });
     });
@@ -78,19 +78,28 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         
         // Attendance
         Route::post('/validate-attendance', [RegistrationController::class, 'validateAttendance']);
+        
+        // Certificates
+        Route::get('/registrations/{registration}/certificate', [RegistrationController::class, 'generateCertificate']);
     });
 
-    // Admin Acara routes
-    Route::middleware('role:admin_acara')->group(function () {
+    // Panitia routes
+    Route::middleware('role:panitia')->group(function () {
         // Event management
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
         
-        // Registration management
-        Route::get('/events/{event}/registrations', [RegistrationController::class, 'eventRegistrations']);
-        Route::put('/registrations/{registration}/approve', [RegistrationController::class, 'approve']);
-        Route::put('/registrations/{registration}/reject', [RegistrationController::class, 'reject']);
+        // Event registrations management
+        Route::get('/events/{event}/registrations', [EventController::class, 'registrations']);
+        Route::get('/events/{event}/export-attendance', [EventController::class, 'exportAttendance'])
+            ->name('events.export-attendance');
+            
+        // Registration approval
+        Route::put('/registrations/{registration}/approve', [RegistrationController::class, 'approve'])
+            ->name('registrations.approve');
+        Route::put('/registrations/{registration}/reject', [RegistrationController::class, 'reject'])
+            ->name('registrations.reject');
     });
 
     // Dashboard route

@@ -17,7 +17,26 @@ class Event extends Model
         'waktu_mulai', 'waktu_selesai', 'lokasi', 'flyer_path',
         'sertifikat_template_path', 'is_published', 'kuota', 'terdaftar',
         'kategori_id', 'harga_tiket', 'sertifikat_path', 'status',
+        'created_by', 'approval_type'
     ];
+    
+    protected $appends = ['full_flyer_path', 'full_template_path'];
+    
+    /**
+     * Get the URL to the event's flyer image.
+     */
+    public function getFullFlyerPathAttribute()
+    {
+        return $this->flyer_path ? asset('storage/' . $this->flyer_path) : null;
+    }
+    
+    /**
+     * Get the URL to the event's certificate template.
+     */
+    public function getFullTemplatePathAttribute()
+    {
+        return $this->sertifikat_template_path ? asset('storage/' . $this->sertifikat_template_path) : null;
+    }
     
     /**
      * The attributes that should be cast.
@@ -28,6 +47,8 @@ class Event extends Model
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
         'waktu_mulai' => 'datetime',
+        'is_published' => 'boolean',
+        'approval_type' => 'string',
         'waktu_selesai' => 'datetime',
         'is_published' => 'boolean',
     ];
@@ -43,9 +64,28 @@ class Event extends Model
     /**
      * Get all registrations for the event.
      */
+    /**
+     * Get the user that created the event.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    
+    /**
+     * Get the registrations for the event.
+     */
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class);
+    }
+    
+    /**
+     * Scope a query to only include events created by the given user.
+     */
+    public function scopeCreatedBy($query, $userId)
+    {
+        return $query->where('created_by', $userId);
     }
 
     /**

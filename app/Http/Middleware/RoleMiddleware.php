@@ -10,9 +10,19 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (! in_array($request->user()->role, $roles)) {
+        $user = $request->user();
+        
+        if (! $user) {
             return response()->json([
-                'message' => 'Akses ditolak, role tidak sesuai'
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+        
+        if (! in_array($user->role, $roles)) {
+            return response()->json([
+                'message' => 'Akses ditolak. Role yang diperlukan: ' . implode(', ', $roles) . '. Role Anda: ' . $user->role,
+                'required_roles' => $roles,
+                'your_role' => $user->role
             ], 403);
         }
 
