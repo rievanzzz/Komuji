@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CategorySeeder::class,  // Categories must come first due to foreign key constraints
             UserSeeder::class,
+            PanitiaKeduaSeeder::class,  // Add second organizer
             EventSeeder::class,
             RegistrationSeeder::class,
         ]);

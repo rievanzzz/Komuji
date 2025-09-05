@@ -72,7 +72,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
             'kuota' => 100,
             'is_published' => true
         ]);
-        
+
         $controller = new \App\Http\Controllers\Api\EventController();
         return $controller->update(
             new \App\Http\Requests\Event\UpdateEventRequest($request->all()),
@@ -94,13 +94,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         // Event registration
         Route::get('/my-registrations', [RegistrationController::class, 'myRegistrations']);
         Route::post('/events/{event}/register', [RegistrationController::class, 'register']);
-        
+
         // Registration management
         Route::delete('/registrations/{registration}/cancel', [RegistrationController::class, 'cancelRegistration']);
-        
+
         // Attendance
         Route::post('/validate-attendance', [RegistrationController::class, 'validateAttendance']);
-        
+
         // Certificates
         Route::get('/registrations/{registration}/certificate', [RegistrationController::class, 'generateCertificate']);
     });
@@ -111,17 +111,21 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
-        
+
         // Event registrations management
         Route::get('/events/{event}/registrations', [EventController::class, 'registrations']);
         Route::get('/events/{event}/export-attendance', [EventController::class, 'exportAttendance'])
             ->name('events.export-attendance');
-            
+
         // Registration approval
         Route::put('/registrations/{registration}/approve', [RegistrationController::class, 'approve'])
             ->name('registrations.approve');
         Route::put('/registrations/{registration}/reject', [RegistrationController::class, 'reject'])
             ->name('registrations.reject');
+            
+        // Get pending registrations for events created by the authenticated user
+        Route::get('/my-events/pending-registrations', [RegistrationController::class, 'pendingRegistrations'])
+            ->name('registrations.pending');
     });
 
     // Dashboard route

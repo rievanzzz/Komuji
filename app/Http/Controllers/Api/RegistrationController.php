@@ -54,7 +54,7 @@ class RegistrationController extends Controller
         try {
             // Tentukan status berdasarkan tipe approval event
             $status = ($event->approval_type === 'auto') ? 'approved' : 'pending';
-            
+
             // Buat registrasi
             $registration = Registration::create([
                 'user_id' => auth()->id(),
@@ -62,7 +62,7 @@ class RegistrationController extends Controller
                 'status' => $status,
                 'kode_pendaftaran' => 'EVT-' . strtoupper(Str::random(8)),
             ]);
-            
+
             // Buat token kehadiran
             $attendance = $registration->attendance()->create([
                 'token' => Str::random(32),
@@ -72,7 +72,7 @@ class RegistrationController extends Controller
             // Jika auto-approve, update jumlah pendaftar
             if ($status === 'approved') {
                 $event->increment('terdaftar');
-                
+
                 // TODO: Kirim email konfirmasi pendaftaran
                 // $registration->user->notify(new EventRegistrationApproved($registration));
             } else {
@@ -100,7 +100,7 @@ class RegistrationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Registration error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat melakukan pendaftaran',
@@ -117,6 +117,149 @@ class RegistrationController extends Controller
             ->paginate(10);
 
         return response()->json($registrations);
+    }
+
+    /**
+     * Approve a pending registration
+     *
+     * @param Registration $registration
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function approve(Registration $registration)
+    {
+        // Check if user is the event creator
+        if ($registration->event->created_by !== auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak memiliki izin untuk menyetujui pendaftaran ini'
+            ], 403);
+        }
+
+        // Check if registration is pending
+        if ($registration->status !== 'pending') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hanya pendaftaran dengan status pending yang dapat disetujui'
+            ], 400);
+        }
+
+        // Check if event is full
+        if ($registration->event->terdaftar >= $registration->event->kuota) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota peserta sudah penuh, tidak dapat menyetujui pendaftaran ini'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update registration status
+            $registration->update([
+                'status' => 'approved',
+                'alasan_ditolak' => null
+            ]);
+
+            // Increment registered count
+            $registration->event->increment('terdaftar');
+
+            // TODO: Send approval notification to user
+            // $registration->user->notify(new RegistrationApproved($registration));
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Pendaftaran berhasil disetujui',
+                'data' => $registration->fresh()
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menyetujui pendaftaran',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject a pending registration
+     *
+     * @param Request $request
+     * @param Registration $registration
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function reject(Request $request, Registration $registration)
+    {
+        $request->validate([
+            'alasan_penolakan' => 'required|string|max:500'
+        ]);
+
+        // Check if user is the event creator
+        if ($registration->event->created_by !== auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak memiliki izin untuk menolak pendaftaran ini'
+            ], 403);
+        }
+
+        // Check if registration is pending
+        if ($registration->status !== 'pending') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hanya pendaftaran dengan status pending yang dapat ditolak'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update registration status
+            $registration->update([
+                'status' => 'rejected',
+                'alasan_ditolak' => $request->alasan_penolakan
+            ]);
+
+            // TODO: Send rejection notification to user
+            // $registration->user->notify(new RegistrationRejected($registration));
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Pendaftaran berhasil ditolak',
+                'data' => $registration->fresh()
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menolak pendaftaran',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Get pending registrations for events created by the authenticated user
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function pendingRegistrations()
+    {
+        $user = auth()->user();
+
+        $pendingRegistrations = Registration::with(['user:id,name,email', 'event:id,judul'])
+            ->whereHas('event', function($query) use ($user) {
+                $query->where('created_by', $user->id);
+            })
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $pendingRegistrations
+        ]);
     }
 
     /**
@@ -137,7 +280,7 @@ class RegistrationController extends Controller
                 'message' => 'Unauthorized. Hanya panitia yang bisa menyetujui pendaftaran.'
             ], 403);
         }
-        
+
         if ($registration->status === 'approved') {
             return response()->json([
                 'status' => 'error',
@@ -145,7 +288,7 @@ class RegistrationController extends Controller
                 'data' => $registration
             ]);
         }
-        
+
         // Check quota
         if ($registration->event->terdaftar >= $registration->event->kuota) {
             return response()->json([
@@ -154,29 +297,29 @@ class RegistrationController extends Controller
                 'data' => $registration
             ], 400);
         }
-        
+
         DB::beginTransaction();
         try {
             // Update registration status
             $registration->update(['status' => 'approved']);
-            
+
             // Increment event's registered count
             $registration->event->increment('terdaftar');
-            
+
             // TODO: Send notification to user
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Pendaftaran berhasil disetujui',
                 'data' => $registration->load('user', 'event')
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Approve registration error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat menyetujui pendaftaran',
@@ -184,7 +327,7 @@ class RegistrationController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Reject a registration (for panitia)
      */
@@ -193,7 +336,7 @@ class RegistrationController extends Controller
         $request->validate([
             'alasan_ditolak' => 'required|string|max:500'
         ]);
-        
+
         // Check if user is admin or event creator
         if (auth()->user()->role !== 'admin' && $registration->event->created_by !== auth()->id()) {
             return response()->json([
@@ -201,7 +344,7 @@ class RegistrationController extends Controller
                 'message' => 'Unauthorized. Hanya panitia yang bisa menolak pendaftaran.'
             ], 403);
         }
-        
+
         if ($registration->status === 'rejected') {
             return response()->json([
                 'status' => 'error',
@@ -209,10 +352,10 @@ class RegistrationController extends Controller
                 'data' => $registration
             ]);
         }
-        
+
         // If previously approved, decrement the counter
         $wasApproved = $registration->status === 'approved';
-        
+
         DB::beginTransaction();
         try {
             // Update registration status
@@ -220,26 +363,26 @@ class RegistrationController extends Controller
                 'status' => 'rejected',
                 'alasan_ditolak' => $request->alasan_ditolak
             ]);
-            
+
             // If it was approved before, decrement the counter
             if ($wasApproved) {
                 $registration->event->decrement('terdaftar');
             }
-            
+
             // TODO: Send notification to user
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Pendaftaran berhasil ditolak',
                 'data' => $registration->load('user', 'event')
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Reject registration error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat menolak pendaftaran',
@@ -247,7 +390,7 @@ class RegistrationController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Cancel a registration (for peserta)
      */
@@ -256,7 +399,7 @@ class RegistrationController extends Controller
         try {
             // Cari registrasi beserta relasinya
             $registration = Registration::with(['event', 'attendance', 'certificate'])->findOrFail($id);
-            
+
             // Debug: Log user yang sedang login dan pemilik registrasi
             Log::info('Cancel Registration Debug', [
                 'logged_in_user_id' => auth()->id(),
@@ -275,7 +418,7 @@ class RegistrationController extends Controller
                     'message' => 'Anda tidak memiliki akses untuk membatalkan registrasi ini'
                 ], 403);
             }
-            
+
             // Cek apakah event berbayar
             if (isset($registration->event->is_berbayar) && $registration->event->is_berbayar) {
                 return response()->json([
@@ -292,7 +435,7 @@ class RegistrationController extends Controller
                     'registration_id' => $id
                 ], 404);
             }
-            
+
             try {
                 $eventDate = Carbon::parse($event->tanggal_mulai);
                 $eventTime = Carbon::parse($event->waktu_mulai);
@@ -300,7 +443,7 @@ class RegistrationController extends Controller
                     $eventDate->year, $eventDate->month, $eventDate->day,
                     $eventTime->hour, $eventTime->minute, $eventTime->second
                 );
-                
+
                 if ($eventDateTime->isPast()) {
                     return response()->json([
                         'message' => 'Tidak bisa membatalkan registrasi karena event sudah berlangsung',
@@ -322,15 +465,15 @@ class RegistrationController extends Controller
                 if ($registration->attendance) {
                     $registration->attendance()->delete();
                 }
-                
+
                 // Hapus sertifikat jika ada
                 if ($registration->certificate) {
                     $registration->certificate()->delete();
                 }
-                
+
                 // Hapus registrasi
                 $registration->delete();
-                
+
                 // Update jumlah pendaftar
                 $event->decrement('terdaftar');
 
@@ -345,7 +488,7 @@ class RegistrationController extends Controller
                 DB::rollBack();
                 Log::error('Gagal membatalkan registrasi: ' . $e->getMessage());
                 Log::error($e);
-                
+
                 return response()->json([
                     'message' => 'Gagal membatalkan registrasi',
                     'error' => $e->getMessage(),
@@ -368,11 +511,11 @@ class RegistrationController extends Controller
     {
         $event = Event::findOrFail($request->event_id);
         $now = now();
-        
+
         // Cek waktu event
         $eventStart = Carbon::parse($event->tanggal_mulai . ' ' . $event->waktu_mulai);
         $eventEnd = Carbon::parse($event->tanggal_selesai . ' ' . $event->waktu_selesai);
-        
+
         if (!$now->between($eventStart, $eventEnd)) {
             return response()->json([
                 'message' => 'Absensi hanya bisa dilakukan pada saat event berlangsung',
@@ -429,7 +572,7 @@ class RegistrationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Gagal validasi absensi: ' . $e->getMessage());
-            
+
             return response()->json([
                 'message' => 'Gagal melakukan absensi',
                 'error' => $e->getMessage()
@@ -439,7 +582,7 @@ class RegistrationController extends Controller
 
     /**
      * Generate sertifikat untuk registrasi peserta
-     * 
+     *
      * @param \App\Models\Registration $registration
      * @return \App\Models\Certificate
      * @throws \Exception
@@ -451,28 +594,28 @@ class RegistrationController extends Controller
             if ($registration->certificate) {
                 return $registration->certificate;
             }
-            
+
             // Generate nomor sertifikat unik
             $nomorSertifikat = 'CERT-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
             $namaFile = Str::uuid() . '.pdf';
             $pathFile = 'certificates/' . $namaFile;
-            
+
             // Buat record sertifikat
             $certificate = $registration->certificate()->create([
                 'nomor_sertifikat' => $nomorSertifikat,
                 'file_path' => $pathFile,
                 'generated_at' => now(),
             ]);
-            
+
             // Dapatkan data event dan user
             $event = $registration->event;
             $user = $registration->user;
-            
+
             // Pastikan direktori certificates ada
             if (!Storage::disk('public')->exists('certificates')) {
                 Storage::disk('public')->makeDirectory('certificates');
             }
-            
+
             // Generate konten PDF
             $pdfContent = view('emails.certificate', [
                 'event' => $event,
@@ -480,86 +623,19 @@ class RegistrationController extends Controller
                 'certificate' => $certificate,
                 'tanggal' => now()->translatedFormat('d F Y')
             ])->render();
-            
+
             // Simpan file PDF
             Storage::disk('public')->put($pathFile, $pdfContent);
-            
+
             return $certificate;
-            
+
         } catch (\Exception $e) {
             Log::error('Gagal generate sertifikat: ' . $e->getMessage());
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Terjadi kesalahan saat menyetujui pendaftaran',
-            'error' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
-    }
-}
-
-/**
- * Reject a registration (for panitia)
- */
-public function reject(Request $request, Registration $registration)
-{
-    // Middleware 'role:admin,panitia' sudah menangani otorisasi
-    // Tetapi kita tetap memeriksa untuk keamanan tambahan
-    if (!in_array(auth()->user()->role, ['admin', 'panitia'])) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Anda tidak memiliki akses untuk menolak pendaftaran ini.'
-        ], 403);
-    }
-
-    // Validasi input
-    $validated = $request->validate([
-        'alasan' => 'required|string|max:255'
-    ]);
-
-    // Pastikan event adalah tipe manual-approve
-    if ($registration->event->approval_type !== 'manual') {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Event ini tidak memerlukan persetujuan manual.'
-        ], 400);
-    }
-
-    // Pastikan pendaftaran masih pending
-    if ($registration->status !== 'pending') {
-        $status = $registration->status === 'approved' ? 'telah disetujui' : 'telah ditolak';
-        return response()->json([
-            'status' => 'error',
-            'message' => "Pendaftaran ini sudah $status sebelumnya."
-        ], 400);
-    }
-
-    DB::beginTransaction();
-    try {
-        // Update status penolakan
-        $registration->update([
-            'status' => 'rejected',
-            'alasan_ditolak' => $validated['alasan']
-        ]);
-
-        // TODO: Kirim notifikasi ke user bahwa pendaftaran ditolak
-        // $registration->user->notify(new EventRegistrationRejected($registration, $validated['alasan']));
-
-        DB::commit();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Pendaftaran berhasil ditolak.',
-            'data' => $registration->load('user', 'event')
-        ]);
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Reject registration error: ' . $e->getMessage());
-        
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Terjadi kesalahan saat menolak pendaftaran',
-            'error' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
-    }
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat membuat sertifikat',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 }

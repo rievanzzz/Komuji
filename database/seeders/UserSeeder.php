@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
-        // Buat admin acara
+        // Buat admin acara 1
         User::factory()->create([
             'name' => 'Admin Acara',
             'email' => 'adminacara@example.com',
@@ -34,6 +34,19 @@ class UserSeeder extends Seeder
             'role' => 'panitia',
             'no_handphone' => '081234567891',
             'alamat' => 'Jl. Contoh No. 124',
+            'pendidikan_terakhir' => 'S1',
+            'status_akun' => 'aktif',
+            'email_verified_at' => now(),
+        ]);
+
+        // Buat admin acara 2
+        User::factory()->create([
+            'name' => 'Panitia Dua',
+            'email' => 'panitia2@example.com',
+            'password' => Hash::make('panitia123'),
+            'role' => 'panitia',
+            'no_handphone' => '081234567892',
+            'alamat' => 'Jl. Contoh No. 125',
             'pendidikan_terakhir' => 'S1',
             'status_akun' => 'aktif',
             'email_verified_at' => now(),
