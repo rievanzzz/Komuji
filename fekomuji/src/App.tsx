@@ -94,7 +94,7 @@ function App() {
       <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-3' : 'bg-white py-5'}`}>
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-blue-600">Komuji</div>
+            <div className="text-2xl font-bold text-blue-600">Miluan</div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex space-x-8">
@@ -104,13 +104,13 @@ function App() {
             </div>
 
             <div className="hidden md:flex space-x-4">
-              <Link 
+              <Link
                 to="/signin"
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 inline-block text-center"
               >
                 Masuk
               </Link>
-              <Link 
+              <Link
                 to="/signup"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-block text-center"
               >
@@ -135,13 +135,13 @@ function App() {
               <a href="#categories" className="block py-2 hover:text-gray-600">Kategori</a>
               <a href="#about" className="block py-2 hover:text-gray-600">Tentang</a>
               <div className="flex space-x-4">
-                <Link 
+                <Link
                   to="/signin"
                   className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
                 >
                   Masuk
                 </Link>
-                <Link 
+                <Link
                   to="/signup"
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
                 >
@@ -232,7 +232,7 @@ function App() {
                     />
                   </pattern>
                 </defs>
-                
+
                 <motion.rect
                   width="100%"
                   height="100%"
@@ -246,7 +246,7 @@ function App() {
                     ease: "easeInOut"
                   }}
                 />
-                
+
                 {/* Floating dots */}
                 <motion.circle
                   cx="80"
@@ -318,13 +318,13 @@ function App() {
                 className="w-full max-w-sm relative z-10"
               >
                 <h3 className="text-lg font-semibold mb-6 text-center">Event Popular</h3>
-                
+
                 {/* Single Floating Card */}
                 <motion.div
                   initial={{ opacity: 0, y: 50, rotateX: -15 }}
-                  animate={{ 
-                    opacity: 1, 
-                    y: [0, -8, 0], 
+                  animate={{
+                    opacity: 1,
+                    y: [0, -8, 0],
                     rotateX: 0,
                     boxShadow: [
                       "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
@@ -332,7 +332,7 @@ function App() {
                       "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
                     ]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 0.8,
                     y: {
                       duration: 3,
@@ -383,10 +383,10 @@ function App() {
                         }}
                       />
                     </div>
-                    
+
                     {/* Card Content */}
                     <div className="p-6">
-                      <motion.h4 
+                      <motion.h4
                         className="font-bold text-xl mb-3 text-gray-800"
                         whileHover={{
                           color: "#3b82f6",
@@ -395,7 +395,7 @@ function App() {
                       >
                         {popularEvents[0].title}
                       </motion.h4>
-                      
+
                       <div className="space-y-2 mb-4">
                         <p className="text-sm text-gray-600 flex items-center">
                           <span className="mr-2">📅</span> {popularEvents[0].date}
@@ -404,8 +404,8 @@ function App() {
                           <span className="mr-2">📍</span> {popularEvents[0].location}
                         </p>
                       </div>
-                      
-                      <motion.p 
+
+                      <motion.p
                         className="text-xl font-bold text-green-600"
                         whileHover={{
                           color: "#dc2626",
@@ -416,7 +416,7 @@ function App() {
                         {popularEvents[0].price}
                       </motion.p>
                     </div>
-                    
+
                     {/* Floating glow effect */}
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-br from-blue-400/10 via-purple-400/10 to-pink-400/10 opacity-0 rounded-2xl"
@@ -479,7 +479,7 @@ function App() {
           </div>
         </div>
       </section>
-      
+
       {/* How it works Section */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
@@ -599,7 +599,7 @@ function App() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Our Respected Clients</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Beberapa klien utama yang pernah bekerjasama, tak lupa kami sampaikan 
+              Beberapa klien utama yang pernah bekerjasama, tak lupa kami sampaikan
               apresiasi sekaligus ucapan terimakasih atas kepercayaan yang diberikan
             </p>
           </div>
