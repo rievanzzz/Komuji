@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from '../contexts/AuthContext';
 
 interface SignInFormData {
   email: string;
@@ -16,6 +17,11 @@ const SignIn = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -71,9 +77,10 @@ const SignIn = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store token and redirect to dashboard
-        localStorage.setItem('token', data.token);
-        window.location.href = '/dashboard';
+        // Use AuthContext to handle login
+        login(data.token, data.user);
+        // Redirect to dashboard or return url
+        navigate(from, { replace: true });
       } else {
         setErrors({ general: data.message || 'Email atau password salah' });
       }

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from '../contexts/AuthContext';
 
 interface Event {
   id: number;
@@ -23,13 +24,50 @@ interface UserStats {
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalEvents: 0,
+    completedEvents: 0,
+    certificates: 0,
+    upcomingEvents: 0
+  });
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { user, token, logout } = useAuth();
 
-  // Mock user data - replace with actual API calls
-  const userStats: UserStats = {
-    totalEvents: 12,
-    completedEvents: 8,
-    certificates: 6,
-    upcomingEvents: 4
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/dashboard', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+        if (data.stats) {
+          setUserStats({
+            totalEvents: data.stats.registered_events || data.stats.total_events || 0,
+            completedEvents: data.stats.attended_events || 0,
+            certificates: data.stats.certificates || 0,
+            upcomingEvents: data.stats.upcoming_events || 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   const myEvents: Event[] = [
@@ -112,7 +150,7 @@ const Dashboard = () => {
             </nav>
 
             {/* Right side */}
-            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
               {/* Search */}
               <div className="relative hidden sm:block">
                 <input
@@ -134,19 +172,38 @@ const Dashboard = () => {
               </button>
 
               {/* Profile Dropdown */}
-              <div className="relative">
+              <div className="relative group">
                 <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">JD</span>
+                    <span className="text-white text-sm font-medium">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
                   </div>
                   <div className="hidden sm:block text-left">
-                    <div className="text-sm font-medium text-gray-700">John Doe</div>
-                    <div className="text-xs text-gray-500">john@example.com</div>
+                    <div className="text-sm font-medium text-gray-700">{user?.name || 'User'}</div>
+                    <div className="text-xs text-gray-500">{user?.email || ''}</div>
                   </div>
                   <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
+                
+                {/* Dropdown Menu */}
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Profil Saya
+                  </Link>
+                  <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Pengaturan
+                  </Link>
+                  <hr className="my-1" />
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Keluar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -164,8 +221,12 @@ const Dashboard = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold mb-2">Selamat datang kembali, John! 👋</h1>
-                <p className="text-green-100">Anda memiliki {userStats.upcomingEvents} event yang akan datang</p>
+                <h1 className="text-2xl font-bold mb-2">Selamat datang kembali, {user?.name || 'User'}! 👋</h1>
+                <p className="text-green-100">
+                  {user?.role === 'admin' ? 'Anda memiliki akses penuh sebagai admin' :
+                   user?.role === 'panitia' ? 'Anda dapat mengelola event sebagai panitia' :
+                   `Anda memiliki ${userStats.upcomingEvents} event yang akan datang`}
+                </p>
               </div>
               <div className="hidden md:block">
                 <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
