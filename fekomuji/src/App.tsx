@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FiUser, FiX, FiMenu } from 'react-icons/fi';
+import { FiUser, FiX, FiMenu, FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
 
 // Card data with dynamic color system
 interface CardData {
@@ -14,6 +14,28 @@ interface CardData {
   overlayColor: string;
 }
 
+// Event interface for database events
+interface EventData {
+  id: number;
+  judul: string;
+  deskripsi: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  waktu_mulai: string;
+  waktu_selesai: string;
+  lokasi: string;
+  flyer_path: string;
+  full_flyer_path: string;
+  kuota: number;
+  terdaftar: number;
+  harga_tiket: number;
+  is_published: boolean;
+  category?: {
+    id: number;
+    nama: string;
+  };
+}
+
 const cardData: CardData[] = [
   { id: 'music', category: 'MUSIC', description: 'Concerts & Live Shows', eventCount: 25, image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80', dominantColor: '#ef4444', overlayColor: 'bg-red-500/40' },
   { id: 'art', category: 'ART', description: 'Workshops & Exhibitions', eventCount: 18, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80', dominantColor: '#8b5cf6', overlayColor: 'bg-purple-500/40' },
@@ -24,37 +46,6 @@ const cardData: CardData[] = [
   { id: 'culture', category: 'CULTURE', description: 'Heritage & Traditions', eventCount: 20, image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80', dominantColor: '#06b6d4', overlayColor: 'bg-cyan-500/40' }
 ];
 
-// Mock data for upcoming events
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "Olahraga",
-    description: "Berbagai event olahraga menarik",
-    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    icon: "🏃‍♂️"
-  },
-  {
-    id: 2,
-    title: "Pertunjukan",
-    description: "Konser dan pertunjukan seni",
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    icon: "🎭"
-  },
-  {
-    id: 3,
-    title: "Seminar / Konferensi",
-    description: "Event edukasi dan networking",
-    image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    icon: "📊"
-  },
-  {
-    id: 4,
-    title: "Pameran / Eksibisi",
-    description: "Pameran dan eksibisi menarik",
-    image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    icon: "🎨"
-  }
-];
 
 // Bubble Chat Component - positioned separately above card with gap
 const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: string }) => {
@@ -121,6 +112,10 @@ function App() {
   const [cardsLoaded, setCardsLoaded] = useState(false);
   const [cardsRisen, setCardsRisen] = useState(false);
   const [elementsVisible, setElementsVisible] = useState(false);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -148,6 +143,222 @@ function App() {
       clearTimeout(spreadTimer);
     };
   }, []);
+
+  // Fetch events from database
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching events...');
+        
+        // Try multiple API endpoints
+        let response;
+        try {
+          response = await fetch('http://localhost/Komuji/api/events?sort=terdekat');
+        } catch (err) {
+          console.log('First URL failed, trying alternative...');
+          response = await fetch('/api/events?sort=terdekat');
+        }
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Fetched data:', data);
+        
+        const eventsData = data.data || data || [];
+        console.log('Events array:', eventsData);
+        setEvents(eventsData);
+        
+        // If no events from API, use fallback data
+        if (eventsData.length === 0) {
+          console.log('No events from API, using fallback data');
+          setEvents(fallbackEvents);
+        }
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        // Use fallback data on error
+        console.log('Using fallback data due to error');
+        setEvents(fallbackEvents);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  // Fallback mock data
+  const fallbackEvents: EventData[] = [
+    {
+      id: 1,
+      judul: "Konser Musik Rock Indonesia",
+      deskripsi: "Konser musik rock terbesar di Indonesia",
+      tanggal_mulai: "2024-10-15",
+      tanggal_selesai: "2024-10-15",
+      waktu_mulai: "19:00:00",
+      waktu_selesai: "23:00:00",
+      lokasi: "Jakarta International Stadium",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 5000,
+      terdaftar: 3200,
+      harga_tiket: 150000,
+      is_published: true,
+      category: { id: 1, nama: "Musik" }
+    },
+    {
+      id: 2,
+      judul: "Workshop Digital Marketing",
+      deskripsi: "Belajar digital marketing dari ahlinya",
+      tanggal_mulai: "2024-10-20",
+      tanggal_selesai: "2024-10-20",
+      waktu_mulai: "09:00:00",
+      waktu_selesai: "17:00:00",
+      lokasi: "Balai Kartini Jakarta",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 100,
+      terdaftar: 75,
+      harga_tiket: 0,
+      is_published: true,
+      category: { id: 2, nama: "Workshop" }
+    },
+    {
+      id: 3,
+      judul: "Pameran Seni Rupa Modern",
+      deskripsi: "Pameran karya seni rupa kontemporer",
+      tanggal_mulai: "2024-10-25",
+      tanggal_selesai: "2024-10-30",
+      waktu_mulai: "10:00:00",
+      waktu_selesai: "18:00:00",
+      lokasi: "Galeri Nasional Indonesia",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 500,
+      terdaftar: 120,
+      harga_tiket: 25000,
+      is_published: true,
+      category: { id: 3, nama: "Seni" }
+    },
+    {
+      id: 4,
+      judul: "Tech Conference 2024",
+      deskripsi: "Konferensi teknologi terbesar tahun ini",
+      tanggal_mulai: "2024-11-05",
+      tanggal_selesai: "2024-11-06",
+      waktu_mulai: "08:00:00",
+      waktu_selesai: "17:00:00",
+      lokasi: "Jakarta Convention Center",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 1000,
+      terdaftar: 850,
+      harga_tiket: 500000,
+      is_published: true,
+      category: { id: 4, nama: "Teknologi" }
+    },
+    {
+      id: 5,
+      judul: "Festival Kuliner Nusantara",
+      deskripsi: "Festival makanan tradisional Indonesia",
+      tanggal_mulai: "2024-11-10",
+      tanggal_selesai: "2024-11-12",
+      waktu_mulai: "10:00:00",
+      waktu_selesai: "22:00:00",
+      lokasi: "Monas Jakarta",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 2000,
+      terdaftar: 1200,
+      harga_tiket: 0,
+      is_published: true,
+      category: { id: 5, nama: "Kuliner" }
+    },
+    {
+      id: 6,
+      judul: "Turnamen E-Sports Mobile Legends",
+      deskripsi: "Turnamen Mobile Legends tingkat nasional",
+      tanggal_mulai: "2024-11-15",
+      tanggal_selesai: "2024-11-17",
+      waktu_mulai: "09:00:00",
+      waktu_selesai: "21:00:00",
+      lokasi: "ICE BSD Tangerang",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 64,
+      terdaftar: 60,
+      harga_tiket: 100000,
+      is_published: true,
+      category: { id: 6, nama: "Gaming" }
+    },
+    {
+      id: 7,
+      judul: "Seminar Kewirausahaan",
+      deskripsi: "Seminar tentang memulai bisnis dari nol",
+      tanggal_mulai: "2024-11-20",
+      tanggal_selesai: "2024-11-20",
+      waktu_mulai: "13:00:00",
+      waktu_selesai: "17:00:00",
+      lokasi: "Universitas Indonesia Depok",
+      flyer_path: "",
+      full_flyer_path: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      kuota: 200,
+      terdaftar: 180,
+      harga_tiket: 50000,
+      is_published: true,
+      category: { id: 7, nama: "Bisnis" }
+    }
+  ];
+
+  // Scroll functions
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: -320,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: 320,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Toggle favorite
+  const toggleFavorite = (eventId: number) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(eventId)) {
+        newFavorites.delete(eventId);
+      } else {
+        newFavorites.add(eventId);
+      }
+      return newFavorites;
+    });
+  };
+
+  // Format date for display
+  const formatEventDate = (dateStr: string, timeStr: string) => {
+    const date = new Date(dateStr + 'T' + timeStr);
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' •');
+  };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -230,7 +441,7 @@ function App() {
       </nav>
 
       {/* New Hero Section - Based on Figma Design */}
-      <section className="min-h-screen bg-white">
+      <section className="bg-white pb-16">
         {/* Header Navigation */}
         <header className="w-full h-20 flex items-center justify-between px-6 bg-white">
           <div className="flex items-center">
@@ -491,7 +702,7 @@ function App() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="relative py-20 px-4 bg-white">
+      <section className="py-12 px-4 bg-white relative z-[100]">
         <div className="container mx-auto">
           <div className="grid lg:grid-cols-4 gap-16 items-start">
             {/* Left side - Title only */}
@@ -516,7 +727,7 @@ function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
                 viewport={{ once: true }}
-                className="text-center"
+                className="text-center relative z-[101]"
               >
                 <div className="mb-6 flex justify-center">
                   <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
@@ -557,7 +768,7 @@ function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 viewport={{ once: true }}
-                className="text-center"
+                className="text-center relative z-[101]"
               >
                 <div className="mb-6 flex justify-center">
                   <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
@@ -609,7 +820,7 @@ function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="text-center"
+                className="text-center relative z-[101]"
               >
                 <div className="mb-6 flex justify-center">
                   <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
@@ -658,11 +869,210 @@ function App() {
             </div>
           </div>
         </div>
+        
+        {/* Enhanced Curved Transition to Next Section */}
+        <div className="absolute -bottom-20 left-0 w-full overflow-hidden z-20">
+          <svg 
+            className="relative block w-full h-32" 
+            viewBox="0 0 1200 160" 
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#d5deef" />
+                <stop offset="8%" stopColor="#d9e3f1" />
+                <stop offset="16%" stopColor="#dde7f3" />
+                <stop offset="24%" stopColor="#e1ebf5" />
+                <stop offset="32%" stopColor="#e4eef7" />
+                <stop offset="40%" stopColor="#e8f1f8" />
+                <stop offset="48%" stopColor="#ecf3f9" />
+                <stop offset="56%" stopColor="#eff5fb" />
+                <stop offset="64%" stopColor="#f2f7fc" />
+                <stop offset="72%" stopColor="#f5f8fd" />
+                <stop offset="80%" stopColor="#f8fafd" />
+                <stop offset="88%" stopColor="#fbfcfe" />
+                <stop offset="96%" stopColor="#faf9f7" />
+                <stop offset="100%" stopColor="#f8f6f3" />
+              </linearGradient>
+            </defs>
+            
+            {/* Single wave path */}
+            <path 
+              d="M0,0 C150,120 350,120 600,60 C850,0 1050,0 1200,60 L1200,160 L0,160 Z" 
+              fill="url(#waveGradient)"
+            />
+          </svg> 
+        </div>
       </section>
 
+      {/* Event Terdeka Section - Horizontal Scroll */}
+      <section className="py-16 px-4 mt-16" style={{background: 'linear-gradient(to bottom, #f8f6f3 0%, #f7f5f2 5%, #f6f4f1 10%, #f5f3f0 15%, #f4f2ef 20%, #f3f1ee 25%, #f2f0ed 30%, #f1efec 35%, #f0eeeb 40%, #efedea 45%, #eeece9 50%, #edebe8 55%, #eceae7 60%, #ebe9e6 65%, #eae8e5 70%, #e9e7e4 75%, #e8e6e3 80%, #e7e5e2 85%, #e6e4e1 90%, #e5e3e0 95%, #e4e2df 100%)'}}>
+        
+        <div className="container mx-auto max-w-7xl relative">
+          {/* Section Header */}
+          <div className="text-center mb-12">
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
+            >
+              Trending Events near Unknown Location
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="text-gray-600 max-w-2xl mx-auto"
+            >
+              Discover the most popular events happening around you
+            </motion.p>
+          </div>
+
+          {/* Navigation Arrows - Positioned in empty space */}
+          <button 
+            onClick={scrollLeft}
+            className="absolute -left-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:scale-110 group"
+          >
+            <FiChevronLeft className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
+          </button>
+          
+          <button 
+            onClick={scrollRight}
+            className="absolute -right-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:scale-110 group"
+          >
+            <FiChevronRight className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
+          </button>
+
+          {/* Loading State */}
+          {loading ? (
+            <div className="flex space-x-4 overflow-hidden">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-80 h-96 bg-white rounded-2xl animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-2xl"></div>
+                  <div className="p-5 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Events Horizontal Scroll */
+            <div 
+              ref={scrollContainerRef}
+              className="flex space-x-6 overflow-x-auto pb-4 relative"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
+            >
+              {events.slice(0, 7).map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, x: 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="flex-shrink-0 w-80 bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer transform hover:scale-[1.02] hover:-translate-y-1"
+                >
+                  {/* Event Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    <img 
+                      src={event.full_flyer_path || `https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80`}
+                      alt={event.judul}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    
+                    {/* Rank Badge */}
+                    <div className="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
+                      #{index + 2}
+                    </div>
+                    
+                    {/* Favorite Heart */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(event.id);
+                      }}
+                      className="absolute top-4 right-4 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-all duration-300 transform hover:scale-110 group/heart"
+                    >
+                      <FiHeart 
+                        className={`w-5 h-5 transition-all duration-300 ${
+                          favorites.has(event.id) 
+                            ? 'text-red-500 fill-red-500' 
+                            : 'text-gray-600 group-hover/heart:text-red-500'
+                        }`}
+                        fill={favorites.has(event.id) ? 'currentColor' : 'none'}
+                      />
+                    </button>
+
+                    {/* Simple Overlay */}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </div>
+
+                  {/* Event Details */}
+                  <div className="p-6 relative">
+                    {/* Category Badge */}
+                    {event.category && (
+                      <div className="absolute -top-3 left-6 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                        {event.category.nama}
+                      </div>
+                    )}
+                    
+                    <h3 className="font-bold text-xl text-gray-900 mb-3 line-clamp-2 mt-2">
+                      {event.judul}
+                    </h3>
+                    
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600 font-medium">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span>{formatEventDate(event.tanggal_mulai, event.waktu_mulai)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500 leading-relaxed">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span className="line-clamp-2">{event.lokasi}</span>
+                      </div>
+                    </div>
+
+                    {/* Price and Quota - Aligned above button */}
+                    <div className="pt-4 border-t border-gray-100 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gray-600 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min((event.terdaftar / event.kuota) * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-gray-500 font-medium">
+                            {event.terdaftar}/{event.kuota}
+                          </span>
+                        </div>
+                        <div className="text-lg font-bold text-gray-800">
+                          {event.harga_tiket === 0 ? 'FREE' : `Rp ${event.harga_tiket.toLocaleString()}`}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Button */}
+                    <button className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-medium opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                      View Details
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
     </div>
   );
 }
+
 
 export default App;
