@@ -906,7 +906,7 @@ function App() {
       </section>
 
       {/* Event Terdeka Section - Horizontal Scroll */}
-      <section className="py-16 px-4 mt-16" style={{background: 'linear-gradient(to bottom, #f8f6f3 0%, #f7f5f2 5%, #f6f4f1 10%, #f5f3f0 15%, #f4f2ef 20%, #f3f1ee 25%, #f2f0ed 30%, #f1efec 35%, #f0eeeb 40%, #efedea 45%, #eeece9 50%, #edebe8 55%, #eceae7 60%, #ebe9e6 65%, #eae8e5 70%, #e9e7e4 75%, #e8e6e3 80%, #e7e5e2 85%, #e6e4e1 90%, #e5e3e0 95%, #e4e2df 100%)'}}>
+      <section className="py-16 px-4 mt-16 bg-white">
         
         <div className="container mx-auto max-w-7xl relative">
           {/* Section Header */}
@@ -1070,9 +1070,690 @@ function App() {
         </div>
       </section>
 
+      {/* Tutorial Section - Floating Cards */}
+      <section className="py-20 relative overflow-hidden bg-white">
+        <div className="container mx-auto px-4 relative z-10">
+
+          {/* Desktop Floating Cards - Horizontal Layout */}
+          <div className="relative h-[400px] hidden md:block">
+            
+            {/* SVG Wave Patterns Below Cards */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#96BCF0" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="#648DCA" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#254085" stopOpacity="0.1" />
+                </linearGradient>
+                <linearGradient id="waveGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#B7D3E9" stopOpacity="0.2" />
+                  <stop offset="50%" stopColor="#96BCF0" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#648DCA" stopOpacity="0.1" />
+                </linearGradient>
+              </defs>
+              
+              {/* Connecting Wave Flow */}
+              <motion.path
+                initial={{ pathLength: 0, opacity: 0 }}
+                whileInView={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 3, delay: 0.8 }}
+                viewport={{ once: true }}
+                d="M 20 70 Q 30 60 42 65 Q 54 70 64 65 Q 76 60 86 70"
+                stroke="url(#waveGradient1)"
+                strokeWidth="0.8"
+                fill="none"
+                strokeDasharray="3,2"
+              />
+              
+              {/* Wave Layer 1 - Bottom Flow */}
+              <motion.path
+                initial={{ pathLength: 0, opacity: 0 }}
+                whileInView={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 3, delay: 0.5 }}
+                viewport={{ once: true }}
+                d="M 0 75 Q 20 68 42 72 Q 64 76 86 72 Q 100 68 100 75 L 100 100 L 0 100 Z"
+                fill="url(#waveGradient1)"
+                stroke="none"
+              />
+              
+              {/* Wave Layer 2 - Middle Flow */}
+              <motion.path
+                initial={{ pathLength: 0, opacity: 0 }}
+                whileInView={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 3, delay: 0.8 }}
+                viewport={{ once: true }}
+                d="M 0 80 Q 25 75 42 78 Q 64 82 86 78 Q 100 75 100 80 L 100 100 L 0 100 Z"
+                fill="url(#waveGradient2)"
+                stroke="none"
+              />
+              
+              {/* Wave Layer 3 - Top Flow */}
+              <motion.path
+                initial={{ pathLength: 0, opacity: 0 }}
+                whileInView={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 3, delay: 1.1 }}
+                viewport={{ once: true }}
+                d="M 0 85 Q 30 82 42 84 Q 64 87 86 84 Q 100 82 100 85 L 100 100 L 0 100 Z"
+                fill="#F2F7FF"
+                fillOpacity="0.4"
+                stroke="none"
+              />
+              
+              {/* Connection points at card positions */}
+              <motion.circle
+                initial={{ scale: 0, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 0.8 }}
+                transition={{ duration: 0.8, delay: 1.5 }}
+                viewport={{ once: true }}
+                cx="20" cy="70" r="1.2" fill="#96BCF0"
+              />
+              <motion.circle
+                initial={{ scale: 0, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 0.8 }}
+                transition={{ duration: 0.8, delay: 1.7 }}
+                viewport={{ once: true }}
+                cx="42" cy="65" r="1.2" fill="#648DCA"
+              />
+              <motion.circle
+                initial={{ scale: 0, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 0.8 }}
+                transition={{ duration: 0.8, delay: 1.9 }}
+                viewport={{ once: true }}
+                cx="64" cy="65" r="1.2" fill="#254085"
+              />
+              <motion.circle
+                initial={{ scale: 0, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 0.8 }}
+                transition={{ duration: 0.8, delay: 2.1 }}
+                viewport={{ once: true }}
+                cx="86" cy="70" r="1.2" fill="#B7D3E9"
+              />
+            </svg>
+            {/* Card 1: Browse & Select Events */}
+            <motion.div
+              initial={{ opacity: 0, y: 50, rotate: 0 }}
+              whileInView={{ opacity: 1, y: 0, rotate: -3 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ 
+                scale: 1.05, 
+                rotate: -1, 
+                y: -10,
+                zIndex: 50,
+                transition: { duration: 0.3 }
+              }}
+              className="absolute w-72 h-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-5 cursor-pointer"
+              style={{
+                top: "10%",
+                left: "8%",
+                zIndex: 10,
+              }}
+            >
+              {/* Step Badge */}
+              <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                1
+              </div>
+              
+              <div className="h-full flex flex-col">
+                <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
+                  {/* Event Browser Mockup */}
+                  <div className="relative mb-3">
+                    <div className="flex items-center bg-white rounded-md p-2 shadow-sm">
+                      <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
+                      <div className="text-xs text-gray-500">Search events...</div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-2">
+                      <div className="w-16 h-2 bg-blue-300 rounded mb-1"></div>
+                      <div className="w-12 h-1.5 bg-blue-200 rounded"></div>
+                    </div>
+                    <div className="bg-green-50 border border-green-100 rounded-lg p-2">
+                      <div className="w-20 h-2 bg-green-300 rounded mb-1"></div>
+                      <div className="w-10 h-1.5 bg-green-200 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-gray-900 font-semibold text-sm">Browse & Select Events</h3>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 2: Complete Registration */}
+            <motion.div
+              initial={{ opacity: 0, y: 50, rotate: 0 }}
+              whileInView={{ opacity: 1, y: 0, rotate: 2 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: true }}
+              whileHover={{ 
+                scale: 1.05, 
+                rotate: 1, 
+                y: -10,
+                zIndex: 50,
+                transition: { duration: 0.3 }
+              }}
+              className="absolute w-72 h-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-5 cursor-pointer"
+              style={{
+                top: "5%",
+                left: "30%",
+                zIndex: 20,
+              }}
+            >
+              {/* Step Badge */}
+              <div className="absolute -top-3 -left-3 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                2
+              </div>
+              
+              <div className="h-full flex flex-col">
+                <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
+                  {/* Registration Form Mockup */}
+                  <div className="mb-3">
+                    <div className="w-full bg-gray-200 rounded-full h-1 mb-2">
+                      <div className="bg-green-500 h-1 rounded-full" style={{ width: '50%' }}></div>
+                    </div>
+                    <div className="text-xs text-gray-600">Step 2 of 4</div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div>
+                      <div className="w-12 h-1.5 bg-gray-300 rounded mb-1"></div>
+                      <div className="bg-white border border-gray-200 rounded h-6"></div>
+                    </div>
+                    <div>
+                      <div className="w-16 h-1.5 bg-gray-300 rounded mb-1"></div>
+                      <div className="bg-white border border-gray-200 rounded h-6"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-gray-900 font-semibold text-sm">Complete Registration</h3>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 3: Secure Payment */}
+            <motion.div
+              initial={{ opacity: 0, y: 50, rotate: 0 }}
+              whileInView={{ opacity: 1, y: 0, rotate: -2 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              viewport={{ once: true }}
+              whileHover={{ 
+                scale: 1.05, 
+                rotate: -1, 
+                y: -10,
+                zIndex: 50,
+                transition: { duration: 0.3 }
+              }}
+              className="absolute w-72 h-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-5 cursor-pointer"
+              style={{
+                top: "8%",
+                left: "52%",
+                zIndex: 15,
+              }}
+            >
+              {/* Step Badge */}
+              <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                3
+              </div>
+              
+              <div className="h-full flex flex-col">
+                <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
+                  {/* Payment Mockup */}
+                  <div className="mb-3">
+                    <div className="flex space-x-1">
+                      <div className="flex-1 p-1.5 border-2 border-blue-500 rounded bg-blue-50">
+                        <div className="w-3 h-3 bg-blue-500 rounded mb-1"></div>
+                        <span className="text-xs text-blue-700">Card</span>
+                      </div>
+                      <div className="flex-1 p-1.5 border border-gray-200 rounded">
+                        <div className="w-3 h-3 bg-gray-300 rounded mb-1"></div>
+                        <span className="text-xs text-gray-600">Bank</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="bg-white border border-gray-200 rounded h-6 flex items-center px-2">
+                      <div className="w-6 h-3 bg-blue-500 rounded mr-2"></div>
+                      <div className="w-12 h-1.5 bg-gray-400 rounded"></div>
+                    </div>
+                    <div className="flex space-x-1">
+                      <div className="bg-white border border-gray-200 rounded h-6 flex-1"></div>
+                      <div className="bg-white border border-gray-200 rounded h-6 flex-1"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-gray-900 font-semibold text-sm">Secure Payment</h3>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 4: Attend Event */}
+            <motion.div
+              initial={{ opacity: 0, y: 50, rotate: 0 }}
+              whileInView={{ opacity: 1, y: 0, rotate: 3 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              viewport={{ once: true }}
+              whileHover={{ 
+                scale: 1.05, 
+                rotate: 2, 
+                y: -10,
+                zIndex: 50,
+                transition: { duration: 0.3 }
+              }}
+              className="absolute w-72 h-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-5 cursor-pointer"
+              style={{
+                top: "12%",
+                left: "74%",
+                zIndex: 25,
+              }}
+            >
+              {/* Step Badge */}
+              <div className="absolute -top-3 -left-3 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                4
+              </div>
+              
+              <div className="h-full flex flex-col">
+                <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
+                  {/* Attendance Mockup */}
+                  <div className="text-center mb-3">
+                    <div className="w-4 h-4 bg-green-500 rounded-full mx-auto mb-1"></div>
+                    <div className="text-xs text-green-700 font-medium">Check-in Successful!</div>
+                  </div>
+                  
+                  <div className="bg-gray-100 rounded p-3 mb-2 flex flex-col items-center">
+                    <div className="w-8 h-8 bg-gray-600 rounded mb-1"></div>
+                    <div className="grid grid-cols-4 gap-0.5">
+                      {Array.from({ length: 16 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-1 h-1 ${
+                            Math.random() > 0.5 ? 'bg-gray-800' : 'bg-transparent'
+                          }`}
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-1.5 bg-orange-300 rounded mx-auto mb-1"></div>
+                    <div className="w-12 h-1 bg-gray-300 rounded mx-auto"></div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-gray-900 font-semibold text-sm">Attend Event</h3>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+          
+          {/* Mobile Cards Grid */}
+          <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {[
+              {
+                id: 1,
+                title: "Browse & Select Events",
+                description: "Discover amazing events that match your interests",
+                color: "blue"
+              },
+              {
+                id: 2,
+                title: "Complete Registration", 
+                description: "Fill in your details to secure your spot",
+                color: "green"
+              },
+              {
+                id: 3,
+                title: "Secure Payment",
+                description: "Choose your preferred payment method", 
+                color: "purple"
+              },
+              {
+                id: 4,
+                title: "Attend Event",
+                description: "Check-in and enjoy your event experience",
+                color: "orange"
+              }
+            ].map((step) => (
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: step.id * 0.1 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+              >
+                <div className={`w-8 h-8 bg-${step.color}-500 text-white rounded-full flex items-center justify-center text-sm font-bold mb-4`}>
+                  {step.id}
+                </div>
+                <div className="h-40 mb-4 bg-gray-50 rounded-lg"></div>
+                <div className="space-y-1">
+                  <h3 className="text-gray-900 font-semibold">{step.title}</h3>
+                  <p className="text-gray-600 text-sm">{step.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Descriptive Text Below Cards */}
+          <div className="mt-20 text-left max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Your "Swiss knife" for <br />
+                joining any event
+              </h3>
+              <p className="text-gray-500 text-xl leading-relaxed max-w-xl">
+                Using AI, Komuji makes joining multiple events easy. With 80+ event categories, 
+                realistic event previews, progress tracking, secure payments, and more.
+              </p>
+            </motion.div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Partners Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <p className="text-sm font-medium text-blue-600 mb-4 tracking-wider uppercase">OUR PARTNERS</p>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              We work with the best partners
+            </h2>
+          </div>
+
+          {/* Partners Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 items-center justify-items-center">
+            {/* Row 1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/1024px-Amazon_logo.svg.png" 
+                alt="Amazon" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/1024px-Microsoft_logo.svg.png" 
+                alt="Microsoft" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/1024px-Netflix_2015_logo.svg.png" 
+                alt="Netflix" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/1024px-Google_2015_logo.svg.png" 
+                alt="Google" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            {/* Row 2 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1024px-Apple_logo_black.svg.png" 
+                alt="Apple" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/LinkedIn_Logo.svg/1024px-LinkedIn_Logo.svg.png" 
+                alt="LinkedIn" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png" 
+                alt="Spotify" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_of_Twitter.svg/1024px-Logo_of_Twitter.svg.png" 
+                alt="Twitter" 
+                className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
+              />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mobile App Promotion Section */}
+      <section className="py-20 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-8"
+          >
+            <p className="text-lg text-gray-600 mb-2">New apps</p>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-12">
+              Even more power inside.
+            </h2>
+          </motion.div>
+
+          {/* 3/4 Phone Mockup with Side Buttons */}
+          <div className="flex items-center justify-center relative">
+            {/* Left Download Button - Larger and More Spaced */}
+            <motion.a
+              href="#"
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center px-8 py-4 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-lg mr-16"
+            >
+              <svg className="w-8 h-8 mr-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <div className="text-left">
+                <div className="text-sm opacity-80">Download on the</div>
+                <div className="text-lg font-semibold">App Store</div>
+              </div>
+            </motion.a>
+
+            {/* iPhone Mockup - Half Cut Like Reference */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              {/* iPhone Mockup - Exact Reference Proportions */}
+              <div className="relative w-[320px] h-[520px] bg-black rounded-[3.5rem] p-2 shadow-2xl overflow-hidden">
+                {/* iPhone Notch */}
+                <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-black rounded-full z-20"></div>
+                
+                <div className="w-full h-full bg-white rounded-[3rem] overflow-hidden relative">
+                  {/* iPhone Screen Content */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center px-7 py-4 text-black text-sm font-medium pt-8">
+                      <span className="font-semibold">9:41</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          <div className="w-1 h-1 bg-black rounded-full"></div>
+                          <div className="w-1 h-1 bg-black rounded-full"></div>
+                          <div className="w-1 h-1 bg-black rounded-full"></div>
+                          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        </div>
+                        <svg className="w-6 h-4" viewBox="0 0 24 16" fill="none">
+                          <rect x="1" y="3" width="22" height="10" rx="2" stroke="black" strokeWidth="1" fill="none"/>
+                          <rect x="23" y="6" width="2" height="4" rx="1" fill="black"/>
+                          <rect x="2" y="4" width="18" height="8" rx="1" fill="black"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Blurred Content - Matching Reference */}
+                    <div className="px-7 py-6 filter blur-md opacity-30">
+                      {/* Blurred Header */}
+                      <div className="text-center mb-8">
+                        <div className="w-40 h-6 bg-gray-400 rounded-lg mx-auto mb-4"></div>
+                      </div>
+
+                      {/* App Icons Grid - 2 Rows */}
+                      <div className="grid grid-cols-4 gap-5 mb-8">
+                        <div className="w-14 h-14 bg-blue-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-red-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-green-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-purple-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-orange-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-pink-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-yellow-400 rounded-2xl opacity-80"></div>
+                        <div className="w-14 h-14 bg-indigo-400 rounded-2xl opacity-80"></div>
+                      </div>
+
+                      {/* Blurred Content Cards */}
+                      <div className="space-y-4">
+                        <div className="bg-gray-200 rounded-xl p-4 opacity-60">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gray-400 rounded-xl"></div>
+                            <div className="flex-1">
+                              <div className="w-32 h-4 bg-gray-400 rounded mb-2"></div>
+                              <div className="w-24 h-3 bg-gray-300 rounded"></div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-200 rounded-xl p-4 opacity-60">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gray-400 rounded-xl"></div>
+                            <div className="flex-1">
+                              <div className="w-28 h-4 bg-gray-400 rounded mb-2"></div>
+                              <div className="w-20 h-3 bg-gray-300 rounded"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Download Here Button - Prominent */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-blue-600 text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-blue-700 transition-colors z-20"
+                      >
+                        Download Here
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Above Overlay */}
+              <div className="absolute -bottom-12 -left-32 -right-32 h-1/2 bg-white flex items-start justify-center pt-8">
+                <p className="text-gray-700 text-center w-full leading-relaxed text-2xl font-medium">
+                  Apps on iOS help you do all the things you're passionate about. They elevate your everyday experiences.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Right Download Button - Larger and More Spaced */}
+            <motion.a
+              href="#"
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center px-8 py-4 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-lg ml-16"
+            >
+              <svg className="w-8 h-8 mr-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+              </svg>
+              <div className="text-left">
+                <div className="text-sm opacity-80">Get it on</div>
+                <div className="text-lg font-semibold">Google Play</div>
+              </div>
+            </motion.a>
+          </div>
+
+          
+        </div>
+      </section>
+
     </div>
   );
 }
-
 
 export default App;
