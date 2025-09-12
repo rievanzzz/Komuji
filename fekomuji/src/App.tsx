@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FiUser, FiX, FiMenu, FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
+import Footer from './components/Footer';
 
 // Card data with dynamic color system
 interface CardData {
@@ -51,9 +52,9 @@ const cardData: CardData[] = [
 const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: string }) => {
   // Black color for all bubbles
   const bubbleColor = '#000000';
-  
+
   return (
-    <div 
+    <div
       className="absolute z-[70] pointer-events-none transition-all duration-500 ease-out"
       style={{
         left: cardLeft,
@@ -75,9 +76,9 @@ const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: stri
           }
         }
       `}</style>
-      <div 
+      <div
         className="text-white shadow-lg flex items-center justify-center transition-all duration-500 ease-out"
-        style={{ 
+        style={{
           backgroundColor: bubbleColor,
           borderRadius: '16px',
           fontSize: '10px',
@@ -88,7 +89,7 @@ const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: stri
       >
         <div>{cardData.category}</div>
         {/* Sharp speech bubble tail pointing down - positioned at bottom right */}
-        <div 
+        <div
           className="absolute transform"
           style={{
             right: '12px',
@@ -131,13 +132,13 @@ function App() {
     const riseTimer = setTimeout(() => {
       setCardsRisen(true);
     }, 200);
-    
+
     // Then: Cards spread and elements appear together with shorter delay
     const spreadTimer = setTimeout(() => {
       setCardsLoaded(true);
       setElementsVisible(true);
     }, 700);
-    
+
     return () => {
       clearTimeout(riseTimer);
       clearTimeout(spreadTimer);
@@ -150,39 +151,36 @@ function App() {
       try {
         setLoading(true);
         console.log('Fetching events...');
-        
+
         // Try multiple API endpoints
         let response;
         try {
           response = await fetch('http://localhost/Komuji/api/events?sort=terdekat');
         } catch (err) {
           console.log('First URL failed, trying alternative...');
-          response = await fetch('/api/events?sort=terdekat');
+          response = await fetch('http://localhost:8000/api/events?sort=terdekat');
         }
-        
+
         console.log('Response status:', response.status);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('Fetched data:', data);
-        
+
         const eventsData = data.data || data || [];
         console.log('Events array:', eventsData);
         setEvents(eventsData);
-        
-        // If no events from API, use fallback data
-        if (eventsData.length === 0) {
-          console.log('No events from API, using fallback data');
-          setEvents(fallbackEvents);
-        }
+
+        // Always use real data from API, don't fallback to mock data
+        console.log('Using real data from API, events count:', eventsData.length);
       } catch (error) {
         console.error('Error fetching events:', error);
-        // Use fallback data on error
-        console.log('Using fallback data due to error');
-        setEvents(fallbackEvents);
+        // Show empty state instead of fallback data to force real database usage
+        console.log('API failed - showing empty state to force database connection');
+        setEvents([]);
       } finally {
         setLoading(false);
       }
@@ -452,7 +450,7 @@ function App() {
               <span className="font-medium text-lg text-gray-900">Komuji</span>
             </div>
           </div>
-          
+
           <nav className="hidden md:flex items-center gap-8">
             <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Browse Events</a>
             <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Create Event</a>
@@ -461,18 +459,18 @@ function App() {
             <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Contact</a>
             <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Login</button>
           </nav>
-          
+
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
           </div>
         </header>
-        
+
         {/* Main Hero Content */}
         <main className="w-full max-w-7xl mx-auto px-6 pt-16 pb-12 relative">
 
           {/* Headline Section */}
           <div className="flex flex-col items-center text-center mb-8 relative z-10">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: elementsVisible ? 1 : 0, y: elementsVisible ? 0 : 30 }}
               transition={{ duration: 1.2, ease: "easeOut" }}
@@ -481,14 +479,14 @@ function App() {
               A place to display your<br />masterpiece.
             </motion.h1>
           </div>
-          
+
           {/* 7 Card Arrangement - Horizontal Curved Layout */}
           <div className="relative w-full h-48 mb-8 flex items-center justify-center overflow-visible mt-20">
             <div className="relative w-[1200px] h-40 mx-auto">
               {/* Bubble Chat */}
               {hoveredCard && (
-                <BubbleChat 
-                  cardData={cardData.find(card => card.id === hoveredCard)!} 
+                <BubbleChat
+                  cardData={cardData.find(card => card.id === hoveredCard)!}
                   cardLeft={hoveredCard === 'music' ? '12%' : hoveredCard === 'art' ? '22%' : hoveredCard === 'food' ? '32%' : hoveredCard === 'tech' ? '42%' : hoveredCard === 'sports' ? '52%' : hoveredCard === 'theater' ? '62%' : '72%'}
                 />
               )}
@@ -508,7 +506,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[0].image}
                     alt="Music Concert Poster"
                     className="w-full h-full object-cover"
@@ -533,7 +531,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[1].image}
                     alt="Art Workshop Poster"
                     className="w-full h-full object-cover"
@@ -558,7 +556,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[2].image}
                     alt="Food Festival Poster"
                     className="w-full h-full object-cover"
@@ -583,7 +581,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[3].image}
                     alt="Tech Summit Poster"
                     className="w-full h-full object-cover"
@@ -608,7 +606,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[4].image}
                     alt="Sports Event Poster"
                     className="w-full h-full object-cover"
@@ -633,7 +631,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[5].image}
                     alt="Theater Show Poster"
                     className="w-full h-full object-cover"
@@ -658,7 +656,7 @@ function App() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <div className="w-full h-full rounded-xl overflow-hidden relative">
-                  <img 
+                  <img
                     src={cardData[6].image}
                     alt="Cultural Event Poster"
                     className="w-full h-full object-cover"
@@ -669,7 +667,7 @@ function App() {
 
             </div>
           </div>
-          
+
           {/* Description Text Below Cards */}
           <div className="text-center mb-16 mt-8" style={{ opacity: elementsVisible ? 1 : 0, transition: 'opacity 0.8s ease-out' }}>
             <p className="text-gray-900 font-medium text-lg max-w-2xl mx-auto" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>
@@ -678,20 +676,20 @@ function App() {
           </div>
 
           {/* Call to Action */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: elementsVisible ? 1 : 0, y: elementsVisible ? 0 : 20 }}
             transition={{ duration: 0.8, delay: elementsVisible ? 0.3 : 0 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6"
           >
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-3 rounded-full font-medium transition-colors shadow-lg"
             >
               Join for $99/mo
             </motion.button>
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05 }}
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors underline"
             >
@@ -733,21 +731,21 @@ function App() {
                   <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
                     {/* Wallet body */}
                     <path d="M20 35c0-5 4-9 9-9h42c5 0 9 4 9 9v30c0 5-4 9-9 9H29c-5 0-9-4-9-9V35z" fill="#FF8C42" stroke="#2D3748" strokeWidth="3"/>
-                    
+
                     {/* Wallet fold/flap */}
                     <path d="M75 35h5c3 0 5 2 5 5v8c0 3-2 5-5 5h-5" fill="#FF8C42" stroke="#2D3748" strokeWidth="3"/>
-                    
+
                     {/* Wallet clasp/button */}
                     <circle cx="77" cy="43" r="2" fill="#2D3748"/>
-                    
+
                     {/* Money/bills inside */}
                     <rect x="25" y="30" width="35" height="20" rx="3" fill="#68D391" stroke="#2D3748" strokeWidth="2"/>
                     <rect x="30" y="25" width="35" height="20" rx="3" fill="#9AE6B4" stroke="#2D3748" strokeWidth="2"/>
-                    
+
                     {/* Money details */}
                     <circle cx="47" cy="35" r="3" fill="#2D3748"/>
                     <rect x="40" y="40" width="14" height="2" rx="1" fill="#2D3748"/>
-                    
+
                     {/* Wallet lines/texture */}
                     <circle cx="25" cy="50" r="1" fill="#2D3748"/>
                     <rect x="25" y="55" width="8" height="2" rx="1" fill="#2D3748"/>
@@ -774,33 +772,33 @@ function App() {
                   <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
                     {/* Character head */}
                     <circle cx="50" cy="35" r="18" fill="#F7FAFC" stroke="#2D3748" strokeWidth="3"/>
-                    
+
                     {/* Eyes */}
                     <circle cx="44" cy="32" r="4" fill="#FED500"/>
                     <circle cx="56" cy="32" r="4" fill="#FED500"/>
-                    
+
                     {/* Hat/cap */}
                     <path d="M35 25c0-8 7-15 15-15s15 7 15 15" fill="#E53E3E" stroke="#2D3748" strokeWidth="3"/>
                     <ellipse cx="50" cy="18" rx="8" ry="3" fill="#E53E3E" stroke="#2D3748" strokeWidth="2"/>
-                    
+
                     {/* Guitar body */}
                     <ellipse cx="50" cy="65" rx="15" ry="20" fill="#D69E2E" stroke="#2D3748" strokeWidth="3"/>
-                    
+
                     {/* Guitar neck */}
                     <rect x="48" y="45" width="4" height="20" fill="#B7791F" stroke="#2D3748" strokeWidth="2"/>
-                    
+
                     {/* Guitar strings */}
                     <line x1="46" y1="55" x2="46" y2="75" stroke="#2D3748" strokeWidth="1"/>
                     <line x1="48" y1="55" x2="48" y2="75" stroke="#2D3748" strokeWidth="1"/>
                     <line x1="52" y1="55" x2="52" y2="75" stroke="#2D3748" strokeWidth="1"/>
                     <line x1="54" y1="55" x2="54" y2="75" stroke="#2D3748" strokeWidth="1"/>
-                    
+
                     {/* Music notes */}
                     <circle cx="70" cy="25" r="3" fill="#2D3748"/>
                     <rect x="71" y="15" width="2" height="10" fill="#2D3748"/>
                     <circle cx="75" cy="30" r="2" fill="#2D3748"/>
                     <rect x="76" y="22" width="1.5" height="8" fill="#2D3748"/>
-                    
+
                     {/* Motion lines */}
                     <path d="M25 40c3 0 3-3 6-3s3 3 6 3" stroke="#2D3748" strokeWidth="2" fill="none"/>
                     <path d="M25 45c3 0 3-3 6-3s3 3 6 3" stroke="#2D3748" strokeWidth="2" fill="none"/>
@@ -833,7 +831,7 @@ function App() {
                     <path d="M46 42c0-2 1-3 2-3s2 1 2 3v13h-4v-13z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2"/>
                     <path d="M50 43c0-2 1-3 2-3s2 1 2 3v12h-4v-12z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2"/>
                     <path d="M54 45c0-2 1-3 2-3s2 1 2 3v10h-4v-10z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2"/>
-                    
+
                     {/* Left hand */}
                     <path d="M30 40c-2 0-4 1-4 3v14c0 2 2 3 4 3h15c2 0 4-1 4-3V43c0-2-2-3-4-3H30z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(-45 37.5 50)"/>
                     {/* Left hand thumb */}
@@ -843,7 +841,7 @@ function App() {
                     <path d="M58 46c2 0 3 1 3 2s-1 2-3 2h-13v-4h13z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(-45 51.5 48)"/>
                     <path d="M57 50c2 0 3 1 3 2s-1 2-3 2h-12v-4h12z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(-45 51 52)"/>
                     <path d="M55 54c2 0 3 1 3 2s-1 2-3 2h-10v-4h10z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(-45 50 56)"/>
-                    
+
                     {/* Right hand */}
                     <path d="M70 40c2 0 4 1 4 3v14c0 2-2 3-4 3H55c-2 0-4-1-4-3V43c0-2 2-3 4-3h15z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(45 62.5 50)"/>
                     {/* Right hand thumb */}
@@ -853,7 +851,7 @@ function App() {
                     <path d="M42 46c-2 0-3 1-3 2s1 2 3 2h13v-4h-13z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(45 48.5 48)"/>
                     <path d="M43 50c-2 0-3 1-3 2s1 2 3 2h12v-4h-12z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(45 49 52)"/>
                     <path d="M45 54c-2 0-3 1-3 2s1 2 3 2h10v-4h-10z" fill="#FBBF24" stroke="#2D3748" strokeWidth="2" transform="rotate(45 50 56)"/>
-                    
+
                     {/* Center meeting point */}
                     <circle cx="50" cy="50" r="6" fill="#FFFFFF" stroke="#2D3748" strokeWidth="2"/>
                     <circle cx="50" cy="50" r="3" fill="#10B981"/>
@@ -869,12 +867,12 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         {/* Enhanced Curved Transition to Next Section */}
         <div className="absolute -bottom-20 left-0 w-full overflow-hidden z-20">
-          <svg 
-            className="relative block w-full h-32" 
-            viewBox="0 0 1200 160" 
+          <svg
+            className="relative block w-full h-32"
+            viewBox="0 0 1200 160"
             preserveAspectRatio="none"
           >
             <defs>
@@ -895,23 +893,23 @@ function App() {
                 <stop offset="100%" stopColor="#f8f6f3" />
               </linearGradient>
             </defs>
-            
+
             {/* Single wave path */}
-            <path 
-              d="M0,0 C150,120 350,120 600,60 C850,0 1050,0 1200,60 L1200,160 L0,160 Z" 
+            <path
+              d="M0,0 C150,120 350,120 600,60 C850,0 1050,0 1200,60 L1200,160 L0,160 Z"
               fill="url(#waveGradient)"
             />
-          </svg> 
+          </svg>
         </div>
       </section>
 
       {/* Event Terdeka Section - Horizontal Scroll */}
       <section className="py-16 px-4 mt-16 bg-white">
-        
+
         <div className="container mx-auto max-w-7xl relative">
           {/* Section Header */}
           <div className="text-center mb-12">
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -932,14 +930,14 @@ function App() {
           </div>
 
           {/* Navigation Arrows - Positioned in empty space */}
-          <button 
+          <button
             onClick={scrollLeft}
             className="absolute -left-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:scale-110 group"
           >
             <FiChevronLeft className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
           </button>
-          
-          <button 
+
+          <button
             onClick={scrollRight}
             className="absolute -right-16 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:shadow-xl transition-all duration-300 transform hover:scale-110 group"
           >
@@ -962,7 +960,7 @@ function App() {
             </div>
           ) : (
             /* Events Horizontal Scroll */
-            <div 
+            <div
               ref={scrollContainerRef}
               className="flex space-x-6 overflow-x-auto pb-4 relative"
               style={{
@@ -981,29 +979,29 @@ function App() {
                 >
                   {/* Event Image */}
                   <div className="relative h-48 overflow-hidden">
-                    <img 
+                    <img
                       src={event.full_flyer_path || `https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80`}
                       alt={event.judul}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    
+
                     {/* Rank Badge */}
                     <div className="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
                       #{index + 2}
                     </div>
-                    
+
                     {/* Favorite Heart */}
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFavorite(event.id);
                       }}
                       className="absolute top-4 right-4 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-all duration-300 transform hover:scale-110 group/heart"
                     >
-                      <FiHeart 
+                      <FiHeart
                         className={`w-5 h-5 transition-all duration-300 ${
-                          favorites.has(event.id) 
-                            ? 'text-red-500 fill-red-500' 
+                          favorites.has(event.id)
+                            ? 'text-red-500 fill-red-500'
                             : 'text-gray-600 group-hover/heart:text-red-500'
                         }`}
                         fill={favorites.has(event.id) ? 'currentColor' : 'none'}
@@ -1022,11 +1020,11 @@ function App() {
                         {event.category.nama}
                       </div>
                     )}
-                    
+
                     <h3 className="font-bold text-xl text-gray-900 mb-3 line-clamp-2 mt-2">
                       {event.judul}
                     </h3>
-                    
+
                     <div className="space-y-3 mb-4">
                       <div className="flex items-center space-x-2 text-sm text-gray-600 font-medium">
                         <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
@@ -1043,7 +1041,7 @@ function App() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-2">
                           <div className="w-8 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full bg-gray-600 rounded-full transition-all duration-300"
                               style={{ width: `${Math.min((event.terdaftar / event.kuota) * 100, 100)}%` }}
                             ></div>
@@ -1057,7 +1055,7 @@ function App() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Action Button */}
                     <button className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-medium opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
                       View Details
@@ -1076,7 +1074,7 @@ function App() {
 
           {/* Desktop Floating Cards - Horizontal Layout */}
           <div className="relative h-[400px] hidden md:block">
-            
+
             {/* SVG Wave Patterns Below Cards */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs>
@@ -1091,7 +1089,7 @@ function App() {
                   <stop offset="100%" stopColor="#648DCA" stopOpacity="0.1" />
                 </linearGradient>
               </defs>
-              
+
               {/* Connecting Wave Flow */}
               <motion.path
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -1104,7 +1102,7 @@ function App() {
                 fill="none"
                 strokeDasharray="3,2"
               />
-              
+
               {/* Wave Layer 1 - Bottom Flow */}
               <motion.path
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -1115,7 +1113,7 @@ function App() {
                 fill="url(#waveGradient1)"
                 stroke="none"
               />
-              
+
               {/* Wave Layer 2 - Middle Flow */}
               <motion.path
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -1126,7 +1124,7 @@ function App() {
                 fill="url(#waveGradient2)"
                 stroke="none"
               />
-              
+
               {/* Wave Layer 3 - Top Flow */}
               <motion.path
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -1138,7 +1136,7 @@ function App() {
                 fillOpacity="0.4"
                 stroke="none"
               />
-              
+
               {/* Connection points at card positions */}
               <motion.circle
                 initial={{ scale: 0, opacity: 0 }}
@@ -1175,9 +1173,9 @@ function App() {
               whileInView={{ opacity: 1, y: 0, rotate: -3 }}
               transition={{ duration: 0.8, delay: 0.1 }}
               viewport={{ once: true }}
-              whileHover={{ 
-                scale: 1.05, 
-                rotate: -1, 
+              whileHover={{
+                scale: 1.05,
+                rotate: -1,
                 y: -10,
                 zIndex: 50,
                 transition: { duration: 0.3 }
@@ -1193,7 +1191,7 @@ function App() {
               <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 1
               </div>
-              
+
               <div className="h-full flex flex-col">
                 <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
                   {/* Event Browser Mockup */}
@@ -1203,7 +1201,7 @@ function App() {
                       <div className="text-xs text-gray-500">Search events...</div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-2">
                       <div className="w-16 h-2 bg-blue-300 rounded mb-1"></div>
@@ -1227,9 +1225,9 @@ function App() {
               whileInView={{ opacity: 1, y: 0, rotate: 2 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               viewport={{ once: true }}
-              whileHover={{ 
-                scale: 1.05, 
-                rotate: 1, 
+              whileHover={{
+                scale: 1.05,
+                rotate: 1,
                 y: -10,
                 zIndex: 50,
                 transition: { duration: 0.3 }
@@ -1245,7 +1243,7 @@ function App() {
               <div className="absolute -top-3 -left-3 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 2
               </div>
-              
+
               <div className="h-full flex flex-col">
                 <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
                   {/* Registration Form Mockup */}
@@ -1255,7 +1253,7 @@ function App() {
                     </div>
                     <div className="text-xs text-gray-600">Step 2 of 4</div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div>
                       <div className="w-12 h-1.5 bg-gray-300 rounded mb-1"></div>
@@ -1279,9 +1277,9 @@ function App() {
               whileInView={{ opacity: 1, y: 0, rotate: -2 }}
               transition={{ duration: 0.8, delay: 0.3 }}
               viewport={{ once: true }}
-              whileHover={{ 
-                scale: 1.05, 
-                rotate: -1, 
+              whileHover={{
+                scale: 1.05,
+                rotate: -1,
                 y: -10,
                 zIndex: 50,
                 transition: { duration: 0.3 }
@@ -1297,7 +1295,7 @@ function App() {
               <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 3
               </div>
-              
+
               <div className="h-full flex flex-col">
                 <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
                   {/* Payment Mockup */}
@@ -1313,7 +1311,7 @@ function App() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="bg-white border border-gray-200 rounded h-6 flex items-center px-2">
                       <div className="w-6 h-3 bg-blue-500 rounded mr-2"></div>
@@ -1337,9 +1335,9 @@ function App() {
               whileInView={{ opacity: 1, y: 0, rotate: 3 }}
               transition={{ duration: 0.8, delay: 0.4 }}
               viewport={{ once: true }}
-              whileHover={{ 
-                scale: 1.05, 
-                rotate: 2, 
+              whileHover={{
+                scale: 1.05,
+                rotate: 2,
                 y: -10,
                 zIndex: 50,
                 transition: { duration: 0.3 }
@@ -1355,7 +1353,7 @@ function App() {
               <div className="absolute -top-3 -left-3 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
                 4
               </div>
-              
+
               <div className="h-full flex flex-col">
                 <div className="flex-1 mb-4 bg-gray-50 rounded-lg overflow-hidden p-4">
                   {/* Attendance Mockup */}
@@ -1363,7 +1361,7 @@ function App() {
                     <div className="w-4 h-4 bg-green-500 rounded-full mx-auto mb-1"></div>
                     <div className="text-xs text-green-700 font-medium">Check-in Successful!</div>
                   </div>
-                  
+
                   <div className="bg-gray-100 rounded p-3 mb-2 flex flex-col items-center">
                     <div className="w-8 h-8 bg-gray-600 rounded mb-1"></div>
                     <div className="grid grid-cols-4 gap-0.5">
@@ -1377,7 +1375,7 @@ function App() {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="w-16 h-1.5 bg-orange-300 rounded mx-auto mb-1"></div>
                     <div className="w-12 h-1 bg-gray-300 rounded mx-auto"></div>
@@ -1389,7 +1387,7 @@ function App() {
               </div>
             </motion.div>
           </div>
-          
+
           {/* Mobile Cards Grid */}
           <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[
@@ -1401,14 +1399,14 @@ function App() {
               },
               {
                 id: 2,
-                title: "Complete Registration", 
+                title: "Complete Registration",
                 description: "Fill in your details to secure your spot",
                 color: "green"
               },
               {
                 id: 3,
                 title: "Secure Payment",
-                description: "Choose your preferred payment method", 
+                description: "Choose your preferred payment method",
                 color: "purple"
               },
               {
@@ -1451,7 +1449,7 @@ function App() {
                 joining any event
               </h3>
               <p className="text-gray-500 text-xl leading-relaxed max-w-xl">
-                Using AI, Komuji makes joining multiple events easy. With 80+ event categories, 
+                Using AI, Komuji makes joining multiple events easy. With 80+ event categories,
                 realistic event previews, progress tracking, secure payments, and more.
               </p>
             </motion.div>
@@ -1480,9 +1478,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/1024px-Amazon_logo.svg.png" 
-                alt="Amazon" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/1024px-Amazon_logo.svg.png"
+                alt="Amazon"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1494,9 +1492,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/1024px-Microsoft_logo.svg.png" 
-                alt="Microsoft" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/1024px-Microsoft_logo.svg.png"
+                alt="Microsoft"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1508,9 +1506,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/1024px-Netflix_2015_logo.svg.png" 
-                alt="Netflix" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/1024px-Netflix_2015_logo.svg.png"
+                alt="Netflix"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1522,9 +1520,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/1024px-Google_2015_logo.svg.png" 
-                alt="Google" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/1024px-Google_2015_logo.svg.png"
+                alt="Google"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1537,9 +1535,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1024px-Apple_logo_black.svg.png" 
-                alt="Apple" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1024px-Apple_logo_black.svg.png"
+                alt="Apple"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1551,9 +1549,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/LinkedIn_Logo.svg/1024px-LinkedIn_Logo.svg.png" 
-                alt="LinkedIn" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/LinkedIn_Logo.svg/1024px-LinkedIn_Logo.svg.png"
+                alt="LinkedIn"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1565,9 +1563,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png" 
-                alt="Spotify" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png"
+                alt="Spotify"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1579,9 +1577,9 @@ function App() {
               viewport={{ once: true }}
               className="flex items-center justify-center p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_of_Twitter.svg/1024px-Logo_of_Twitter.svg.png" 
-                alt="Twitter" 
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_of_Twitter.svg/1024px-Logo_of_Twitter.svg.png"
+                alt="Twitter"
                 className="h-8 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-300"
               />
             </motion.div>
@@ -1640,7 +1638,7 @@ function App() {
               <div className="relative w-[320px] h-[520px] bg-black rounded-[3.5rem] p-2 shadow-2xl overflow-hidden">
                 {/* iPhone Notch */}
                 <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-black rounded-full z-20"></div>
-                
+
                 <div className="w-full h-full bg-white rounded-[3rem] overflow-hidden relative">
                   {/* iPhone Screen Content */}
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1692,7 +1690,7 @@ function App() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="bg-gray-200 rounded-xl p-4 opacity-60">
                           <div className="flex items-center space-x-4">
                             <div className="w-12 h-12 bg-gray-400 rounded-xl"></div>
@@ -1748,9 +1746,12 @@ function App() {
             </motion.a>
           </div>
 
-          
+
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
 
     </div>
   );
