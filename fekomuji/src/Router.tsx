@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { SignIn, SignUp, Dashboard } from './pages';
+import { SignIn, SignUp, Dashboard, Events } from './pages';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components';
@@ -12,6 +12,7 @@ const AppRouter = () => {
           <Route path="/" element={<App />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/events" element={<Events />} />
           <Route 
             path="/dashboard" 
             element={

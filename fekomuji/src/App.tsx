@@ -369,8 +369,8 @@ function App() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex space-x-8">
-              <a href="#" className="font-medium hover:text-blue-600 transition-colors">Home</a>
-              <a href="#events" className="font-medium hover:text-blue-600 transition-colors">Events</a>
+              <Link to="/" className="font-medium hover:text-blue-600 transition-colors">Home</Link>
+              <Link to="/events" className="font-medium hover:text-blue-600 transition-colors">Events</Link>
               <a href="#categories" className="font-medium hover:text-blue-600 transition-colors">Categories</a>
               <a href="#about" className="font-medium hover:text-blue-600 transition-colors">About</a>
             </div>
@@ -415,8 +415,8 @@ function App() {
           {/* Mobile Navigation */}
           {isMenuOpen && (
             <div className="md:hidden mt-4 pb-4 space-y-4">
-              <a href="#" className="block py-2 hover:text-gray-600">Beranda</a>
-              <a href="#events" className="block py-2 hover:text-gray-600">Event</a>
+              <Link to="/" className="block py-2 hover:text-gray-600">Beranda</Link>
+              <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
               <a href="#categories" className="block py-2 hover:text-gray-600">Kategori</a>
               <a href="#about" className="block py-2 hover:text-gray-600">Tentang</a>
               <div className="flex space-x-4">
@@ -975,31 +975,26 @@ function App() {
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="flex-shrink-0 w-80 bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer transform hover:scale-[1.02] hover:-translate-y-1"
+                  className="flex-shrink-0 w-72 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.04)] transition-all duration-700 ease-out group cursor-pointer transform hover:scale-[1.02] hover:-translate-y-3 border border-gray-100/50 hover:border-gray-200/80"
                 >
                   {/* Event Image */}
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-40 overflow-hidden bg-gray-50">
                     <img
                       src={event.full_flyer_path || `https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80`}
                       alt={event.judul}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
                     />
 
-                    {/* Rank Badge */}
-                    <div className="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
-                      #{index + 2}
-                    </div>
-
-                    {/* Favorite Heart */}
+                    {/* Favorite Heart - Simple and Clean */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFavorite(event.id);
                       }}
-                      className="absolute top-4 right-4 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition-all duration-300 transform hover:scale-110 group/heart"
+                      className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] transform hover:scale-110 group/heart shadow-sm hover:shadow-md"
                     >
                       <FiHeart
-                        className={`w-5 h-5 transition-all duration-300 ${
+                        className={`w-4 h-4 transition-all duration-300 ${
                           favorites.has(event.id)
                             ? 'text-red-500 fill-red-500'
                             : 'text-gray-600 group-hover/heart:text-red-500'
@@ -1008,58 +1003,23 @@ function App() {
                       />
                     </button>
 
-                    {/* Simple Overlay */}
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {/* Subtle Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"></div>
                   </div>
 
-                  {/* Event Details */}
-                  <div className="p-6 relative">
-                    {/* Category Badge */}
-                    {event.category && (
-                      <div className="absolute -top-3 left-6 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
-                        {event.category.nama}
-                      </div>
-                    )}
-
-                    <h3 className="font-bold text-xl text-gray-900 mb-3 line-clamp-2 mt-2">
+                  {/* Event Details - Ultra Minimal */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-base text-gray-900 mb-2 line-clamp-2">
                       {event.judul}
                     </h3>
 
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center space-x-2 text-sm text-gray-600 font-medium">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span>{formatEventDate(event.tanggal_mulai, event.waktu_mulai)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500 leading-relaxed">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="line-clamp-2">{event.lokasi}</span>
-                      </div>
+                    <div className="text-sm text-gray-500 mb-3">
+                      {new Date(event.tanggal_mulai).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </div>
 
-                    {/* Price and Quota - Aligned above button */}
-                    <div className="pt-4 border-t border-gray-100 mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gray-600 rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min((event.terdaftar / event.kuota) * 100, 100)}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-gray-500 font-medium">
-                            {event.terdaftar}/{event.kuota}
-                          </span>
-                        </div>
-                        <div className="text-lg font-bold text-gray-800">
-                          {event.harga_tiket === 0 ? 'FREE' : `Rp ${event.harga_tiket.toLocaleString()}`}
-                        </div>
-                      </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {event.harga_tiket === 0 ? 'From Free' : `From Rp${event.harga_tiket.toLocaleString()}`}
                     </div>
-
-                    {/* Action Button */}
-                    <button className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-medium opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                      View Details
-                    </button>
                   </div>
                 </motion.div>
               ))}
