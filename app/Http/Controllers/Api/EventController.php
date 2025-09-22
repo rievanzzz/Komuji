@@ -29,6 +29,7 @@ class EventController extends Controller
     public function index(Request $request)
     {
         $query = Event::query()
+            ->with('category')
             ->when($request->has('search'), function($q) use ($request) {
                 $search = $request->search;
                 $q->where('judul', 'like', "%{$search}%")
@@ -36,19 +37,66 @@ class EventController extends Controller
                   ->orWhere('lokasi', 'like', "%{$search}%");
             })
             ->when($request->has('sort'), function($q) use ($request) {
-                if ($request->sort === 'terdekat') {
-                    $q->orderBy('tanggal_mulai');
-                } elseif ($request->sort === 'terpopuler') {
-                    $q->orderBy('terdaftar', 'desc');
+                switch ($request->sort) {
+                    case 'tickets_sold':
+                        $q->orderBy('terdaftar', 'desc');
+                        break;
+                    case 'quota_remaining':
+                        $q->orderByRaw('(kuota - terdaftar) DESC');
+                        break;
+                    case 'popularity':
+                        // Sort by a combination of tickets sold and recency
+                        $q->orderByRaw('(terdaftar * 0.7 + DATEDIFF(NOW(), created_at) * -0.3) DESC');
+                        break;
+                    case 'terdekat':
+                        $q->orderBy('tanggal_mulai');
+                        break;
+                    case 'terpopuler':
+                    default:
+                        $q->orderBy('terdaftar', 'desc');
+                        break;
                 }
             }, function($q) {
-                $q->orderBy('created_at', 'desc');
+                $q->orderBy('terdaftar', 'desc'); // Default to most popular
             })
             ->where('is_published', true);
 
-        $events = $query->paginate(10);
+        $events = $query->paginate($request->get('per_page', 12));
+
+        // Transform the data to include additional fields for frontend
+        $events->getCollection()->transform(function ($event) {
+            return [
+                'id' => $event->id,
+                'title' => $event->judul,
+                'date' => $event->tanggal_mulai ? $event->tanggal_mulai->format('M d, Y') : null,
+                'location' => $event->lokasi,
+                'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
+                'image' => $event->flyer_path ? asset('storage/' . $event->flyer_path) : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop',
+                'category' => $event->category ? $event->category->name : 'General',
+                'ticketsSold' => $event->terdaftar,
+                'totalQuota' => $event->kuota,
+                'popularity' => $this->getPopularityStatus($event),
+                'description' => $event->deskripsi,
+                'start_time' => $event->waktu_mulai,
+                'end_time' => $event->waktu_selesai,
+                'end_date' => $event->tanggal_selesai ? $event->tanggal_selesai->format('M d, Y') : null,
+            ];
+        });
 
         return response()->json($events);
+    }
+
+    private function getPopularityStatus($event)
+    {
+        $soldPercentage = $event->kuota > 0 ? ($event->terdaftar / $event->kuota) * 100 : 0;
+        
+        if ($soldPercentage >= 80) {
+            return 'trending';
+        } elseif ($soldPercentage >= 50) {
+            return 'hot';
+        } else {
+            return 'popular';
+        }
     }
 
     public function show(Event $event)

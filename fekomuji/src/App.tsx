@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
 import Footer from './components/Footer';
+import PublicHeader from './components/PublicHeader';
 
 // Card data with dynamic color system
 interface CardData {
@@ -15,26 +15,22 @@ interface CardData {
   overlayColor: string;
 }
 
-// Event interface for database events
+// Event interface for API response (transformed data)
 interface EventData {
   id: number;
-  judul: string;
-  deskripsi: string;
-  tanggal_mulai: string;
-  tanggal_selesai: string;
-  waktu_mulai: string;
-  waktu_selesai: string;
-  lokasi: string;
-  flyer_path: string;
-  full_flyer_path: string;
-  kuota: number;
-  terdaftar: number;
-  harga_tiket: number;
-  is_published: boolean;
-  category?: {
-    id: number;
-    nama: string;
-  };
+  title: string;
+  date: string;
+  location: string;
+  price: string;
+  image: string;
+  category: string;
+  ticketsSold?: number;
+  totalQuota?: number;
+  popularity?: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  end_date: string;
 }
 
 const cardData: CardData[] = [
@@ -107,8 +103,6 @@ const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: stri
 };
 
 function App() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [cardsLoaded, setCardsLoaded] = useState(false);
   const [cardsRisen, setCardsRisen] = useState(false);
@@ -118,14 +112,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   useEffect(() => {
     // First: Cards rise faster
@@ -189,128 +175,7 @@ function App() {
     fetchEvents();
   }, []);
 
-  // Fallback mock data
-  const fallbackEvents: EventData[] = [
-    {
-      id: 1,
-      judul: "Konser Musik Rock Indonesia",
-      deskripsi: "Konser musik rock terbesar di Indonesia",
-      tanggal_mulai: "2024-10-15",
-      tanggal_selesai: "2024-10-15",
-      waktu_mulai: "19:00:00",
-      waktu_selesai: "23:00:00",
-      lokasi: "Jakarta International Stadium",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 5000,
-      terdaftar: 3200,
-      harga_tiket: 150000,
-      is_published: true,
-      category: { id: 1, nama: "Musik" }
-    },
-    {
-      id: 2,
-      judul: "Workshop Digital Marketing",
-      deskripsi: "Belajar digital marketing dari ahlinya",
-      tanggal_mulai: "2024-10-20",
-      tanggal_selesai: "2024-10-20",
-      waktu_mulai: "09:00:00",
-      waktu_selesai: "17:00:00",
-      lokasi: "Balai Kartini Jakarta",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 100,
-      terdaftar: 75,
-      harga_tiket: 0,
-      is_published: true,
-      category: { id: 2, nama: "Workshop" }
-    },
-    {
-      id: 3,
-      judul: "Pameran Seni Rupa Modern",
-      deskripsi: "Pameran karya seni rupa kontemporer",
-      tanggal_mulai: "2024-10-25",
-      tanggal_selesai: "2024-10-30",
-      waktu_mulai: "10:00:00",
-      waktu_selesai: "18:00:00",
-      lokasi: "Galeri Nasional Indonesia",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 500,
-      terdaftar: 120,
-      harga_tiket: 25000,
-      is_published: true,
-      category: { id: 3, nama: "Seni" }
-    },
-    {
-      id: 4,
-      judul: "Tech Conference 2024",
-      deskripsi: "Konferensi teknologi terbesar tahun ini",
-      tanggal_mulai: "2024-11-05",
-      tanggal_selesai: "2024-11-06",
-      waktu_mulai: "08:00:00",
-      waktu_selesai: "17:00:00",
-      lokasi: "Jakarta Convention Center",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 1000,
-      terdaftar: 850,
-      harga_tiket: 500000,
-      is_published: true,
-      category: { id: 4, nama: "Teknologi" }
-    },
-    {
-      id: 5,
-      judul: "Festival Kuliner Nusantara",
-      deskripsi: "Festival makanan tradisional Indonesia",
-      tanggal_mulai: "2024-11-10",
-      tanggal_selesai: "2024-11-12",
-      waktu_mulai: "10:00:00",
-      waktu_selesai: "22:00:00",
-      lokasi: "Monas Jakarta",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 2000,
-      terdaftar: 1200,
-      harga_tiket: 0,
-      is_published: true,
-      category: { id: 5, nama: "Kuliner" }
-    },
-    {
-      id: 6,
-      judul: "Turnamen E-Sports Mobile Legends",
-      deskripsi: "Turnamen Mobile Legends tingkat nasional",
-      tanggal_mulai: "2024-11-15",
-      tanggal_selesai: "2024-11-17",
-      waktu_mulai: "09:00:00",
-      waktu_selesai: "21:00:00",
-      lokasi: "ICE BSD Tangerang",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 64,
-      terdaftar: 60,
-      harga_tiket: 100000,
-      is_published: true,
-      category: { id: 6, nama: "Gaming" }
-    },
-    {
-      id: 7,
-      judul: "Seminar Kewirausahaan",
-      deskripsi: "Seminar tentang memulai bisnis dari nol",
-      tanggal_mulai: "2024-11-20",
-      tanggal_selesai: "2024-11-20",
-      waktu_mulai: "13:00:00",
-      waktu_selesai: "17:00:00",
-      lokasi: "Universitas Indonesia Depok",
-      flyer_path: "",
-      full_flyer_path: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      kuota: 200,
-      terdaftar: 180,
-      harga_tiket: 50000,
-      is_published: true,
-      category: { id: 7, nama: "Bisnis" }
-    }
-  ];
+  // Fallback mock data removed to avoid lint warnings
 
   // Scroll functions
   const scrollLeft = () => {
@@ -344,126 +209,14 @@ function App() {
     });
   };
 
-  // Format date for display
-  const formatEventDate = (dateStr: string, timeStr: string) => {
-    const date = new Date(dateStr + 'T' + timeStr);
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'short',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    };
-    return date.toLocaleDateString('en-US', options).replace(',', ' •');
-  };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
-      {/* Navigation */}
-      <nav className={`fixed w-full z-[100] transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-3' : 'bg-white py-5'}`}>
-        {/* ... */}
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-blue-600">Komuji</div>
+      {/* Public Header */}
+      <PublicHeader />
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex space-x-8">
-              <Link to="/" className="font-medium hover:text-blue-600 transition-colors">Home</Link>
-              <Link to="/events" className="font-medium hover:text-blue-600 transition-colors">Events</Link>
-              <a href="#categories" className="font-medium hover:text-blue-600 transition-colors">Categories</a>
-              <a href="#about" className="font-medium hover:text-blue-600 transition-colors">About</a>
-            </div>
-
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="relative group">
-                <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                  <FiUser size={20} className="text-gray-600" />
-                </button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="p-4 border-b">
-                    <p className="text-sm text-gray-600">Belum login</p>
-                    <p className="text-xs text-gray-500 mt-1">Masuk untuk akses fitur lengkap</p>
-                  </div>
-                  <div className="p-2">
-                    <Link
-                      to="/signin"
-                      className="block w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
-                    >
-                      Masuk
-                    </Link>
-                    <Link
-                      to="/signup"
-                      className="block w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors mt-1"
-                    >
-                      Daftar Akun
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile menu button */}
-            <button
-              className="md:hidden text-gray-900"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-            </button>
-          </div>
-
-          {/* Mobile Navigation */}
-          {isMenuOpen && (
-            <div className="md:hidden mt-4 pb-4 space-y-4">
-              <Link to="/" className="block py-2 hover:text-gray-600">Beranda</Link>
-              <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
-              <a href="#categories" className="block py-2 hover:text-gray-600">Kategori</a>
-              <a href="#about" className="block py-2 hover:text-gray-600">Tentang</a>
-              <div className="flex space-x-4">
-                <Link
-                  to="/signin"
-                  className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
-                >
-                  Masuk
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
-                >
-                  Daftar
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* New Hero Section - Based on Figma Design */}
-      <section className="bg-white pb-16">
-        {/* Header Navigation */}
-        <header className="w-full h-20 flex items-center justify-between px-6 bg-white">
-          <div className="flex items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">K</span>
-              </div>
-              <span className="font-medium text-lg text-gray-900">Komuji</span>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Browse Events</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Create Event</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Pricing</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">About</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900 transition-colors">Contact</a>
-            <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Login</button>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-          </div>
-        </header>
+      {/* Hero Section */}
+      <section className="bg-white pb-16 pt-20">{/* Added pt-20 to account for fixed header */}
 
         {/* Main Hero Content */}
         <main className="w-full max-w-7xl mx-auto px-6 pt-16 pb-12 relative">
@@ -877,20 +630,8 @@ function App() {
           >
             <defs>
               <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#d5deef" />
-                <stop offset="8%" stopColor="#d9e3f1" />
-                <stop offset="16%" stopColor="#dde7f3" />
-                <stop offset="24%" stopColor="#e1ebf5" />
-                <stop offset="32%" stopColor="#e4eef7" />
-                <stop offset="40%" stopColor="#e8f1f8" />
-                <stop offset="48%" stopColor="#ecf3f9" />
-                <stop offset="56%" stopColor="#eff5fb" />
-                <stop offset="64%" stopColor="#f2f7fc" />
-                <stop offset="72%" stopColor="#f5f8fd" />
-                <stop offset="80%" stopColor="#f8fafd" />
-                <stop offset="88%" stopColor="#fbfcfe" />
-                <stop offset="96%" stopColor="#faf9f7" />
-                <stop offset="100%" stopColor="#f8f6f3" />
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#ffffff" />
               </linearGradient>
             </defs>
 
@@ -978,11 +719,11 @@ function App() {
                   className="flex-shrink-0 w-72 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.04)] transition-all duration-700 ease-out group cursor-pointer transform hover:scale-[1.02] hover:-translate-y-3 border border-gray-100/50 hover:border-gray-200/80"
                 >
                   {/* Event Image */}
-                  <div className="relative h-40 overflow-hidden bg-gray-50">
+                  <div className="relative overflow-hidden rounded-xl group-hover:scale-105 transition-transform duration-500">
                     <img
-                      src={event.full_flyer_path || `https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80`}
-                      alt={event.judul}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+                      src={event.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop'}
+                      alt={event.title}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
                     />
 
                     {/* Favorite Heart - Simple and Clean */}
@@ -1010,15 +751,15 @@ function App() {
                   {/* Event Details - Ultra Minimal */}
                   <div className="p-4">
                     <h3 className="font-semibold text-base text-gray-900 mb-2 line-clamp-2">
-                      {event.judul}
+                      {event.title}
                     </h3>
 
                     <div className="text-sm text-gray-500 mb-3">
-                      {new Date(event.tanggal_mulai).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {event.date}
                     </div>
 
                     <div className="text-sm font-medium text-gray-900">
-                      {event.harga_tiket === 0 ? 'From Free' : `From Rp${event.harga_tiket.toLocaleString()}`}
+                      {event.price}
                     </div>
                   </div>
                 </motion.div>

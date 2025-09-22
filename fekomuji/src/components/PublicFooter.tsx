@@ -9,7 +9,7 @@ import {
   FiYoutube
 } from 'react-icons/fi';
 
-const Footer = () => {
+const PublicFooter = () => {
   const footerLinks = {
     company: [
       { name: 'About', href: '#about' },
@@ -312,4 +312,4 @@ const Footer = () => {
   );
 };
 
-export default Footer;
+export default PublicFooter;
