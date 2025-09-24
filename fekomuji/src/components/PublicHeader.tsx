@@ -30,7 +30,7 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
           <div className="hidden md:flex space-x-8">
             <Link to="/events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Event</Link>
             <Link to="/about" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">About</Link>
-            <a href="#contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</a>
+            <Link to="/contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</Link>
           </div>
 
           {/* User Menu */}
@@ -71,28 +71,28 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
           </button>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 space-y-4">
-            <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
-            <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
-            <a href="#contact" className="block py-2 hover:text-gray-600">Contact & FAQ</a>
-            <div className="flex space-x-4">
-              <Link
-                to="/signin"
-                className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
-              >
-                Masuk
-              </Link>
-              <Link
-                to="/signup"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
-              >
-                Daftar
-              </Link>
+          {/* Mobile Navigation */}
+          {isMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 space-y-4">
+              <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
+              <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
+              <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
+              <div className="flex space-x-4">
+                <Link
+                  to="/signin"
+                  className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
+                >
+                  Daftar
+                </Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </nav>
   );

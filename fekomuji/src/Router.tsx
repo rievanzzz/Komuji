@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { SignIn, SignUp, Dashboard, Events } from './pages';
 import App from './App';
 import About from './pages/About';
+import Contact from './pages/Contact';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components';
 
@@ -12,6 +13,7 @@ const AppRouter = () => {
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/events" element={<Events />} />
@@ -31,3 +33,4 @@ const AppRouter = () => {
 };
 
 export default AppRouter;
+

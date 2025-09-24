@@ -8,247 +8,380 @@ const About = () => {
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
       
-      {/* Hero Section */}
-      <section className="relative bg-white pt-32 pb-20 px-4 overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Subtle grid pattern */}
-          <div className="absolute inset-0 opacity-3">
-            <div className="grid grid-cols-20 gap-4 h-full">
-              {Array.from({ length: 100 }).map((_, i) => (
-                <div key={i} className="border-r border-gray-200"></div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Clean Modern Hero Section */}
+      <section className="pt-32 pb-20 px-4 bg-white">
+        <div className="container mx-auto max-w-4xl text-center">
+          
+          {/* Main Headline */}
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-8"
+          >
+            Master your events with
+            <br />
+            effortless task management
+          </motion.h1>
+          
+          {/* Description */}
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-lg text-gray-600 leading-relaxed mb-12 max-w-2xl mx-auto"
+          >
+            Stay organized, prioritize with ease, and get things done faster. Our all-in-one event 
+            management tool keeps your team aligned and on track.
+          </motion.p>
 
-        <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            
-            {/* Left Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-8"
+          {/* CTA Buttons */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
             >
-              {/* Main Heading */}
-              <div>
-                <h1 className="text-5xl lg:text-6xl font-semibold text-gray-900 leading-tight mb-6">
-                  Put people first
-                </h1>
-                
-                <div className="space-y-6 max-w-xl">
-                  <p className="text-lg text-gray-700 leading-relaxed">
-                    Fast, user-friendly and engaging - turn HR into people and culture and streamline your daily operations with your own branded app.
-                  </p>
-                  
-                  {/* Email Input and Button */}
-                  <div className="flex gap-3">
-                    <input
-                      type="email"
-                      placeholder="Enter work email"
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
-                    >
-                      Book a demo
-                    </motion.button>
+              Get Started for Free
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center px-6 py-4 text-gray-700 font-semibold hover:text-gray-900 transition-colors"
+            >
+              See How It Works
+              <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </motion.button>
+          </motion.div>
+
+          {/* Trusted by Event Organizers */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="flex flex-col items-center justify-center gap-6"
+          >
+            {/* Trust Badge */}
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-2">
+                {[
+                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face'
+                ].map((src, idx) => (
+                  <img 
+                    key={idx}
+                    src={src} 
+                    alt={`Organizer ${idx + 1}`} 
+                    className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                  />
+                ))}
+              </div>
+              
+              <div className="text-left">
+                <div className="text-sm font-semibold text-gray-900">Trusted by 500+ event organizers</div>
+                <div className="text-sm text-gray-600">in Bogor and surrounding areas</div>
+              </div>
+            </div>
+
+
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Our Platform Section */}
+      <section className="py-20 px-4 bg-white">
+        <div className="container mx-auto max-w-7xl">
+          
+          {/* Main Grid Layout */}
+          <div className="grid grid-cols-12 gap-6 items-start">
+            
+            {/* Content Grid - Mixed Layout */}
+            <div className="col-span-12 grid grid-cols-5 gap-6">
+              
+              {/* Top Row */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                className="bg-white rounded-2xl p-8 flex items-center"
+              >
+                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
+                  Our
+                  <br />
+                  Platform
+                </h2>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="col-span-2 bg-gray-100 rounded-2xl p-8"
+              >
+                <div className="flex items-start justify-between mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900">Exclusive Experiences</h3>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
                   </div>
                 </div>
-              </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Curated events and workshops, brought to you in collaboration with top local partners.
+                </p>
+              </motion.div>
 
-              {/* Statistics */}
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <div className="text-4xl font-semibold text-gray-900 mb-1">75.2%</div>
-                  <div className="text-sm text-gray-600">Average daily activity</div>
-                </div>
-                <div>
-                  <div className="text-4xl font-semibold text-gray-900 mb-1">~20k</div>
-                  <div className="text-sm text-gray-600">Average daily users</div>
-                </div>
-              </div>
-
-              {/* Rating */}
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1">
-                  {[...Array(4)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="col-span-2 bg-gray-100 rounded-2xl p-8"
+              >
+                <div className="flex items-start justify-between mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900">Local & Nearby<br />Events</h3>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                  ))}
-                  <svg className="w-5 h-5 text-gray-300 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" fill="url(#half)" />
-                    <defs>
-                      <linearGradient id="half">
-                        <stop offset="50%" stopColor="#fbbf24" />
-                        <stop offset="50%" stopColor="#d1d5db" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
+                  </div>
                 </div>
-                <span className="text-lg font-semibold text-gray-900">4.5</span>
-                <span className="text-sm text-gray-500">Average user rating</span>
-              </div>
-            </motion.div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Discover events happening around Bogor, from cultural festivals to music shows, all within your reach.
+                </p>
+              </motion.div>
 
-            {/* Right Illustration */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
-            >
-              {/* 3D Isometric Illustration */}
-              <div className="relative w-full h-96 flex items-center justify-center">
-                <svg viewBox="0 0 400 300" className="w-full h-full max-w-lg">
-                  <defs>
-                    {/* Gradients for 3D effect */}
-                    <linearGradient id="screenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#ffffff" />
-                      <stop offset="100%" stopColor="#f1f5f9" />
-                    </linearGradient>
-                    <linearGradient id="deviceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#f8fafc" />
-                      <stop offset="100%" stopColor="#e2e8f0" />
-                    </linearGradient>
-                    <linearGradient id="shadowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#64748b" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#64748b" stopOpacity="0.1" />
-                    </linearGradient>
-                  </defs>
+              {/* Bottom Row */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="col-span-2 bg-gray-100 rounded-2xl p-8"
+              >
+                <div className="flex items-start justify-between mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900">Popular<br />Events</h3>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Featuring the most attended and talked-about events each month in Bogor.
+                </p>
+              </motion.div>
 
-                  {/* Main Device (Tablet/Laptop) */}
-                  <g transform="translate(50, 50)">
-                    {/* Device shadow */}
-                    <path d="M10 180 L280 180 L300 200 L30 200 Z" fill="url(#shadowGradient)" />
-                    
-                    {/* Device base */}
-                    <rect x="0" y="20" width="280" height="160" rx="12" fill="url(#deviceGradient)" stroke="#cbd5e1" strokeWidth="2"/>
-                    
-                    {/* Screen */}
-                    <rect x="15" y="35" width="250" height="130" rx="8" fill="url(#screenGradient)" stroke="#e2e8f0" strokeWidth="1"/>
-                    
-                    {/* Screen content - Dashboard */}
-                    <g opacity="0.8">
-                      {/* Header bar */}
-                      <rect x="25" y="45" width="230" height="20" rx="4" fill="#3b82f6" opacity="0.1"/>
-                      <circle cx="35" cy="55" r="3" fill="#ef4444"/>
-                      <circle cx="45" cy="55" r="3" fill="#f59e0b"/>
-                      <circle cx="55" cy="55" r="3" fill="#10b981"/>
-                      
-                      {/* Content cards */}
-                      <rect x="25" y="75" width="100" height="60" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
-                      <rect x="135" y="75" width="100" height="60" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
-                      
-                      {/* Chart elements */}
-                      <path d="M35 120 L45 110 L55 115 L65 105 L75 100" stroke="#3b82f6" strokeWidth="2" fill="none"/>
-                      <circle cx="35" cy="120" r="2" fill="#3b82f6"/>
-                      <circle cx="65" cy="105" r="2" fill="#10b981"/>
-                      
-                      {/* Text lines */}
-                      <rect x="145" y="85" width="60" height="3" rx="1" fill="#cbd5e1"/>
-                      <rect x="145" y="95" width="40" height="3" rx="1" fill="#e2e8f0"/>
-                      <rect x="145" y="105" width="70" height="3" rx="1" fill="#cbd5e1"/>
-                    </g>
-                  </g>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="col-span-2 bg-gray-100 rounded-2xl p-8"
+              >
+                <div className="flex items-start justify-between mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900">Diverse<br />Experiences</h3>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  From workshops, concerts, to community gatherings—something for everyone.
+                </p>
+              </motion.div>
 
-                  {/* Mobile Device */}
-                  <g transform="translate(320, 80)">
-                    {/* Phone shadow */}
-                    <path d="M5 140 L65 140 L70 150 L10 150 Z" fill="url(#shadowGradient)" />
-                    
-                    {/* Phone body */}
-                    <rect x="0" y="0" width="60" height="120" rx="12" fill="url(#deviceGradient)" stroke="#cbd5e1" strokeWidth="2"/>
-                    
-                    {/* Screen */}
-                    <rect x="5" y="10" width="50" height="90" rx="8" fill="url(#screenGradient)" stroke="#e2e8f0" strokeWidth="1"/>
-                    
-                    {/* Screen content */}
-                    <g opacity="0.8">
-                      {/* Status bar */}
-                      <rect x="8" y="15" width="44" height="8" rx="2" fill="#f1f5f9"/>
-                      
-                      {/* App icons */}
-                      <circle cx="15" cy="35" r="4" fill="#3b82f6" opacity="0.7"/>
-                      <circle cx="30" cy="35" r="4" fill="#10b981" opacity="0.7"/>
-                      <circle cx="45" cy="35" r="4" fill="#f59e0b" opacity="0.7"/>
-                      
-                      {/* Content area */}
-                      <rect x="10" y="50" width="40" height="40" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
-                      
-                      {/* Mini chart */}
-                      <path d="M15 75 L20 70 L25 72 L30 68 L35 65" stroke="#3b82f6" strokeWidth="1.5" fill="none"/>
-                    </g>
-                  </g>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-6 text-white relative overflow-hidden"
+              >
+                {/* Dollar Sign Pattern */}
+                <div className="absolute inset-0 opacity-20">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute text-white text-sm font-bold select-none"
+                      style={{
+                        left: `${20 + (i % 3) * 25}%`,
+                        top: `${25 + Math.floor(i / 3) * 35}%`,
+                        transform: `rotate(${(i * 30) % 360}deg)`,
+                      }}
+                    >
+                      $
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="relative z-10 h-full flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">View Tickets</h3>
+                  </div>
+                  <div className="flex justify-end">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </div>
+                </div>
+              </motion.div>
 
-                  {/* Floating Elements */}
-                  <circle cx="100" cy="40" r="3" fill="#3b82f6" opacity="0.6"/>
-                  <circle cx="320" cy="60" r="2" fill="#10b981" opacity="0.5"/>
-                  <circle cx="80" cy="250" r="2.5" fill="#f59e0b" opacity="0.4"/>
-                  <circle cx="350" cy="220" r="2" fill="#ef4444" opacity="0.5"/>
-                  
-                  {/* Connection lines */}
-                  <path d="M150 100 Q200 80 250 100" stroke="#cbd5e1" strokeWidth="1" fill="none" opacity="0.5" strokeDasharray="3,3"/>
-                  <path d="M280 120 Q300 110 320 120" stroke="#cbd5e1" strokeWidth="1" fill="none" opacity="0.5" strokeDasharray="3,3"/>
-                </svg>
-              </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* About Content Section */}
+      {/* Testimonials Section */}
       <section className="py-20 px-4 bg-white">
-        <div className="container mx-auto max-w-4xl">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+        <div className="container mx-auto max-w-6xl">
+          
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-sm text-gray-500 mb-4"
             >
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Tentang MILUAN
-              </h2>
-              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                MILUAN adalah platform event management terdepan yang memungkinkan Anda untuk mengorganisir, 
-                mempromosikan, dan mengelola acara dengan mudah dan efisien.
+              Testimonials & Reviews
+            </motion.p>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="text-4xl md:text-5xl font-bold text-gray-900"
+            >
+              Trusted by Event Organizers
+            </motion.h2>
+          </div>
+
+          {/* Testimonial Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Card 1 - Light Blue */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, rotate: -2 }}
+              whileInView={{ opacity: 1, y: 0, rotate: -1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="bg-[#FFFFFF] text-gray-800 rounded-2xl p-6 relative group hover:scale-105 hover:rotate-0 transition-all duration-300 transform -rotate-1"
+            >
+              {/* Star Rating */}
+              <div className="flex items-center mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                "MILUAN made organizing our music festival incredibly smooth. The platform handled everything from ticket sales to attendee management perfectly."
               </p>
-              <p className="text-gray-600 leading-relaxed">
-                Dengan teknologi terdepan dan antarmuka yang intuitif, kami membantu ribuan organizer 
-                event di seluruh Indonesia untuk menciptakan pengalaman yang tak terlupakan bagi peserta mereka.
-              </p>
+              <div className="text-sm font-semibold text-gray-800">
+                Sarah M.
+              </div>
+              <div className="text-xs text-gray-600">
+                Festival Organizer
+              </div>
             </motion.div>
 
-            {/* Right Content */}
+            {/* Card 2 - Medium Blue */}
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: -4 }}
               viewport={{ once: true }}
-              className="space-y-6"
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-[#6AB0E3] text-gray-800 rounded-2xl p-6 relative group hover:scale-105 transition-all duration-300 transform -translate-y-1"
             >
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl">
-                <h3 className="font-semibold text-gray-900 mb-2">Visi Kami</h3>
-                <p className="text-gray-600 text-sm">
-                  Menjadi platform event terpercaya yang menghubungkan komunitas dan menciptakan pengalaman berkesan.
-                </p>
+              {/* Star Rating */}
+              <div className="flex items-center mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
               </div>
-              
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl">
-                <h3 className="font-semibold text-gray-900 mb-2">Misi Kami</h3>
-                <p className="text-gray-600 text-sm">
-                  Menyediakan solusi teknologi yang memudahkan pengelolaan event dari perencanaan hingga eksekusi.
-                </p>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                "Best event platform in Bogor! Our workshop series got amazing attendance thanks to MILUAN's reach and easy booking system."
+              </p>
+              <div className="text-sm font-semibold text-gray-800">
+                Budi R.
+              </div>
+              <div className="text-xs text-gray-600">
+                Workshop Coordinator
               </div>
             </motion.div>
+
+            {/* Card 3 - Darker Blue */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, rotate: 2 }}
+              whileInView={{ opacity: 1, y: 8, rotate: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-[#EAF6FF] text-gray-800 rounded-2xl p-6 relative group hover:scale-105 hover:rotate-0 transition-all duration-300 transform rotate-1 translate-y-2"
+            >
+              {/* Star Rating */}
+              <div className="flex items-center mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                "Professional service and great support team. MILUAN helped us scale our community events from 50 to 500+ attendees."
+              </p>
+              <div className="text-sm font-semibold text-gray-800">
+                Rina S.
+              </div>
+              <div className="text-xs text-gray-600">
+                Community Manager
+              </div>
+            </motion.div>
+
+            {/* Card 4 - Deep Blue */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: -6 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="bg-[#C1E5FF] text-gray-800 rounded-2xl p-6 relative group hover:scale-105 transition-all duration-300 transform -translate-y-1.5"
+            >
+              {/* Star Rating */}
+              <div className="flex items-center mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                "Reliable platform with excellent analytics. We can track our event performance and understand our audience better than ever."
+              </p>
+              <div className="text-sm font-semibold text-gray-800">
+                Ahmad F.
+              </div>
+              <div className="text-xs text-gray-600">
+                Cultural Event Producer
+              </div>
+            </motion.div>
+
           </div>
         </div>
       </section>
@@ -259,3 +392,4 @@ const About = () => {
 };
 
 export default About;
+
