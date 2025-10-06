@@ -42,8 +42,8 @@ const Contact: React.FC = () => {
       <PublicHeader />
       
       {/* Hero Section */}
-      <section className="py-20 px-4 bg-gray-50 min-h-screen flex items-center">
-        <div className="container mx-auto max-w-6xl">
+<section className="pt-32 pb-16 px-4 bg-gray-50 min-h-screen flex items-center">
+        <div className="container mx-auto max-w-7xl">
           
           {/* Simple Title */}
           <motion.h1
@@ -146,84 +146,84 @@ const Contact: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-24"
+            className="mt-16"
           >
-            <div className="bg-white rounded-3xl p-10 md:p-12 shadow-lg border border-gray-100 max-w-4xl mx-auto relative overflow-hidden">
+            <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 w-full mx-auto relative overflow-hidden">
               {/* Background decoration */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full -translate-y-16 translate-x-16 opacity-50"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-gray-50 to-gray-100 rounded-full translate-y-12 -translate-x-12 opacity-50"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full -translate-y-10 translate-x-10 opacity-40"></div>
+              <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-gray-50 to-gray-100 rounded-full translate-y-8 -translate-x-8 opacity-40"></div>
               
               <div className="relative z-10">
-                <div className="text-center mb-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                    <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-3">Send us a message</h3>
-                  <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Send us a message</h3>
+                  <p className="text-sm text-gray-600 max-w-lg mx-auto leading-relaxed">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
                 </div>
 
-                <form className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label htmlFor="name" className="block text-sm font-semibold text-gray-800 mb-3">
+                <form className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                         Full Name
                       </label>
                       <input
                         type="text"
                         id="name"
                         name="name"
-                        className="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white shadow-sm"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
                         placeholder="Enter your full name"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-3">
+                    <div className="space-y-1">
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                         Email Address
                       </label>
                       <input
                         type="email"
                         id="email"
                         name="email"
-                        className="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white shadow-sm"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
                         placeholder="your@email.com"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="subject" className="block text-sm font-semibold text-gray-800 mb-3">
+                  <div className="space-y-1">
+                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
                       Subject
                     </label>
                     <input
                       type="text"
                       id="subject"
                       name="subject"
-                      className="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white shadow-sm"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
                       placeholder="What's this about?"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="message" className="block text-sm font-semibold text-gray-800 mb-3">
+                  <div className="space-y-1">
+                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
                       Message
                     </label>
                     <textarea
                       id="message"
                       name="message"
-                      rows={7}
-                      className="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none resize-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white shadow-sm"
-                      placeholder="Tell us more about your project, questions, or how we can help you. We're here to listen and provide the best solution for your needs."
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none resize-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
+                      placeholder="Tell us more about your project or questions..."
                     ></textarea>
                   </div>
 
-                  <div className="text-center pt-4">
+                  <div className="text-center pt-3">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-3 bg-gray-900 text-white px-10 py-4 rounded-2xl hover:bg-gray-800 transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-3 rounded-xl hover:bg-gray-800 transition-all duration-300 font-medium text-sm shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
                       Send Message

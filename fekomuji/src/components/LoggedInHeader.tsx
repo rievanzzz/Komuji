@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiBell, FiSettings, FiLogOut } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiUser, FiX, FiMenu, FiBell, FiSettings, FiLogOut, FiSearch, FiClock, FiCreditCard, FiTag } from 'react-icons/fi';
 
 interface LoggedInHeaderProps {
   className?: string;
@@ -12,6 +12,10 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isHistoryMenuOpen, setIsHistoryMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,12 +34,83 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
           <Link to="/" className="text-2xl font-bold text-blue-600">MILUAN</Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8">
-            <Link to="/dashboard" className="font-medium hover:text-blue-600 transition-colors">Dashboard</Link>
-            <Link to="/events" className="font-medium hover:text-blue-600 transition-colors">Event</Link>
-            <Link to="/my-events" className="font-medium hover:text-blue-600 transition-colors">My Events</Link>
-            <a href="#about" className="font-medium hover:text-blue-600 transition-colors">About</a>
-            <a href="#contact" className="font-medium hover:text-blue-600 transition-colors">Contact & FAQ</a>
+          <div className="hidden md:flex items-center space-x-6">
+            <Link to="/events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Event</Link>
+            <Link to="/my-events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">My Events</Link>
+            <Link to="/about" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">About</Link>
+            <Link to="/contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</Link>
+            
+            {/* Search */}
+            <div className="relative">
+              {isSearchOpen ? (
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Cari event..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => setIsSearchOpen(false)}
+                    className="ml-2 p-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <FiSearch size={20} className="text-gray-600" />
+                </button>
+              )}
+            </div>
+            
+            {/* History Menu (Burger Menu) */}
+            <div className="relative">
+              <button
+                onClick={() => setIsHistoryMenuOpen(!isHistoryMenuOpen)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                title="Riwayat"
+              >
+                <FiClock size={20} className="text-gray-600" />
+              </button>
+              {isHistoryMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border z-50">
+                  <div className="p-3 border-b">
+                    <h3 className="text-sm font-semibold text-gray-900">Riwayat</h3>
+                    <p className="text-xs text-gray-500">Transaksi dan tiket Anda</p>
+                  </div>
+                  <div className="p-2">
+                    <Link
+                      to="/transactions"
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                      onClick={() => setIsHistoryMenuOpen(false)}
+                    >
+                      <FiCreditCard size={16} className="mr-3 text-green-600" />
+                      <div>
+                        <div className="font-medium">Transaksi</div>
+                        <div className="text-xs text-gray-500">Riwayat pembayaran</div>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/tickets"
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
+                      onClick={() => setIsHistoryMenuOpen(false)}
+                    >
+                      <FiTag size={16} className="mr-3 text-blue-600" />
+                      <div>
+                        <div className="font-medium">Tiket</div>
+                        <div className="text-xs text-gray-500">Tiket event Anda</div>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* User Menu for Logged In Users */}
@@ -72,6 +147,7 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
                     <Link
                       to="/profile"
                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                      onClick={() => setIsUserMenuOpen(false)}
                     >
                       <FiUser size={16} className="mr-2" />
                       Profile
@@ -79,11 +155,18 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
                     <Link
                       to="/settings"
                       className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                      onClick={() => setIsUserMenuOpen(false)}
                     >
                       <FiSettings size={16} className="mr-2" />
                       Settings
                     </Link>
                     <button
+                      onClick={() => {
+                        // Handle logout logic here
+                        localStorage.removeItem('token');
+                        navigate('/events'); // Redirect to events page after logout
+                        setIsUserMenuOpen(false);
+                      }}
                       className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors mt-1"
                     >
                       <FiLogOut size={16} className="mr-2" />
@@ -107,15 +190,49 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-4">
-            <Link to="/dashboard" className="block py-2 hover:text-gray-600">Dashboard</Link>
+            {/* Mobile Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cari event..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <FiSearch size={20} className="absolute right-3 top-2.5 text-gray-400" />
+            </div>
+            
             <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
             <Link to="/my-events" className="block py-2 hover:text-gray-600">My Events</Link>
-            <a href="#about" className="block py-2 hover:text-gray-600">About</a>
-            <a href="#contact" className="block py-2 hover:text-gray-600">Contact & FAQ</a>
+            <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
+            <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
+            
+            {/* Mobile History */}
+            <div className="border-t pt-4">
+              <div className="text-sm font-medium text-gray-900 mb-2">Riwayat</div>
+              <Link to="/transactions" className="flex items-center py-2 hover:text-gray-600">
+                <FiCreditCard size={16} className="mr-2 text-green-600" />
+                Transaksi
+              </Link>
+              <Link to="/tickets" className="flex items-center py-2 hover:text-gray-600">
+                <FiTag size={16} className="mr-2 text-blue-600" />
+                Tiket
+              </Link>
+            </div>
+            
             <div className="border-t pt-4">
               <Link to="/profile" className="block py-2 hover:text-gray-600">Profile</Link>
               <Link to="/settings" className="block py-2 hover:text-gray-600">Settings</Link>
-              <button className="block py-2 text-red-600 hover:text-red-700">Logout</button>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  navigate('/events');
+                  setIsMenuOpen(false);
+                }}
+                className="block py-2 text-red-600 hover:text-red-700"
+              >
+                Logout
+              </button>
             </div>
           </div>
         )}
