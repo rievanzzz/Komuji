@@ -36,7 +36,12 @@ class UpdateEventRequest extends FormRequest
                 'sometimes', 
                 'required', 
                 'date',
-                'after_or_equal:' . $threeDaysFromNow
+                // Only apply H-3 rule if the date is actually being changed
+                function ($attribute, $value, $fail) use ($event, $threeDaysFromNow) {
+                    if ($value && $value !== $event->tanggal_mulai->format('Y-m-d') && $value < $threeDaysFromNow) {
+                        $fail('Tanggal mulai harus minimal 3 hari dari sekarang jika diubah');
+                    }
+                }
             ],
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
             'waktu_mulai' => 'sometimes|required|date_format:H:i',

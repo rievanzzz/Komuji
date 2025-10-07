@@ -59,12 +59,48 @@ class EventController extends Controller
             }, function($q) {
                 $q->orderBy('terdaftar', 'desc'); // Default to most popular
             })
-            ->where('is_published', true);
+            ->when($request->has('organizer') && $request->organizer === 'true', function($q) {
+                // For organizer view, show only events created by the authenticated user
+                if (auth()->check()) {
+                    $q->where('created_by', auth()->id());
+                }
+            }, function($q) {
+                // For public view, only show published events
+                $q->where('is_published', true);
+            });
 
         $events = $query->paginate($request->get('per_page', 12));
 
         // Transform the data to include additional fields for frontend
-        $events->getCollection()->transform(function ($event) {
+        $events->getCollection()->transform(function ($event) use ($request) {
+            // For organizer view, return full event data
+            if ($request->has('organizer') && $request->organizer === 'true') {
+                return [
+                    'id' => $event->id,
+                    'kategori_id' => $event->kategori_id,
+                    'harga_tiket' => $event->harga_tiket,
+                    'created_by' => $event->created_by,
+                    'judul' => $event->judul,
+                    'deskripsi' => $event->deskripsi,
+                    'tanggal_mulai' => $event->tanggal_mulai ? $event->tanggal_mulai->format('Y-m-d') : null,
+                    'tanggal_selesai' => $event->tanggal_selesai ? $event->tanggal_selesai->format('Y-m-d') : null,
+                    'waktu_mulai' => $event->waktu_mulai ? $event->waktu_mulai->format('H:i:s') : null,
+                    'waktu_selesai' => $event->waktu_selesai ? $event->waktu_selesai->format('H:i:s') : null,
+                    'lokasi' => $event->lokasi,
+                    'flyer_path' => $event->flyer_path,
+                    'sertifikat_template_path' => $event->sertifikat_template_path,
+                    'is_published' => $event->is_published,
+                    'approval_type' => $event->approval_type,
+                    'kuota' => $event->kuota,
+                    'terdaftar' => $event->terdaftar,
+                    'created_at' => $event->created_at ? $event->created_at->toISOString() : null,
+                    'updated_at' => $event->updated_at ? $event->updated_at->toISOString() : null,
+                    'full_flyer_path' => $event->full_flyer_path,
+                    'full_template_path' => $event->full_template_path,
+                ];
+            }
+            
+            // For public view, return formatted data
             return [
                 'id' => $event->id,
                 'title' => $event->judul,
@@ -101,10 +137,54 @@ class EventController extends Controller
 
     public function show(Event $event)
     {
-        if (!$event->is_published) {
+        $user = auth()->user();
+        
+        // Check if user can view this event
+        // Public users can only see published events
+        // Organizers can see their own events regardless of publication status
+        // Admins can see all events
+        if (!$event->is_published && 
+            (!$user || ($user->role !== 'admin' && $event->created_by !== $user->id))) {
             return response()->json(['message' => 'Event tidak ditemukan'], 404);
         }
 
+        // Load relationships and return full event data for organizers/admins
+        $eventData = $event->load(['category', 'registrations.user', 'registrations.attendance']);
+        
+        // For organizers viewing their own events, return detailed data
+        if ($user && ($user->role === 'admin' || $event->created_by === $user->id)) {
+            return response()->json([
+                'data' => [
+                    'id' => $event->id,
+                    'kategori_id' => $event->kategori_id,
+                    'harga_tiket' => $event->harga_tiket,
+                    'created_by' => $event->created_by,
+                    'judul' => $event->judul,
+                    'deskripsi' => $event->deskripsi,
+                    'tanggal_mulai' => $event->tanggal_mulai ? $event->tanggal_mulai->format('Y-m-d') : null,
+                    'tanggal_selesai' => $event->tanggal_selesai ? $event->tanggal_selesai->format('Y-m-d') : null,
+                    'waktu_mulai' => $event->waktu_mulai ? $event->waktu_mulai->format('H:i:s') : null,
+                    'waktu_selesai' => $event->waktu_selesai ? $event->waktu_selesai->format('H:i:s') : null,
+                    'lokasi' => $event->lokasi,
+                    'flyer_path' => $event->flyer_path,
+                    'sertifikat_template_path' => $event->sertifikat_template_path,
+                    'is_published' => $event->is_published,
+                    'approval_type' => $event->approval_type,
+                    'kuota' => $event->kuota,
+                    'terdaftar' => $event->terdaftar,
+                    'created_at' => $event->created_at ? $event->created_at->toISOString() : null,
+                    'updated_at' => $event->updated_at ? $event->updated_at->toISOString() : null,
+                    'full_flyer_path' => $event->full_flyer_path,
+                    'full_template_path' => $event->full_template_path,
+                    'category' => $event->category,
+                    'registrations_count' => $event->registrations->count(),
+                    'approved_registrations_count' => $event->registrations->where('status', 'approved')->count(),
+                    'pending_registrations_count' => $event->registrations->where('status', 'pending')->count(),
+                ]
+            ]);
+        }
+        
+        // For public view, return basic event data
         return response()->json($event->loadCount('registrations'));
     }
 

@@ -1,1 +1,9 @@
+export { default as Footer } from './Footer';
+export { default as AuthModal } from './AuthModal';
+export { default as ProtectedOrganizerRoute } from './ProtectedOrganizerRoute';
+export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as PublicHeader } from './PublicHeader';
+export { default as LoggedInHeader } from './LoggedInHeader';
+export { default as PublicFooter } from './PublicFooter';
+export { default as Sidebar } from './Sidebar';
 export { default as ProtectedRoute } from './ProtectedRoute';

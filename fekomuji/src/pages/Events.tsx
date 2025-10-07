@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation as useRouterLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiMapPin, FiChevronLeft, FiChevronRight, FiHeart, FiMusic, FiBriefcase, FiCoffee, FiFilter, FiTag, FiBarChart, FiCalendar } from 'react-icons/fi';
+import { FiMapPin, FiChevronLeft, FiChevronRight, FiHeart, FiMusic, FiBriefcase, FiCoffee, FiFilter, FiTag, FiBarChart, FiCalendar } from 'react-icons/fi';
 import { MdSports, MdTheaterComedy, MdFamilyRestroom, MdPalette } from 'react-icons/md';
 import { HiOutlineSparkles } from 'react-icons/hi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
+import { AuthModal } from '../components';
+import { useAuth } from '../contexts/AuthContext';
 
 interface EventData {
   id: string;
@@ -41,6 +44,7 @@ interface Organizer {
 const Events: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [location] = useState('Jakarta, ID');
+  const routerLocation = useRouterLocation();
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [currentOrganizerIndex, setCurrentOrganizerIndex] = useState(0);
@@ -61,12 +65,20 @@ const Events: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Auth modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string>('');
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
   // Fetch events from database
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/events?sort=${sortFilter}&per_page=12`);
+        // Fetch more events when user is authenticated
+        const perPage = isAuthenticated ? 24 : 12;
+        const response = await fetch(`http://localhost:8000/api/events?sort=${sortFilter}&per_page=${perPage}`);
         if (!response.ok) {
           throw new Error('Failed to fetch events');
         }
@@ -84,7 +96,14 @@ const Events: React.FC = () => {
     };
 
     fetchEvents();
-  }, [sortFilter]); // Re-fetch when sort filter changes
+  }, [sortFilter, isAuthenticated]); // Re-fetch when sort filter or auth status changes
+
+  // Sync search term with URL query param `q`
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const q = params.get('q') || '';
+    setSearchTerm(q);
+  }, [routerLocation.search]);
 
   // Calendar helper functions
   const generateCalendarDays = () => {
@@ -173,11 +192,31 @@ const Events: React.FC = () => {
         return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === parseInt(year);
       });
     }
+    // Apply search filter if present
+    if (searchTerm && searchTerm.trim().length > 0) {
+      const q = searchTerm.toLowerCase();
+      filtered = filtered.filter(e =>
+        (e.title && e.title.toLowerCase().includes(q)) ||
+        (e.location && e.location.toLowerCase().includes(q))
+      );
+    }
     
     return filtered;
   };
 
   const eventsToDisplay = getFilteredEvents();
+  const isSearching = searchTerm.trim().length > 0;
+
+  // Handle event card click
+  const handleEventClick = (event: EventData) => {
+    if (!isAuthenticated) {
+      setSelectedEventTitle(event.title);
+      setShowAuthModal(true);
+      return;
+    }
+    // Navigate to event detail page
+    navigate(`/events/${event.id}`);
+  };
 
   // Top Organizers data
   const organizers: Organizer[] = [
@@ -397,25 +436,11 @@ const Events: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
       
-      {/* Search Section */}
-      <section className="bg-white pt-24 pb-8">
-        <div className="container mx-auto px-4 md:px-6 pt-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <FiSearch className="absolute left-6 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl" />
-              <input
-                type="text"
-                placeholder="Search events, artists, teams, and more"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-16 pr-6 py-4 text-lg rounded-full border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none shadow-sm hover:shadow-md transition-all duration-300"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Top spacer to account for fixed header */}
+      <div className="pt-24" />
 
       {/* Hero Banner Carousel */}
+      {!isSearching && (
       <section className="bg-white pb-12">
         <div className="container mx-auto px-4 md:px-6">
           <div className="relative max-w-7xl mx-auto">
@@ -515,6 +540,7 @@ const Events: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 md:px-6 py-12">
@@ -522,7 +548,7 @@ const Events: React.FC = () => {
         {/* Browse Events Header */}
         <div className="mb-8">
           <p className="text-gray-600 text-sm mb-2">Browse Events</p>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">{location}</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{isSearching ? `Search results${searchTerm ? ` for "${searchTerm}"` : ''}` : location}</h2>
           
           {/* Simple Filter Interface */}
           <div className="flex flex-wrap items-center gap-3 relative">
@@ -789,24 +815,80 @@ const Events: React.FC = () => {
           </div>
         </div>
 
+        {/* Search Results (only when searching) */}
+        {isSearching && (
+          <div className="mb-12">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, index) => (
+                  <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md animate-pulse">
+                    <div className="w-full h-48 bg-gray-300"></div>
+                    <div className="p-4">
+                      <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                      <div className="h-3 bg-gray-300 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : eventsToDisplay.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Tidak ada event yang cocok dengan pencarian.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {eventsToDisplay.map((event, index) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.05 }}
+                    className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <div className="relative">
+                      <img
+                        src={event.image}
+                        alt={event.title}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                        <FiHeart className="text-gray-600" />
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                        {event.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-1">{event.date}</p>
+                      <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Great deals near you */}
+        {!isSearching && (
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-gray-900">Great deals near you</h3>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
-                {Math.floor(currentEventIndex / eventsPerPage) + 1} of {Math.ceil(eventsToDisplay.length / eventsPerPage)}
+                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
               </span>
               <button 
-                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - eventsPerPage))}
+                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
                 disabled={currentEventIndex === 0}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronLeft className="text-gray-600" />
               </button>
               <button 
-                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - eventsPerPage, currentEventIndex + eventsPerPage))}
-                disabled={currentEventIndex + eventsPerPage >= eventsToDisplay.length}
+                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
+                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronRight className="text-gray-600" />
@@ -850,13 +932,14 @@ const Events: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {eventsToDisplay.slice(currentEventIndex, currentEventIndex + eventsPerPage).map((event, index) => (
+              {eventsToDisplay.slice(currentEventIndex, currentEventIndex + 8).map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                onClick={() => handleEventClick(event)}
               >
                 <div className="relative">
                   <img
@@ -894,9 +977,10 @@ const Events: React.FC = () => {
             </div>
           )}
         </div>
-
+        )}
 
         {/* Promotional Banner */}
+        {!isSearching && (
         <div className="mb-12">
           <div className="bg-black rounded-2xl p-6 md:p-8 flex items-center justify-between overflow-hidden relative">
             {/* Dotted Pattern Background */}
@@ -935,11 +1019,189 @@ const Events: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
-        {/* Categories */}
+        {/* Latest Events */}
+        {!isSearching && (
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Categories</h3>
+            <h3 className="text-2xl font-bold text-gray-900">Latest Events</h3>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">
+                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
+              </span>
+              <button 
+                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
+                disabled={currentEventIndex === 0}
+                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronLeft className="text-gray-600" />
+              </button>
+              <button 
+                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
+                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
+                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronRight className="text-gray-600" />
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, index) => (
+                <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md animate-pulse">
+                  <div className="w-full h-48 bg-gray-300"></div>
+                  <div className="p-4">
+                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {eventsToDisplay.slice(8, 16).map((event, index) => (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                onClick={() => handleEventClick(event)}
+              >
+                <div className="relative">
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                    <FiHeart className="text-gray-600" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    {event.title}
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-1">{event.date}</p>
+                  <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                  {event.ticketsSold && event.totalQuota && (
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="text-gray-500">
+                        {event.ticketsSold.toLocaleString()} sold
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        event.popularity === 'trending' ? 'bg-red-100 text-red-600' :
+                        event.popularity === 'hot' ? 'bg-orange-100 text-orange-600' :
+                        'bg-blue-100 text-blue-600'
+                      }`}>
+                        {event.popularity}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* Regular Events */}
+        {!isSearching && (
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Regular Events</h3>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">
+                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
+              </span>
+              <button 
+                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
+                disabled={currentEventIndex === 0}
+                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronLeft className="text-gray-600" />
+              </button>
+              <button 
+                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
+                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
+                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronRight className="text-gray-600" />
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, index) => (
+                <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md animate-pulse">
+                  <div className="w-full h-48 bg-gray-300"></div>
+                  <div className="p-4">
+                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {eventsToDisplay.slice(16, 24).map((event, index) => (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                onClick={() => handleEventClick(event)}
+              >
+                <div className="relative">
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                    <FiHeart className="text-gray-600" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    {event.title}
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-1">{event.date}</p>
+                  <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                  {event.ticketsSold && event.totalQuota && (
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="text-gray-500">
+                        {event.ticketsSold.toLocaleString()} sold
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        event.popularity === 'trending' ? 'bg-red-100 text-red-600' :
+                        event.popularity === 'hot' ? 'bg-orange-100 text-orange-600' :
+                        'bg-blue-100 text-blue-600'
+                      }`}>
+                        {event.popularity}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* Categories */}
+        {!isSearching && (
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Select by Kategori</h3>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
                 {Math.floor(currentCategoryIndex / categoriesPerPage) + 1} of {Math.ceil(categories.length / categoriesPerPage)}
@@ -1050,8 +1312,10 @@ const Events: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
 
         {/* Top Organizers */}
+        {!isSearching && (
         <div className="mb-16">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -1134,10 +1398,18 @@ const Events: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
       </div>
 
       {/* Footer */}
       <PublicFooter />
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        eventTitle={selectedEventTitle}
+      />
     </div>
   );
 };

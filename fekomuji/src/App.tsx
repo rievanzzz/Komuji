@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
 import Footer from './components/Footer';
 import PublicHeader from './components/PublicHeader';
+import { AuthModal } from './components';
+import { useAuth } from './contexts/AuthContext';
 
 // Card data with dynamic color system
 interface CardData {
@@ -112,6 +114,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Auth modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string>('');
+  const { isAuthenticated } = useAuth();
+
 
   useEffect(() => {
     // First: Cards rise faster
@@ -207,6 +214,17 @@ function App() {
       }
       return newFavorites;
     });
+  };
+
+  // Handle event card click
+  const handleEventClick = (event: EventData) => {
+    if (!isAuthenticated) {
+      setSelectedEventTitle(event.title);
+      setShowAuthModal(true);
+      return;
+    }
+    // TODO: Navigate to event detail page or registration
+    console.log('Navigate to event:', event.title);
   };
 
 
@@ -717,6 +735,7 @@ function App() {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
                   className="flex-shrink-0 w-72 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.04)] transition-all duration-700 ease-out group cursor-pointer transform hover:scale-[1.02] hover:-translate-y-3 border border-gray-100/50 hover:border-gray-200/80"
+                  onClick={() => handleEventClick(event)}
                 >
                   {/* Event Image */}
                   <div className="relative overflow-hidden rounded-xl group-hover:scale-105 transition-transform duration-500">
@@ -1453,6 +1472,13 @@ function App() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        eventTitle={selectedEventTitle}
+      />
 
     </div>
   );

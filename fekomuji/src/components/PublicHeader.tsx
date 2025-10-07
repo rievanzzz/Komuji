@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PublicHeaderProps {
   className?: string;
@@ -9,9 +10,17 @@ interface PublicHeaderProps {
 const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHistoryMenuOpen, setIsHistoryMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const submitSearch = () => {
+    const q = searchQuery.trim();
+    if (q.length === 0) return;
+    navigate(`/events?q=${encodeURIComponent(q)}`);
+    setIsMenuOpen(false);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,104 +32,157 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
   }, []);
 
   return (
-    <nav className={`fixed w-full z-[9999] transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-3' : 'bg-white py-5'} ${className}`}>
+    <nav className={`fixed w-full z-[9999] transition-all duration-300 ${scrolled ? 'py-2' : 'py-4'} ${className}`}>
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex justify-between items-center">
-          {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-blue-600">MILUAN</Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link to="/events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Event</Link>
-            <Link to="/about" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">About</Link>
-            <Link to="/contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</Link>
-            
-            {/* Search */}
-            <div className="relative">
-              {isSearchOpen ? (
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Cari event..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => setIsSearchOpen(false)}
-                    className="ml-2 p-2 text-gray-500 hover:text-gray-700"
-                  >
-                    <FiX size={20} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <FiSearch size={20} className="text-gray-600" />
-                </button>
-              )}
-            </div>
-            
-            {/* History Menu (Disabled for non-logged users) */}
-            <div className="relative">
-              <button
-                onClick={() => setIsHistoryMenuOpen(!isHistoryMenuOpen)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
-                title="Login required"
-              >
-                <FiClock size={20} className="text-gray-400" />
-                <FiLock size={12} className="absolute -top-1 -right-1 text-gray-400" />
-              </button>
-              {isHistoryMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border z-50">
-                  <div className="p-4 text-center">
-                    <FiLock size={24} className="mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">Login diperlukan</p>
-                    <p className="text-xs text-gray-500 mb-3">Masuk untuk melihat riwayat transaksi dan tiket</p>
-                    <Link
-                      to="/signin"
-                      className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                      onClick={() => setIsHistoryMenuOpen(false)}
-                    >
-                      Masuk Sekarang
-                    </Link>
-                  </div>
-                </div>
-              )}
+        {/* Top boxed bar */}
+        <div className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-100 shadow-sm px-3 md:px-4 lg:px-5 py-2">
+          {/* Left: Logo and links */}
+          <div className="flex items-center gap-4 lg:gap-6">
+            <Link to="/" className="text-2xl font-bold text-blue-600">MILUAN</Link>
+            <div className="hidden md:flex items-center gap-4 lg:gap-6">
+              <Link to="/events" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Event</Link>
+              <Link to="/about" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">About</Link>
+              <Link to="/contact" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Contact & FAQ</Link>
             </div>
           </div>
 
-          {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="relative group">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative">
-                <FiUser size={20} className="text-gray-400" />
-                <FiLock size={12} className="absolute -top-1 -right-1 text-gray-400" />
+          {/* Middle: Search */}
+          <div className="flex-1 hidden md:block">
+            <div className="relative max-w-xl mx-auto">
+              <input
+                type="text"
+                placeholder="Cari event..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
+                className="w-full pl-5 pr-12 py-2.5 rounded-full bg-indigo-50/70 border border-indigo-100 text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+              />
+              <button
+                onClick={submitSearch}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-200"
+                aria-label="Search"
+              >
+                <FiSearch size={16} />
               </button>
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-4 border-b text-center">
-                  <FiLock size={24} className="mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">Belum login</p>
-                  <p className="text-xs text-gray-500 mt-1">Masuk untuk akses profil</p>
-                </div>
-                <div className="p-2">
-                  <Link
-                    to="/signin"
-                    className="block w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
-                  >
-                    Masuk
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="block w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors mt-1"
-                  >
-                    Daftar Akun
-                  </Link>
-                </div>
+            </div>
+          </div>
+
+          {/* Right: history and user */}
+          <div className="ml-auto hidden md:flex items-center space-x-2">
+            {/* History Menu */}
+            {isAuthenticated ? (
+              <Link
+                to="/history"
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                title="Riwayat Pendaftaran"
+              >
+                <FiClock size={20} className="text-gray-600" />
+              </Link>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setIsHistoryMenuOpen(!isHistoryMenuOpen)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                  title="Login required"
+                >
+                  <FiClock size={20} className="text-gray-400" />
+                  <FiLock size={12} className="absolute -top-1 -right-1 text-gray-400" />
+                </button>
+                {isHistoryMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border z-50">
+                    <div className="p-4 text-center">
+                      <FiLock size={24} className="mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Login diperlukan</p>
+                      <p className="text-xs text-gray-500 mb-3">Masuk untuk melihat riwayat transaksi dan tiket</p>
+                      <Link
+                        to="/signin"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                        onClick={() => setIsHistoryMenuOpen(false)}
+                      >
+                        Masuk Sekarang
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+            {/* User Menu */}
+            <div className="relative group">
+              {isAuthenticated ? (
+                <>
+                  <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <FiUser size={20} className="text-gray-600" />
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-4 border-b text-center">
+                      <FiUser size={24} className="mx-auto text-gray-600 mb-2" />
+                      <p className="text-sm font-medium text-gray-800">{user?.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/profile"
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                      >
+                        <FiSettings size={16} />
+                        Profil Saya
+                      </Link>
+                      <Link
+                        to="/history"
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
+                      >
+                        <FiClock size={16} />
+                        Riwayat
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          navigate('/');
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors mt-1"
+                      >
+                        <FiLogOut size={16} />
+                        Keluar
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative">
+                    <FiUser size={20} className="text-gray-400" />
+                    <FiLock size={12} className="absolute -top-1 -right-1 text-gray-400" />
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-4 border-b text-center">
+                      <FiLock size={24} className="mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600">Belum login</p>
+                      <p className="text-xs text-gray-500 mt-1">Masuk untuk akses profil</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/signin"
+                        className="block w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                      >
+                        Masuk
+                      </Link>
+                      <Link
+                        to="/signup"
+                        className="block w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors mt-1"
+                      >
+                        Daftar Akun
+                      </Link>
+                      <hr className="my-2" />
+                      <Link
+                        to="/organizer-login"
+                        className="block w-full px-3 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                      >
+                        Login Organizer
+                      </Link>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -143,37 +205,70 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                   placeholder="Cari event..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
+                  className="w-full pr-12 pl-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
                 />
-                <FiSearch size={20} className="absolute right-3 top-2.5 text-gray-400" />
+                <button
+                  onClick={submitSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"
+                  aria-label="Search"
+                >
+                  <FiSearch size={16} />
+                </button>
               </div>
               
               <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
               <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
               <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
               
-              {/* Mobile History (Disabled) */}
-              <div className="flex items-center py-2 text-gray-400">
-                <FiClock size={16} className="mr-2" />
-                <span className="text-sm">Riwayat</span>
-                <FiLock size={12} className="ml-2" />
-                <span className="text-xs ml-1">(Login required)</span>
-              </div>
-              
-              <div className="flex space-x-4 pt-2 border-t">
-                <Link
-                  to="/signin"
-                  className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
-                >
-                  Masuk
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
-                >
-                  Daftar
-                </Link>
-              </div>
+              {/* Mobile Menu Items */}
+              {isAuthenticated ? (
+                <>
+                  <Link to="/history" className="flex items-center py-2 hover:text-gray-600">
+                    <FiClock size={16} className="mr-2" />
+                    Riwayat
+                  </Link>
+                  <Link to="/profile" className="flex items-center py-2 hover:text-gray-600">
+                    <FiSettings size={16} className="mr-2" />
+                    Profil
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex items-center py-2 text-red-600 hover:text-red-700"
+                  >
+                    <FiLogOut size={16} className="mr-2" />
+                    Keluar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center py-2 text-gray-400">
+                    <FiClock size={16} className="mr-2" />
+                    <span className="text-sm">Riwayat</span>
+                    <FiLock size={12} className="ml-2" />
+                    <span className="text-xs ml-1">(Login required)</span>
+                  </div>
+                  
+                  <div className="flex space-x-4 pt-2 border-t">
+                    <Link
+                      to="/signin"
+                      className="px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors inline-block"
+                    >
+                      Masuk
+                    </Link>
+                    <Link
+                      to="/signup"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-block"
+                    >
+                      Daftar
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           )}
       </div>

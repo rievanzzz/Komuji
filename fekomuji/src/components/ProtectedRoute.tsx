@@ -28,8 +28,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    // User doesn't have required role, redirect to unauthorized page or dashboard
-    return <Navigate to="/dashboard" replace />;
+    // User doesn't have required role, redirect to home page
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
