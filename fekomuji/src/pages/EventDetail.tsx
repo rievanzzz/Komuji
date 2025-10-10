@@ -1,29 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiCalendar, FiMapPin, FiClock, FiHeart, FiShare2, FiArrowLeft, FiTag, FiUser, FiInstagram } from 'react-icons/fi';
+import { FiHeart, FiShare2, FiArrowLeft } from 'react-icons/fi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
 import { useAuth } from '../contexts/AuthContext';
-
 interface EventDetailData {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  price: string;
-  image: string;
-  category: string;
-  organizer: string;
-  capacity: number;
-  registered: number;
-  gallery?: string[];
-  socialMedia?: {
-    instagram?: string;
-    website?: string;
-  };
+  id: number;
+  judul: string;
+  deskripsi: string;
+  tanggal_mulai: string;
+  tanggal_selesai?: string;
+  waktu_mulai: string;
+  waktu_selesai: string;
+  lokasi: string;
+  flyer_path?: string;
+  harga_tiket?: number;
+  kuota: number;
+  terdaftar?: number;
+  is_published?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Computed properties for display
+  title?: string;
+  description?: string;
+  date?: string;
+  time?: string;
+  location?: string;
+  price?: string;
+  image?: string;
+  category?: string;
+  organizer?: string;
+  capacity?: number;
+  registered?: number;
 }
 
 const EventDetail: React.FC = () => {
@@ -37,40 +46,100 @@ const EventDetail: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
+  // Transform API data to display format
+  const transformEventData = (apiEvent: any): EventDetailData => {
+    console.log('Raw API Event Data:', apiEvent);
+    
+    // Validate date
+    const eventDate = apiEvent.tanggal_mulai ? new Date(apiEvent.tanggal_mulai) : null;
+    const isValidDate = eventDate && !isNaN(eventDate.getTime());
+    
+    const transformed = {
+      ...apiEvent,
+      // Computed display properties
+      title: apiEvent.judul || 'Event Title',
+      description: apiEvent.deskripsi || 'Deskripsi event akan segera tersedia.',
+      date: isValidDate ? apiEvent.tanggal_mulai : new Date().toISOString().split('T')[0],
+      time: `${apiEvent.waktu_mulai || '00:00'} - ${apiEvent.waktu_selesai || '23:59'}`,
+      location: apiEvent.lokasi || 'Lokasi akan diumumkan',
+      price: apiEvent.harga_tiket && apiEvent.harga_tiket > 0 
+        ? `Rp ${apiEvent.harga_tiket.toLocaleString('id-ID')}` 
+        : 'Gratis',
+      image: apiEvent.flyer_path 
+        ? `http://localhost:8000${apiEvent.flyer_path}` 
+        : '/images/default-event.svg',
+      category: 'Event',
+      organizer: 'Event Organizer',
+      capacity: apiEvent.kuota || 0,
+      registered: apiEvent.terdaftar || 0
+    };
+    
+    console.log('Transformed event detail:', transformed);
+    return transformed;
+  };
+
   // Fetch event detail from API
   useEffect(() => {
     const fetchEventDetail = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/events/${id}`);
+        setError(null);
+        
+        console.log('Fetching event with ID:', id);
+        const response = await fetch(`http://localhost:8000/api/events/${id}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        console.log('API Response status:', response.status);
         
         if (!response.ok) {
-          throw new Error('Event not found');
+          if (response.status === 404) {
+            throw new Error('Event tidak ditemukan');
+          } else if (response.status >= 500) {
+            throw new Error('Server error. Silakan coba lagi nanti.');
+          } else {
+            throw new Error('Gagal memuat data event');
+          }
         }
         
         const data = await response.json();
+        console.log('API Response data:', data);
         
-        // Transform API data to match our interface
-        const eventDetail: EventDetailData = {
-          id: data.id,
-          title: data.judul || data.title,
-          description: data.deskripsi || data.description || 'No description available',
-          date: data.tanggal_mulai || data.date,
-          time: `${data.waktu_mulai || '09:00'} - ${data.waktu_selesai || '17:00'}`,
-          location: data.lokasi || data.location || 'Location TBA',
-          price: data.price || 'Free',
-          image: data.flyer_path || data.image || '/api/placeholder/800/400',
-          category: data.category || 'General',
-          organizer: data.organizer || 'Event Organizer',
-          capacity: data.kuota || 100,
-          registered: data.terdaftar || 0,
-          gallery: data.gallery || [],
-          socialMedia: data.socialMedia || {}
+        if (!data) {
+          throw new Error('Data event tidak valid');
+        }
+        
+        const transformedEvent = transformEventData(data);
+        console.log('Transformed event data:', transformedEvent);
+        setEvent(transformedEvent);
+        
+      } catch (err) {
+        console.error('Error fetching event:', err);
+        
+        // Fallback to mock data for development
+        const mockEvent = {
+          id: parseInt(id || '1'),
+          judul: 'Seminar Digital Marketing',
+          deskripsi: 'Pelajari strategi digital marketing terbaru untuk mengembangkan bisnis Anda. Event ini akan membahas berbagai teknik dan tools yang dapat membantu meningkatkan visibilitas online bisnis Anda.',
+          tanggal_mulai: '2025-01-15',
+          tanggal_selesai: '2025-01-15',
+          waktu_mulai: '09:00',
+          waktu_selesai: '17:00',
+          lokasi: 'Ruang Seminar A, Gedung Utama',
+          flyer_path: null,
+          harga_tiket: 0,
+          kuota: 100,
+          terdaftar: 25,
+          is_published: true
         };
         
-        setEvent(eventDetail);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load event');
+        const transformedEvent = transformEventData(mockEvent);
+        setEvent(transformedEvent);
+        setError('Using fallback data - API not available');
       } finally {
         setLoading(false);
       }
@@ -78,18 +147,76 @@ const EventDetail: React.FC = () => {
 
     if (id) {
       fetchEventDetail();
+    } else {
+      setError('ID event tidak valid');
+      setLoading(false);
     }
   }, [id]);
 
   const handleRegister = () => {
     if (!isAuthenticated) {
+      // Store current page URL for redirect after login
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
       setShowAuthModal(true);
       return;
     }
     
-    // TODO: Implement registration logic
-    console.log('Register for event:', event?.title);
-    alert('Registration functionality will be implemented soon!');
+    // Check if event is paid
+    const isPaidEvent = event?.price && event.price !== 'Free' && event.price !== 'Gratis' && event.price !== '0';
+    
+    if (isPaidEvent) {
+      // Show notification for paid events
+      alert('Maaf, sistem pembayaran belum tersedia. Saat ini hanya event gratis yang dapat didaftarkan.');
+      return;
+    }
+    
+    // For free events, proceed with registration
+    handleFreeEventRegistration();
+  };
+
+  const handleFreeEventRegistration = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        alert('Silakan login terlebih dahulu');
+        setShowAuthModal(true);
+        return;
+      }
+
+      console.log('Registering for event:', id);
+      const response = await fetch(`http://localhost:8000/api/events/${id}/register`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Registration response status:', response.status);
+      const data = await response.json();
+      console.log('Registration response data:', data);
+
+      if (response.ok) {
+        alert(`Berhasil mendaftar! Kode pendaftaran: ${data.kode_pendaftaran || data.registration_code || 'REG-' + Date.now()}`);
+        
+        // Update registered count
+        if (event) {
+          setEvent({
+            ...event,
+            registered: (event.registered || event.terdaftar || 0) + 1,
+            terdaftar: (event.registered || event.terdaftar || 0) + 1
+          });
+        }
+      } else {
+        const errorMessage = data.message || data.error || 'Gagal mendaftar. Silakan coba lagi.';
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      alert('Terjadi kesalahan. Silakan coba lagi.');
+    }
   };
 
   const handleShare = () => {
@@ -152,157 +279,161 @@ const EventDetail: React.FC = () => {
     );
   }
 
-  const availableSpots = event.capacity - event.registered;
-  const registrationProgress = (event.registered / event.capacity) * 100;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
       
-      <div className="pt-20 pb-16 bg-gray-50 min-h-screen">
+      <div className="pt-20 pb-16">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           {/* Back Button */}
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-colors"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
           >
-            <FiArrowLeft size={18} />
-            <span className="font-medium">Back</span>
+            <FiArrowLeft size={16} />
+            <span className="text-sm font-medium">Back</span>
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Event Image & Gallery */}
+            {/* Left Column - Event Image */}
             <div className="lg:col-span-2">
               {/* Main Event Image */}
-              <div className="relative mb-4">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-[300px] lg:h-[350px] object-cover rounded-lg"
-                />
+              <div className="relative mb-6">
+                <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                  {event.flyer_path ? (
+                    <img
+                      src={`http://localhost:8000${event.flyer_path}`}
+                      alt={event.judul || 'Event'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                      <div className="text-center text-blue-400">
+                        <svg className="w-24 h-24 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm">No Image Available</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
-                {/* Action Buttons */}
-                <div className="absolute top-3 right-3 flex gap-2">
+                {/* Floating Action Buttons */}
+                <div className="absolute top-4 right-4 flex gap-2">
                   <button
                     onClick={() => setIsLiked(!isLiked)}
-                    className={`p-2 rounded-full backdrop-blur-md transition-all ${
-                      isLiked ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-700 hover:bg-white'
+                    className={`p-2 rounded-full backdrop-blur-sm transition-all ${
+                      isLiked 
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-white/90 text-gray-700 hover:bg-white'
                     }`}
                   >
                     <FiHeart size={16} fill={isLiked ? 'currentColor' : 'none'} />
                   </button>
                   <button
                     onClick={handleShare}
-                    className="p-2 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:bg-white transition-all"
+                    className="p-2 rounded-full bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white transition-all"
                   >
                     <FiShare2 size={16} />
                   </button>
                 </div>
               </div>
 
-              {/* Gallery */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {/* First gallery image or placeholder */}
-                <img
-                  src={event.gallery?.[0] || event.image}
-                  alt={`${event.title} gallery 1`}
-                  className="w-full h-20 object-cover rounded-lg"
-                />
-                <img
-                  src={event.gallery?.[1] || event.image}
-                  alt={`${event.title} gallery 2`}
-                  className="w-full h-20 object-cover rounded-lg"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Deskripsi</h3>
-                <p className="text-gray-600 leading-relaxed text-sm">{event.description}</p>
-              </div>
-
-              {/* Lineup Section */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Lineup</h3>
-                <div className="text-center py-8 text-gray-500">
-                  <div className="w-12 h-12 mx-auto mb-2 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <FiUser size={20} />
-                  </div>
-                  <p className="text-sm">Belum Ada Lineup</p>
-                </div>
+              {/* Description Section */}
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Deskripsi</h2>
+                <p className="text-gray-700 leading-relaxed">
+                  {event.deskripsi || 'Deskripsi event akan segera tersedia.'}
+                </p>
               </div>
             </div>
 
-            {/* Right Column - Event Details & Registration */}
-            <div className="lg:col-span-1 bg-white rounded-lg p-6 h-fit">
-              {/* Event Title */}
-              <div className="mb-6">
-                <h1 className="text-lg font-bold text-gray-900 leading-tight">{event.title}</h1>
-              </div>
+            {/* Right Column - Event Info */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg p-6 shadow-sm sticky top-24">
+                {/* Event Title */}
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">
+                    {event.judul || 'Event Title'}
+                  </h1>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span>{event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', { 
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    }) : 'Tanggal akan diumumkan'}</span>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {event.waktu_mulai && event.waktu_selesai ? `${event.waktu_mulai} - ${event.waktu_selesai}` : 'Waktu akan diumumkan'}
+                  </div>
+                </div>
 
-              {/* Event Info */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <FiCalendar className="text-blue-600" size={18} />
+                {/* Event Details */}
+                <div className="space-y-4 mb-6">
                   <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {new Date(event.date).toLocaleDateString('id-ID', { 
-                        day: 'numeric',
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}
+                    <div className="text-sm text-gray-500 mb-1">Dibuat Oleh</div>
+                    <div className="font-medium text-gray-900">Event Organizer</div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Lokasi</div>
+                    <div className="font-medium text-gray-900">{event.lokasi || 'Lokasi akan diumumkan'}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Mulai Dari</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {event.harga_tiket && event.harga_tiket > 0 ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}` : 'Gratis'}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <FiClock className="text-blue-600" size={18} />
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{event.time}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <FiMapPin className="text-blue-600 mt-0.5" size={18} />
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 leading-relaxed">{event.location}</div>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="text-xs text-gray-500 mb-1">Dibuat Oleh</div>
-                  <div className="text-sm font-semibold text-gray-900">{event.organizer}</div>
-                </div>
-              </div>
-
-              {/* Price Section */}
-              <div className="mb-6">
-                <div className="text-xs text-gray-500 mb-1">Mulai Dari</div>
-                <div className="text-2xl font-bold text-gray-900 mb-4">{event.price}</div>
-                
+                {/* Registration Button */}
                 <button
                   onClick={handleRegister}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors mb-4"
                 >
                   {isAuthenticated ? 'Beli Sekarang' : 'Login untuk Membeli'}
                 </button>
-              </div>
 
-              {/* Social Media */}
-              {event.socialMedia?.instagram && (
-                <div className="pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Media Sosial</h4>
-                  <a
-                    href={event.socialMedia.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium"
-                  >
-                    <FiInstagram size={16} />
-                    <span>Instagram</span>
-                  </a>
+                {/* Stats */}
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <span className="text-gray-600">Peserta</span>
+                    <span className="font-medium text-gray-900">
+                      {event.terdaftar || 0} / {event.kuota || 0}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                      style={{ 
+                        width: `${Math.min(((event.terdaftar || 0) / (event.kuota || 1)) * 100, 100)}%` 
+                      }}
+                    ></div>
+                  </div>
                 </div>
-              )}
+
+                {/* Social Media Links */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="text-sm text-gray-500 mb-3">Media Sosial</div>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-4 h-4 bg-pink-500 rounded"></div>
+                      <span className="text-gray-700">Instagram</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <span className="text-gray-700">WhatsApp</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -314,7 +445,7 @@ const EventDetail: React.FC = () => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        eventTitle={event.title}
+        eventTitle={event.title || event.judul || 'Event'}
       />
     </div>
   );

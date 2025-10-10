@@ -1,0 +1,10 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="300" fill="#F8FAFC"/>
+<rect x="50" y="50" width="300" height="200" rx="12" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="120" cy="120" r="20" fill="#94A3B8"/>
+<path d="M120 110L125 115L135 105L140 110L130 120L125 115L120 110Z" fill="white"/>
+<rect x="80" y="180" width="240" height="8" rx="4" fill="#CBD5E1"/>
+<rect x="80" y="200" width="180" height="6" rx="3" fill="#E2E8F0"/>
+<rect x="80" y="220" width="200" height="6" rx="3" fill="#E2E8F0"/>
+<text x="200" y="270" text-anchor="middle" fill="#64748B" font-family="Arial" font-size="14" font-weight="500">Event Image</text>
+</svg>

@@ -5,35 +5,88 @@ import PublicFooter from '../components/PublicFooter';
 
 const Contact: React.FC = () => {
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const toggleFAQ = (index: number) => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    try {
+      // Send email via API
+      const response = await fetch('http://localhost:8000/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        setSubmitStatus('success');
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const faqs = [
     {
-      question: "What types of events do you organize?",
-      answer: "We specialize in organizing a wide range of events including corporate meetings, conferences, weddings, birthday parties, product launches, and social gatherings. Our team has experience in both intimate gatherings and large-scale events."
+      question: "Apa saja jenis event yang bisa didaftarkan di platform ini?",
+      answer: "Platform kami mendukung berbagai jenis event seperti seminar, workshop, pelatihan, konferensi, webinar, dan acara networking. Baik event gratis maupun berbayar dapat didaftarkan dengan mudah."
     },
     {
-      question: "How far in advance should I book your services?",
-      answer: "We recommend booking our services at least 4-6 weeks in advance for smaller events and 2-3 months for larger events. However, we understand that sometimes events come up quickly, so feel free to contact us even for last-minute requests."
+      question: "Bagaimana cara mendaftar sebagai penyelenggara event?",
+      answer: "Anda dapat mendaftar sebagai organizer melalui halaman 'Login Organizer' di header website. Setelah registrasi, Anda dapat langsung mulai membuat dan mengelola event Anda sendiri."
     },
     {
-      question: "Do you provide catering and decoration services?",
-      answer: "Yes, we offer comprehensive event planning services including catering, decoration, venue setup, entertainment, and coordination. We work with trusted partners to ensure every aspect of your event is perfectly executed."
+      question: "Apakah ada biaya untuk menggunakan platform ini?",
+      answer: "Untuk peserta, pendaftaran ke event gratis tidak dikenakan biaya. Untuk event berbayar, sistem pembayaran akan segera tersedia. Organizer dapat menggunakan platform ini secara gratis untuk mengelola event mereka."
     },
     {
-      question: "What is included in your event planning packages?",
-      answer: "Our packages typically include event consultation, venue coordination, vendor management, timeline creation, day-of coordination, and post-event cleanup. We customize each package based on your specific needs and budget."
+      question: "Bagaimana sistem sertifikat bekerja?",
+      answer: "Setelah menghadiri event, peserta yang memenuhi syarat akan mendapatkan sertifikat digital yang dapat diunduh melalui halaman profil mereka. Sertifikat akan otomatis tersedia setelah event selesai."
     },
     {
-      question: "Can you work within my budget?",
-      answer: "Absolutely! We believe great events can be created at any budget level. During our initial consultation, we'll discuss your budget and create a customized plan that maximizes value while staying within your financial parameters."
+      question: "Bisakah saya membatalkan pendaftaran event?",
+      answer: "Ya, Anda dapat membatalkan pendaftaran melalui halaman riwayat event. Untuk event berbayar, kebijakan refund akan mengikuti ketentuan yang ditetapkan oleh penyelenggara event."
     },
     {
-      question: "Do you handle events outside of your local area?",
-      answer: "Yes, we can organize events in various locations. For events outside our immediate area, we may include travel costs in the quote. We have a network of trusted partners in different cities to ensure quality service wherever your event takes place."
+      question: "Bagaimana cara menghubungi penyelenggara event?",
+      answer: "Informasi kontak penyelenggara tersedia di halaman detail event. Anda juga dapat mengirim pesan melalui sistem internal platform atau menghubungi admin jika ada kendala."
+    },
+    {
+      question: "Apakah event tersedia di seluruh Indonesia?",
+      answer: "Saat ini platform kami fokus pada event-event di wilayah Jawa Barat, namun kami terus berkembang untuk menjangkau wilayah lain di Indonesia. Pantau terus update terbaru dari kami!"
+    },
+    {
+      question: "Bagaimana cara mendapatkan notifikasi event terbaru?",
+      answer: "Anda dapat mengikuti media sosial kami atau berlangganan newsletter untuk mendapatkan informasi event terbaru. Pastikan juga untuk mengaktifkan notifikasi di profil akun Anda."
     }
   ];
 
@@ -160,73 +213,118 @@ const Contact: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Send us a message</h3>
-                  <p className="text-sm text-gray-600 max-w-lg mx-auto leading-relaxed">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Kirim Pesan</h3>
+                  <p className="text-sm text-gray-600 max-w-lg mx-auto leading-relaxed">Kami senang mendengar dari Anda. Kirim pesan dan kami akan merespons secepat mungkin.</p>
                 </div>
 
-                <form className="space-y-4">
+                {/* Success/Error Messages */}
+                {submitStatus === 'success' && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <p className="text-green-800 font-medium">Pesan berhasil dikirim! Kami akan merespons segera.</p>
+                    </div>
+                  </div>
+                )}
+
+                {submitStatus === 'error' && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <p className="text-red-800 font-medium">Gagal mengirim pesan. Silakan coba lagi atau hubungi kami langsung.</p>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1">
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name
+                        Nama Lengkap
                       </label>
                       <input
                         type="text"
                         id="name"
                         name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
-                        placeholder="Enter your full name"
+                        placeholder="Masukkan nama lengkap Anda"
                       />
                     </div>
                     <div className="space-y-1">
                       <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                        Email Address
+                        Alamat Email
                       </label>
                       <input
                         type="email"
                         id="email"
                         name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
-                        placeholder="your@email.com"
+                        placeholder="email@contoh.com"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject
+                      Subjek
                     </label>
                     <input
                       type="text"
                       id="subject"
                       name="subject"
+                      value={formData.subject}
+                      onChange={handleInputChange}
+                      required
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
-                      placeholder="What's this about?"
+                      placeholder="Tentang apa pesan ini?"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                      Message
+                      Pesan
                     </label>
                     <textarea
                       id="message"
                       name="message"
-                      rows={3}
+                      rows={4}
+                      value={formData.message}
+                      onChange={handleInputChange}
+                      required
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 outline-none resize-none text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white text-sm"
-                      placeholder="Tell us more about your project or questions..."
+                      placeholder="Ceritakan lebih detail tentang pertanyaan atau saran Anda..."
                     ></textarea>
                   </div>
 
                   <div className="text-center pt-3">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-3 rounded-xl hover:bg-gray-800 transition-all duration-300 font-medium text-sm shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-3 rounded-xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 font-medium text-sm shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:transform-none"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      Send Message
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Mengirim...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          Kirim Pesan
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
@@ -242,9 +340,9 @@ const Contact: React.FC = () => {
             className="mt-24"
           >
             <div className="text-center mb-12">
-              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">TRUSTED BY</p>
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently</h2>
-              <h2 className="text-4xl font-bold text-gray-900">Asked Questions</h2>
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">FAQ</p>
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">Pertanyaan</h2>
+              <h2 className="text-4xl font-bold text-gray-900">Yang Sering Diajukan</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

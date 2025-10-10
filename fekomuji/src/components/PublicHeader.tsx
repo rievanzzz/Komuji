@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings, FiCalendar, FiCreditCard, FiChevronDown } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PublicHeaderProps {
@@ -71,13 +71,39 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
           <div className="ml-auto hidden md:flex items-center space-x-2">
             {/* History Menu */}
             {isAuthenticated ? (
-              <Link
-                to="/history"
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                title="Riwayat Pendaftaran"
-              >
-                <FiClock size={20} className="text-gray-600" />
-              </Link>
+              <div className="relative group">
+                <button
+                  className="flex items-center gap-1 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  title="Riwayat"
+                >
+                  <FiClock size={20} className="text-gray-600" />
+                  <FiChevronDown size={14} className="text-gray-600" />
+                </button>
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="p-2">
+                    <Link
+                      to="/history/events"
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                    >
+                      <FiCalendar size={16} className="text-blue-600" />
+                      <div>
+                        <p className="font-medium">Riwayat Event</p>
+                        <p className="text-xs text-gray-500">Event yang pernah diikuti</p>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/history/transactions"
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
+                    >
+                      <FiCreditCard size={16} className="text-green-600" />
+                      <div>
+                        <p className="font-medium">Riwayat Transaksi</p>
+                        <p className="text-xs text-gray-500">Pembayaran dan pendaftaran</p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="relative">
                 <button
@@ -128,11 +154,18 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                         Profil Saya
                       </Link>
                       <Link
-                        to="/history"
+                        to="/history/events"
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
                       >
-                        <FiClock size={16} />
-                        Riwayat
+                        <FiCalendar size={16} />
+                        Riwayat Event
+                      </Link>
+                      <Link
+                        to="/history/transactions"
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
+                      >
+                        <FiCreditCard size={16} />
+                        Riwayat Transaksi
                       </Link>
                       <button
                         onClick={() => {
@@ -224,9 +257,13 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
               {/* Mobile Menu Items */}
               {isAuthenticated ? (
                 <>
-                  <Link to="/history" className="flex items-center py-2 hover:text-gray-600">
-                    <FiClock size={16} className="mr-2" />
-                    Riwayat
+                  <Link to="/history/events" className="flex items-center py-2 hover:text-gray-600">
+                    <FiCalendar size={16} className="mr-2" />
+                    Riwayat Event
+                  </Link>
+                  <Link to="/history/transactions" className="flex items-center py-2 hover:text-gray-600">
+                    <FiCreditCard size={16} className="mr-2" />
+                    Riwayat Transaksi
                   </Link>
                   <Link to="/profile" className="flex items-center py-2 hover:text-gray-600">
                     <FiSettings size={16} className="mr-2" />

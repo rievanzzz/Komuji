@@ -78,9 +78,16 @@ const SignIn = () => {
         // Use AuthContext to handle login
         login(data.token, data.user);
         
+        // Check for redirect URL stored before login
+        const redirectUrl = localStorage.getItem('redirectAfterLogin');
+        localStorage.removeItem('redirectAfterLogin'); // Clean up
+        
         // Role-based redirect
         if (data.user.role === 'panitia' || data.user.role === 'admin') {
           navigate('/organizer', { replace: true });
+        } else if (redirectUrl) {
+          // Redirect to the page user was trying to access
+          navigate(redirectUrl, { replace: true });
         } else {
           navigate('/', { replace: true });
         }

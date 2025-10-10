@@ -1,5 +1,5 @@
 export { default as Dashboard } from './Dashboard';
-export { default as EventManagement } from './EventManagement';
+export { default as EventManagementFixed } from './EventManagementFixed';
 export { default as Events } from './Events';
 export { default as Participants } from './Participants';
 export { default as Tickets } from './Tickets';

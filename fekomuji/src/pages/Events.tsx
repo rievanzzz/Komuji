@@ -10,13 +10,28 @@ import { AuthModal } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 
 interface EventData {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  price: string;
-  image: string;
-  category: string;
+  id: number;
+  judul: string;
+  deskripsi: string;
+  tanggal_mulai: string;
+  tanggal_selesai?: string;
+  waktu_mulai: string;
+  waktu_selesai: string;
+  lokasi: string;
+  flyer_path?: string;
+  harga_tiket?: number;
+  kuota: number;
+  terdaftar?: number;
+  is_published?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Computed properties for display
+  title?: string;
+  date?: string;
+  location?: string;
+  price?: string;
+  image?: string;
+  category?: string;
   ticketsSold?: number;
   totalQuota?: number;
   popularity?: string;
@@ -54,11 +69,9 @@ const Events: React.FC = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [filteredEvents, setFilteredEvents] = useState<EventData[]>([]);
   const [noEventsMessage, setNoEventsMessage] = useState('');
   const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date());
   const [hoveredDate, setHoveredDate] = useState<number | null>(null);
-  const [selectedCalendarMonth, setSelectedCalendarMonth] = useState<string>('');
 
   // State for events from database
   const [events, setEvents] = useState<EventData[]>([]);
@@ -71,24 +84,45 @@ const Events: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch events from database
+  // No transform needed - use data directly like homepage
+
+  // EXACT COPY FROM HOMEPAGE - Fetch events from database
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        // Fetch more events when user is authenticated
-        const perPage = isAuthenticated ? 24 : 12;
-        const response = await fetch(`http://localhost:8000/api/events?sort=${sortFilter}&per_page=${perPage}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch events');
+        console.log('Fetching events...');
+
+        // Try multiple API endpoints
+        let response;
+        try {
+          response = await fetch('http://localhost/Komuji/api/events?sort=terdekat');
+        } catch (err) {
+          console.log('First URL failed, trying alternative...');
+          response = await fetch('http://localhost:8000/api/events?sort=terdekat');
         }
+
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
-        setEvents(data.data || []);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        setError('Failed to load events');
-        // Fallback to empty array
+        console.log('Fetched data:', data);
+
+        const eventsData = data.data || data || [];
+        console.log('Events array:', eventsData);
+        console.log('First event image:', eventsData[0]?.image);
+        console.log('First event flyer_path (raw):', eventsData[0]?.flyer_path);
+        setEvents(eventsData);
+
+        // Always use real data from API, don't fallback to mock data
+        console.log('Using real data from API, events count:', eventsData.length);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        // Show empty state instead of fallback data to force real database usage
+        console.log('API failed - showing empty state to force database connection');
         setEvents([]);
       } finally {
         setLoading(false);
@@ -96,7 +130,7 @@ const Events: React.FC = () => {
     };
 
     fetchEvents();
-  }, [sortFilter, isAuthenticated]); // Re-fetch when sort filter or auth status changes
+  }, []); // Only fetch once on component mount
 
   // Sync search term with URL query param `q`
   useEffect(() => {
@@ -136,16 +170,15 @@ const Events: React.FC = () => {
     const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
     
     const filtered = events.filter(event => {
+      if (!event.date) return false;
       const eventDate = new Date(event.date);
       return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === parseInt(year);
     });
     
     if (filtered.length === 0) {
       setNoEventsMessage(`Tidak ada event di bulan ${monthName} ${year}`);
-      setFilteredEvents(events); // Show all events but with message
     } else {
       setNoEventsMessage('');
-      setFilteredEvents(filtered);
     }
   };
 
@@ -172,6 +205,7 @@ const Events: React.FC = () => {
   // Get events for a specific date
   const getEventsForDate = (date: number, month: number, year: number) => {
     return events.filter(event => {
+      if (!event.date) return false;
       const eventDate = new Date(event.date);
       return eventDate.getDate() === date && 
              eventDate.getMonth() === month && 
@@ -188,6 +222,7 @@ const Events: React.FC = () => {
       const [monthName, year] = selectedMonth.split(' ');
       const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
       filtered = filtered.filter(event => {
+        if (!event.date) return false;
         const eventDate = new Date(event.date);
         return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === parseInt(year);
       });
@@ -206,11 +241,14 @@ const Events: React.FC = () => {
 
   const eventsToDisplay = getFilteredEvents();
   const isSearching = searchTerm.trim().length > 0;
+  
+  // Simple debug
+  console.log('Events loaded:', events.length, 'Displaying:', eventsToDisplay.length);
 
   // Handle event card click
   const handleEventClick = (event: EventData) => {
     if (!isAuthenticated) {
-      setSelectedEventTitle(event.title);
+      setSelectedEventTitle(event.title || event.judul || 'Event');
       setShowAuthModal(true);
       return;
     }
@@ -389,21 +427,9 @@ const Events: React.FC = () => {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  const eventsPerPage = 4;
   const categoriesPerPage = 4;
   const organizersPerPage = 3;
 
-  const nextEvents = () => {
-    setCurrentEventIndex((prev) => 
-      prev + eventsPerPage >= events.length ? 0 : prev + eventsPerPage
-    );
-  };
-
-  const prevEvents = () => {
-    setCurrentEventIndex((prev) => 
-      prev - eventsPerPage < 0 ? Math.max(0, events.length - eventsPerPage) : prev - eventsPerPage
-    );
-  };
 
   const nextCategories = () => {
     setCurrentCategoryIndex((prev) => 
@@ -709,7 +735,7 @@ const Events: React.FC = () => {
                                 onClick={() => {
                                   if (day.isCurrentMonth && hasEvents) {
                                     const monthYear = `${currentCalendarMonth.toLocaleDateString('en-US', { month: 'long' })} ${currentCalendarMonth.getFullYear()}`;
-                                    setSelectedCalendarMonth(monthYear);
+                                    setSelectedMonth(monthYear);
                                   }
                                 }}
                                 className={`
@@ -734,7 +760,7 @@ const Events: React.FC = () => {
                                     {uniqueCategories.slice(0, 3).map((category, idx) => (
                                       <div
                                         key={idx}
-                                        className={`w-1.5 h-1.5 rounded-full ${getCategoryColor(category)}`}
+                                        className={`w-1.5 h-1.5 rounded-full ${getCategoryColor(category || 'default')}`}
                                       />
                                     ))}
                                     {uniqueCategories.length > 3 && (
@@ -797,7 +823,6 @@ const Events: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedMonth('');
-                              setFilteredEvents([]);
                               setNoEventsMessage('');
                               setShowDateFilter(false);
                             }}
@@ -848,9 +873,13 @@ const Events: React.FC = () => {
                   >
                     <div className="relative">
                       <img
-                        src={event.image}
-                        alt={event.title}
+                        src={event.flyer_path ? `http://localhost:8000${event.flyer_path}` : '/images/default-event.svg'}
+                        alt={event.judul || event.title || 'Event'}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/default-event.svg';
+                        }}
                       />
                       <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
                         <FiHeart className="text-gray-600" />
@@ -858,10 +887,20 @@ const Events: React.FC = () => {
                     </div>
                     <div className="p-4">
                       <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-                        {event.title}
+                        {event.judul || event.title || 'Event Title'}
                       </h4>
-                      <p className="text-sm text-gray-600 mb-1">{event.date}</p>
-                      <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                      <p className="text-sm text-gray-600 mb-1">
+                    {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    }) : (event.date || 'Tanggal akan diumumkan')}
+                  </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                    {event.harga_tiket && event.harga_tiket > 0 
+                      ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}` 
+                      : (event.price || 'Gratis')}
+                  </p>
                     </div>
                   </motion.div>
                 ))}
@@ -946,6 +985,26 @@ const Events: React.FC = () => {
                     src={event.image}
                     alt={event.title}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    onLoad={() => {
+                      console.log(`✅ Image loaded successfully for: ${event.title} - ${event.image}`);
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      console.log(`❌ Image failed to load for: ${event.title} - ${event.image}`);
+                      // If uploaded image fails, show placeholder
+                      target.style.display = 'none';
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'w-full h-48 bg-gray-100 flex items-center justify-center';
+                      placeholder.innerHTML = `
+                        <div class="text-center text-gray-400">
+                          <svg class="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                          </svg>
+                          <p class="text-xs">Image Failed</p>
+                        </div>
+                      `;
+                      target.parentElement?.appendChild(placeholder);
+                    }}
                   />
                   <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
                     <FiHeart className="text-gray-600" />
@@ -955,8 +1014,12 @@ const Events: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {event.title}
                   </h4>
-                  <p className="text-sm text-gray-600 mb-1">{event.date}</p>
-                  <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {event.date}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {event.price}
+                  </p>
                   {event.ticketsSold && event.totalQuota && (
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-gray-500">
@@ -973,7 +1036,7 @@ const Events: React.FC = () => {
                   )}
                 </div>
               </motion.div>
-            ))}
+              ))}
             </div>
           )}
         </div>
@@ -1076,6 +1139,26 @@ const Events: React.FC = () => {
                     src={event.image}
                     alt={event.title}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    onLoad={() => {
+                      console.log(`✅ Image loaded successfully for: ${event.title} - ${event.image}`);
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      console.log(`❌ Image failed to load for: ${event.title} - ${event.image}`);
+                      // If uploaded image fails, show placeholder
+                      target.style.display = 'none';
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'w-full h-48 bg-gray-100 flex items-center justify-center';
+                      placeholder.innerHTML = `
+                        <div class="text-center text-gray-400">
+                          <svg class="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                          </svg>
+                          <p class="text-xs">Image Failed</p>
+                        </div>
+                      `;
+                      target.parentElement?.appendChild(placeholder);
+                    }}
                   />
                   <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
                     <FiHeart className="text-gray-600" />
@@ -1085,8 +1168,12 @@ const Events: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {event.title}
                   </h4>
-                  <p className="text-sm text-gray-600 mb-1">{event.date}</p>
-                  <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {event.date}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {event.price}
+                  </p>
                   {event.ticketsSold && event.totalQuota && (
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-gray-500">
@@ -1164,6 +1251,26 @@ const Events: React.FC = () => {
                     src={event.image}
                     alt={event.title}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    onLoad={() => {
+                      console.log(`✅ Image loaded successfully for: ${event.title} - ${event.image}`);
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      console.log(`❌ Image failed to load for: ${event.title} - ${event.image}`);
+                      // If uploaded image fails, show placeholder
+                      target.style.display = 'none';
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'w-full h-48 bg-gray-100 flex items-center justify-center';
+                      placeholder.innerHTML = `
+                        <div class="text-center text-gray-400">
+                          <svg class="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                          </svg>
+                          <p class="text-xs">Image Failed</p>
+                        </div>
+                      `;
+                      target.parentElement?.appendChild(placeholder);
+                    }}
                   />
                   <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
                     <FiHeart className="text-gray-600" />
@@ -1173,8 +1280,12 @@ const Events: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {event.title}
                   </h4>
-                  <p className="text-sm text-gray-600 mb-1">{event.date}</p>
-                  <p className="text-sm font-semibold text-gray-900">{event.price}</p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {event.date}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {event.price}
+                  </p>
                   {event.ticketsSold && event.totalQuota && (
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-gray-500">

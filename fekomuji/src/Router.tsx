@@ -3,13 +3,12 @@ import App from './App';
 import { SignIn, SignUp, Events, Profile, History, EventDetail } from './pages';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import EventHistory from './pages/EventHistory';
+import TransactionHistory from './pages/TransactionHistory';
 import OrganizerLogin from './pages/OrganizerLogin';
 import { AuthProvider } from './contexts/AuthContext';
-import { Dashboard, EventManagement, Participants, Tickets, Finance, Settings } from './organizer/pages';
-import TestEventManagement from './organizer/pages/TestEventManagement';
-import SimpleEventManagement from './organizer/pages/SimpleEventManagement';
-import EventManagementBasic from './organizer/pages/EventManagementBasic';
-import EventManagementFixed from './organizer/pages/EventManagementFixed';
+import { Dashboard, EventManagementFixed, Participants, Tickets, Finance, Settings } from './organizer/pages';
+
 import ParticipantsNew from './organizer/pages/ParticipantsNew';
 import OrganizerEventDetail from './organizer/pages/EventDetail';
 import { ProtectedOrganizerRoute, ErrorBoundary } from './components';
@@ -29,12 +28,14 @@ const AppRouter = () => {
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/history" element={<History />} />
+          <Route path="/history/events" element={<EventHistory />} />
+          <Route path="/history/transactions" element={<TransactionHistory />} />
           
           {/* Organizer Routes - Protected */}
           <Route path="/organizer" element={<ProtectedOrganizerRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events" element={<ProtectedOrganizerRoute><ErrorBoundary><EventManagementFixed /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events/:id" element={<ProtectedOrganizerRoute><ErrorBoundary><OrganizerEventDetail /></ErrorBoundary></ProtectedOrganizerRoute>} />
-          <Route path="/organizer/test" element={<ProtectedOrganizerRoute><ErrorBoundary><TestEventManagement /></ErrorBoundary></ProtectedOrganizerRoute>} />
+        
           <Route path="/organizer/participants" element={<ProtectedOrganizerRoute><ErrorBoundary><ParticipantsNew /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/tickets" element={<ProtectedOrganizerRoute><ErrorBoundary><Tickets /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/finance" element={<ProtectedOrganizerRoute><ErrorBoundary><Finance /></ErrorBoundary></ProtectedOrganizerRoute>} />
