@@ -17,10 +17,19 @@ use Illuminate\Support\Facades\Storage;
 class RegistrationController extends Controller
 {
     /**
-     * Register for an event
+     * Register for an event with ticket category
      */
     public function register(Request $request, Event $event)
     {
+        $request->validate([
+            'ticket_category_id' => 'required|exists:ticket_categories,id',
+            'nama_peserta' => 'required|string|max:255',
+            'jenis_kelamin' => 'required|in:L,P',
+            'tanggal_lahir' => 'required|date|before:today',
+            'email_peserta' => 'required|email|max:255',
+            'payment_method' => 'nullable|string|max:255'
+        ]);
+
         // Check if event is published
         if (!$event->is_published) {
             return response()->json([
@@ -29,15 +38,28 @@ class RegistrationController extends Controller
             ], 404);
         }
 
-        // Check quota
-        if ($event->terdaftar >= $event->kuota) {
+        // Get ticket category
+        $ticketCategory = $event->ticketCategories()
+            ->where('id', $request->ticket_category_id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$ticketCategory) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Kuota peserta sudah penuh'
+                'message' => 'Kategori tiket tidak ditemukan atau tidak aktif'
+            ], 404);
+        }
+
+        // Check ticket category quota
+        if ($ticketCategory->terjual >= $ticketCategory->kuota) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota kategori tiket sudah penuh'
             ], 400);
         }
 
-        // Check if user is already registered
+        // Check if user is already registered for this event
         $existingRegistration = Registration::where('user_id', auth()->id())
             ->where('event_id', $event->id)
             ->first();
@@ -52,32 +74,53 @@ class RegistrationController extends Controller
 
         DB::beginTransaction();
         try {
-            // Tentukan status berdasarkan tipe approval event
-            $status = ($event->approval_type === 'auto') ? 'approved' : 'pending';
+            // Determine payment status
+            $paymentStatus = $ticketCategory->harga == 0 ? 'free' : 'pending';
+            
+            // Tentukan status berdasarkan tipe approval event dan payment
+            $registrationStatus = ($event->approval_type === 'auto' && $paymentStatus === 'free') ? 'approved' : 'pending';
 
-            // Buat registrasi
+            // Generate registration code and invoice number
+            $kode_pendaftaran = 'REG-' . strtoupper(Str::random(8));
+            $invoice_number = $paymentStatus !== 'free' ? 'INV-' . date('Ymd') . '-' . strtoupper(Str::random(6)) : null;
+
+            // Generate QR code data
+            $qr_code = json_encode([
+                'registration_code' => $kode_pendaftaran,
+                'event_id' => $event->id,
+                'user_id' => auth()->id(),
+                'timestamp' => now()->toISOString()
+            ]);
+
+            // Create registration
             $registration = Registration::create([
                 'user_id' => auth()->id(),
                 'event_id' => $event->id,
-                'status' => $status,
-                'kode_pendaftaran' => 'EVT-' . strtoupper(Str::random(8)),
+                'ticket_category_id' => $ticketCategory->id,
+                'status' => $registrationStatus,
+                'kode_pendaftaran' => $kode_pendaftaran,
+                'nama_peserta' => $request->nama_peserta,
+                'jenis_kelamin' => $request->jenis_kelamin,
+                'tanggal_lahir' => $request->tanggal_lahir,
+                'email_peserta' => $request->email_peserta,
+                'total_harga' => $ticketCategory->harga,
+                'payment_status' => $paymentStatus,
+                'payment_method' => $request->payment_method,
+                'invoice_number' => $invoice_number,
+                'qr_code' => $qr_code,
+                'payment_expired_at' => $paymentStatus !== 'free' ? now()->addMinutes(30) : null
             ]);
 
-            // Buat token kehadiran
+            // Create attendance token
             $attendance = $registration->attendance()->create([
                 'token' => Str::random(32),
                 'is_verified' => false,
             ]);
 
-            // Jika auto-approve, update jumlah pendaftar
-            if ($status === 'approved') {
+            // Update counters if approved and free
+            if ($registrationStatus === 'approved' && $paymentStatus === 'free') {
                 $event->increment('terdaftar');
-
-                // TODO: Kirim email konfirmasi pendaftaran
-                // $registration->user->notify(new EventRegistrationApproved($registration));
-            } else {
-                // TODO: Kirim email notifikasi pending ke panitia
-                // $event->creator->notify(new NewRegistrationPending($registration));
+                $ticketCategory->increment('terjual');
             }
 
             DB::commit();
@@ -85,15 +128,17 @@ class RegistrationController extends Controller
             $response = [
                 'status' => 'success',
                 'data' => [
-                    'registration' => $registration->load('event'),
-                    'attendance_token' => $attendance->token
+                    'registration' => $registration->load(['event', 'ticketCategory']),
+                    'attendance_token' => $attendance->token,
+                    'qr_code' => $qr_code,
+                    'invoice_number' => $invoice_number
                 ]
             ];
 
-            if ($status === 'approved') {
-                $response['message'] = 'Pendaftaran berhasil. Anda telah terdaftar di event ini.';
+            if ($paymentStatus === 'free') {
+                $response['message'] = 'Pendaftaran berhasil! E-ticket telah dikirim ke email Anda.';
             } else {
-                $response['message'] = 'Pendaftaran berhasil. Menunggu persetujuan panitia.';
+                $response['message'] = 'Pendaftaran berhasil! Silakan lakukan pembayaran dalam 30 menit.';
             }
 
             return response()->json($response, 201);

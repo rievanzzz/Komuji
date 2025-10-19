@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\TicketCategoryController;
 use App\Http\Controllers\Api\UserController;
 
 /*
@@ -47,6 +48,7 @@ Route::post('/login', [AuthController::class, 'login']);
 // Public event routes
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{event}', [EventController::class, 'show']);
+Route::get('/events/{event}/ticket-categories', [TicketCategoryController::class, 'index']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
@@ -111,6 +113,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{event}', [EventController::class, 'update']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
+
+        // Ticket category management
+        Route::post('/events/{event}/ticket-categories', [TicketCategoryController::class, 'store']);
+        Route::put('/events/{event}/ticket-categories/{ticketCategory}', [TicketCategoryController::class, 'update']);
+        Route::delete('/events/{event}/ticket-categories/{ticketCategory}', [TicketCategoryController::class, 'destroy']);
 
         // Event registrations management
         Route::get('/events/{event}/registrations', [EventController::class, 'registrations']);

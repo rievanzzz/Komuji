@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2 } from 'react-icons/fi';
+import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
+
+interface TicketCategory {
+  id?: number;
+  nama_kategori: string;
+  deskripsi: string;
+  harga: number;
+  kuota: number;
+  is_active: boolean;
+}
 
 interface Event {
   id?: number;
@@ -22,6 +31,7 @@ interface Event {
   created_at?: string;
   updated_at?: string;
   deleted_at?: string;
+  ticket_categories?: TicketCategory[];
 }
 
 interface EventModalProps {
@@ -56,10 +66,44 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   const flyerInputRef = useRef<HTMLInputElement>(null);
   const certificateInputRef = useRef<HTMLInputElement>(null);
   
+  // Ticket categories state
+  const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([
+    {
+      nama_kategori: 'Regular',
+      deskripsi: 'Tiket reguler dengan akses penuh ke event',
+      harga: 0,
+      kuota: 100,
+      is_active: true
+    }
+  ]);
+  
   // Check if certain fields should be read-only
   const hasRegistrations = editingEvent && (editingEvent.terdaftar || 0) > 0;
   const isPublished = editingEvent && editingEvent.is_published;
   
+  // Ticket category management functions
+  const addTicketCategory = () => {
+    setTicketCategories([...ticketCategories, {
+      nama_kategori: '',
+      deskripsi: '',
+      harga: 0,
+      kuota: 0,
+      is_active: true
+    }]);
+  };
+
+  const removeTicketCategory = (index: number) => {
+    if (ticketCategories.length > 1) {
+      setTicketCategories(ticketCategories.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateTicketCategory = (index: number, field: keyof TicketCategory, value: any) => {
+    const updated = [...ticketCategories];
+    updated[index] = { ...updated[index], [field]: value };
+    setTicketCategories(updated);
+  };
+
   // Helper function to check if a field should be disabled
   const isFieldDisabled = (fieldName: string) => {
     if (!editingEvent) return false;
@@ -552,7 +596,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             {errors.lokasi && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.lokasi}</p>}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <FiUsers className="w-4 h-4 text-blue-600" />
@@ -576,21 +620,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
 
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                Harga Tiket (Rp)
-              </label>
-              <input
-                type="number"
-                name="harga_tiket"
-                value={formData.harga_tiket || 0}
-                onChange={handleInputChange}
-                min="0"
-                className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400 hover:border-gray-300"
-                placeholder="0 untuk gratis"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Status Publikasi
               </label>
               <select
@@ -602,6 +631,112 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 <option value="false">📝 Draft - Belum dipublikasi</option>
                 <option value="true">🚀 Publikasi - Dapat dilihat peserta</option>
               </select>
+            </div>
+          </div>
+
+          {/* Ticket Categories Section - Full Width */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-gray-800">
+                Kategori Tiket *
+              </label>
+              <button
+                type="button"
+                onClick={addTicketCategory}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FiPlus size={16} />
+                Tambah Kategori
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {ticketCategories.map((category, index) => (
+                <div key={index} className="border-2 border-gray-200 rounded-xl p-6 bg-gray-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-900">Kategori {index + 1}</h4>
+                    {ticketCategories.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTicketCategory(index)}
+                        className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
+                      >
+                        <FiMinus size={16} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nama Kategori *
+                      </label>
+                      <input
+                        type="text"
+                        value={category.nama_kategori}
+                        onChange={(e) => updateTicketCategory(index, 'nama_kategori', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                        placeholder="Contoh: Regular, VIP, Early Bird"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Harga (Rp) *
+                      </label>
+                      <input
+                        type="number"
+                        value={category.harga}
+                        onChange={(e) => updateTicketCategory(index, 'harga', parseInt(e.target.value) || 0)}
+                        min="0"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                        placeholder="0 untuk gratis"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Kuota *
+                      </label>
+                      <input
+                        type="number"
+                        value={category.kuota}
+                        onChange={(e) => updateTicketCategory(index, 'kuota', parseInt(e.target.value) || 0)}
+                        min="1"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                        placeholder="Jumlah tiket tersedia"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                      </label>
+                      <select
+                        value={category.is_active ? 'true' : 'false'}
+                        onChange={(e) => updateTicketCategory(index, 'is_active', e.target.value === 'true')}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 appearance-none bg-white"
+                      >
+                        <option value="true">✅ Aktif</option>
+                        <option value="false">❌ Nonaktif</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deskripsi
+                    </label>
+                    <textarea
+                      value={category.deskripsi}
+                      onChange={(e) => updateTicketCategory(index, 'deskripsi', e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 resize-none"
+                      placeholder="Deskripsi kategori tiket (opsional)"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

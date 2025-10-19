@@ -276,63 +276,10 @@ const EventDetail: React.FC = () => {
       return;
     }
     
-    // Check if event is paid
-    const isPaidEvent = event?.price && event.price !== 'Free' && event.price !== 'Gratis' && event.price !== '0';
-    
-    if (isPaidEvent) {
-      // Show notification for paid events
-      alert('Maaf, sistem pembayaran belum tersedia. Saat ini hanya event gratis yang dapat didaftarkan.');
-      return;
-    }
-    
-    // For free events, proceed with registration
-    handleFreeEventRegistration();
+    // Navigate to ticket booking page
+    navigate(`/events/${id}/book`);
   };
 
-  const handleFreeEventRegistration = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        alert('Silakan login terlebih dahulu');
-        setShowAuthModal(true);
-        return;
-      }
-
-      console.log('Registering for event:', id);
-      const response = await fetch(`http://localhost:8000/api/events/${id}/register`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Registration response status:', response.status);
-      const data = await response.json();
-      console.log('Registration response data:', data);
-
-      if (response.ok) {
-        alert(`Berhasil mendaftar! Kode pendaftaran: ${data.kode_pendaftaran || data.registration_code || 'REG-' + Date.now()}`);
-        
-        // Update registered count
-        if (event) {
-          setEvent({
-            ...event,
-            registered: (event.registered || event.terdaftar || 0) + 1,
-            terdaftar: (event.registered || event.terdaftar || 0) + 1
-          });
-        }
-      } else {
-        const errorMessage = data.message || data.error || 'Gagal mendaftar. Silakan coba lagi.';
-        alert(errorMessage);
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      alert('Terjadi kesalahan. Silakan coba lagi.');
-    }
-  };
 
   const handleShare = () => {
     if (navigator.share) {
@@ -756,6 +703,7 @@ const EventDetail: React.FC = () => {
         onClose={() => setShowAuthModal(false)}
         eventTitle={event.title || event.judul || 'Event'}
       />
+
     </div>
   );
 };

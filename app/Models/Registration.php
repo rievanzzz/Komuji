@@ -10,7 +10,9 @@ class Registration extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'event_id', 'status', 'kode_pendaftaran', 'alasan_ditolak'
+        'user_id', 'event_id', 'ticket_category_id', 'status', 'kode_pendaftaran', 'alasan_ditolak',
+        'nama_peserta', 'jenis_kelamin', 'tanggal_lahir', 'email_peserta', 'total_harga',
+        'payment_status', 'payment_method', 'invoice_number', 'qr_code', 'payment_expired_at'
     ];
 
     public function user()
@@ -32,4 +34,15 @@ class Registration extends Model
     {
         return $this->hasOne(Certificate::class);
     }
+
+    public function ticketCategory()
+    {
+        return $this->belongsTo(TicketCategory::class);
+    }
+
+    protected $casts = [
+        'tanggal_lahir' => 'date',
+        'total_harga' => 'decimal:2',
+        'payment_expired_at' => 'datetime'
+    ];
 }

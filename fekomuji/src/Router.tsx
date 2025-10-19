@@ -6,6 +6,7 @@ import Contact from './pages/Contact';
 import EventHistory from './pages/EventHistory';
 import TransactionHistory from './pages/TransactionHistory';
 import OrganizerLogin from './pages/OrganizerLogin';
+import TicketBookingPage from './pages/TicketBooking';
 import { AuthProvider } from './contexts/AuthContext';
 import { Dashboard, EventManagementFixed, Participants, Tickets, Finance, Settings } from './organizer/pages';
 
@@ -26,6 +27,7 @@ const AppRouter = () => {
           <Route path="/organizer-login" element={<OrganizerLogin />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/:id" element={<EventDetail />} />
+          <Route path="/events/:eventId/book" element={<TicketBookingPage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/history" element={<History />} />
           <Route path="/history/events" element={<EventHistory />} />

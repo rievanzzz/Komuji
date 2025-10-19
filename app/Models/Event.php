@@ -118,6 +118,14 @@ class Event extends Model
     {
         return $this->hasMany(Certificate::class);
     }
+
+    /**
+     * Get all ticket categories for the event.
+     */
+    public function ticketCategories(): HasMany
+    {
+        return $this->hasMany(TicketCategory::class);
+    }
     
     /**
      * Get all users registered for this event
