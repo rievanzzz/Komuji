@@ -107,7 +107,7 @@ class EventController extends Controller
                 'date' => $event->tanggal_mulai ? $event->tanggal_mulai->format('M d, Y') : null,
                 'location' => $event->lokasi,
                 'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
-                'image' => $event->flyer_path ? asset('storage/' . $event->flyer_path) : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop',
+                'image' => $this->getEventImageUrl($event),
                 'category' => $event->category ? $event->category->name : 'General',
                 'ticketsSold' => $event->terdaftar,
                 'totalQuota' => $event->kuota,
@@ -133,6 +133,23 @@ class EventController extends Controller
         } else {
             return 'popular';
         }
+    }
+
+    private function getEventImageUrl($event)
+    {
+        if (!$event->flyer_path) {
+            return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop';
+        }
+
+        // Check if the file actually exists in storage
+        $fullPath = storage_path('app/public/' . $event->flyer_path);
+        if (!file_exists($fullPath)) {
+            // If file doesn't exist, return placeholder
+            return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop';
+        }
+
+        // Return the correct URL
+        return asset('storage/' . $event->flyer_path);
     }
 
     public function show(Event $event)
@@ -184,8 +201,33 @@ class EventController extends Controller
             ]);
         }
         
-        // For public view, return basic event data
-        return response()->json($event->loadCount('registrations'));
+        // For public view, return formatted data similar to index
+        return response()->json([
+            'id' => $event->id,
+            'title' => $event->judul,
+            'judul' => $event->judul,
+            'deskripsi' => $event->deskripsi,
+            'date' => $event->tanggal_mulai ? $event->tanggal_mulai->format('M d, Y') : null,
+            'tanggal_mulai' => $event->tanggal_mulai ? $event->tanggal_mulai->format('Y-m-d') : null,
+            'tanggal_selesai' => $event->tanggal_selesai ? $event->tanggal_selesai->format('Y-m-d') : null,
+            'waktu_mulai' => $event->waktu_mulai ? $event->waktu_mulai->format('H:i') : null,
+            'waktu_selesai' => $event->waktu_selesai ? $event->waktu_selesai->format('H:i') : null,
+            'location' => $event->lokasi,
+            'lokasi' => $event->lokasi,
+            'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
+            'harga_tiket' => $event->harga_tiket,
+            'image' => $this->getEventImageUrl($event),
+            'flyer_path' => $event->flyer_path,
+            'category' => $event->category ? $event->category->name : 'General',
+            'ticketsSold' => $event->terdaftar,
+            'terdaftar' => $event->terdaftar,
+            'totalQuota' => $event->kuota,
+            'kuota' => $event->kuota,
+            'popularity' => $this->getPopularityStatus($event),
+            'description' => $event->deskripsi,
+            'is_published' => $event->is_published,
+            'registrations_count' => $event->registrations()->count(),
+        ]);
     }
 
     /**

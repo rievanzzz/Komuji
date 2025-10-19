@@ -93,14 +93,8 @@ const Events: React.FC = () => {
         setLoading(true);
         console.log('Fetching events...');
 
-        // Try multiple API endpoints
-        let response;
-        try {
-          response = await fetch('http://localhost/Komuji/api/events?sort=terdekat');
-        } catch (err) {
-          console.log('First URL failed, trying alternative...');
-          response = await fetch('http://localhost:8000/api/events?sort=terdekat');
-        }
+        // Use the correct API endpoint
+        const response = await fetch('http://localhost:8000/api/events?sort=terdekat');
 
         console.log('Response status:', response.status);
 
@@ -146,21 +140,21 @@ const Events: React.FC = () => {
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - ((firstDay.getDay() + 6) % 7)); // Start from Monday
-    
+
     const days = [];
     const today = new Date();
-    
+
     for (let i = 0; i < 42; i++) { // 6 weeks * 7 days
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      
+
       days.push({
         date: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: date.toDateString() === today.toDateString()
       });
     }
-    
+
     return days;
   };
 
@@ -168,13 +162,13 @@ const Events: React.FC = () => {
   const filterEventsByMonth = (monthYear: string) => {
     const [monthName, year] = monthYear.split(' ');
     const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
-    
+
     const filtered = events.filter(event => {
       if (!event.date) return false;
       const eventDate = new Date(event.date);
       return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === parseInt(year);
     });
-    
+
     if (filtered.length === 0) {
       setNoEventsMessage(`Tidak ada event di bulan ${monthName} ${year}`);
     } else {
@@ -186,7 +180,7 @@ const Events: React.FC = () => {
   const getCategoryColor = (category: string) => {
     const colors = {
       'Workshop': 'bg-blue-500',
-      'Konser': 'bg-red-500', 
+      'Konser': 'bg-red-500',
       'Concert': 'bg-red-500',
       'Music': 'bg-red-500',
       'Olahraga': 'bg-green-500',
@@ -207,8 +201,8 @@ const Events: React.FC = () => {
     return events.filter(event => {
       if (!event.date) return false;
       const eventDate = new Date(event.date);
-      return eventDate.getDate() === date && 
-             eventDate.getMonth() === month && 
+      return eventDate.getDate() === date &&
+             eventDate.getMonth() === month &&
              eventDate.getFullYear() === year;
     });
   };
@@ -216,7 +210,7 @@ const Events: React.FC = () => {
   // Get events to display (combine filters)
   const getFilteredEvents = () => {
     let filtered = [...events];
-    
+
     // Apply month filter if selected
     if (selectedMonth) {
       const [monthName, year] = selectedMonth.split(' ');
@@ -235,13 +229,13 @@ const Events: React.FC = () => {
         (e.location && e.location.toLowerCase().includes(q))
       );
     }
-    
+
     return filtered;
   };
 
   const eventsToDisplay = getFilteredEvents();
   const isSearching = searchTerm.trim().length > 0;
-  
+
   // Simple debug
   console.log('Events loaded:', events.length, 'Displaying:', eventsToDisplay.length);
 
@@ -415,7 +409,7 @@ const Events: React.FC = () => {
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          setCurrentBannerIndex((prevIndex) => 
+          setCurrentBannerIndex((prevIndex) =>
             prevIndex === banners.length - 1 ? 0 : prevIndex + 1
           );
           return 0;
@@ -432,25 +426,25 @@ const Events: React.FC = () => {
 
 
   const nextCategories = () => {
-    setCurrentCategoryIndex((prev) => 
+    setCurrentCategoryIndex((prev) =>
       prev + categoriesPerPage >= categories.length ? 0 : prev + categoriesPerPage
     );
   };
 
   const prevCategories = () => {
-    setCurrentCategoryIndex((prev) => 
+    setCurrentCategoryIndex((prev) =>
       prev - categoriesPerPage < 0 ? Math.max(0, categories.length - categoriesPerPage) : prev - categoriesPerPage
     );
   };
 
   const nextOrganizers = () => {
-    setCurrentOrganizerIndex((prev) => 
+    setCurrentOrganizerIndex((prev) =>
       prev + organizersPerPage >= organizers.length ? 0 : prev + organizersPerPage
     );
   };
 
   const prevOrganizers = () => {
-    setCurrentOrganizerIndex((prev) => 
+    setCurrentOrganizerIndex((prev) =>
       prev - organizersPerPage < 0 ? Math.max(0, organizers.length - organizersPerPage) : prev - organizersPerPage
     );
   };
@@ -461,7 +455,7 @@ const Events: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
-      
+
       {/* Top spacer to account for fixed header */}
       <div className="pt-24" />
 
@@ -475,14 +469,14 @@ const Events: React.FC = () => {
               <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-blue-600"></div>
                 {/* Diagonal cut using clip-path */}
-                <div 
+                <div
                   className="absolute inset-0 bg-blue-600"
                   style={{
                     clipPath: 'polygon(0 0, 60% 0, 45% 100%, 0 100%)'
                   }}
                 ></div>
               </div>
-              
+
               {/* Right Image Section */}
               <div className="absolute inset-0">
                 <img
@@ -505,7 +499,7 @@ const Events: React.FC = () => {
                     <button className="bg-white/15 backdrop-blur-md text-white border border-white/40 px-6 py-3 rounded-xl font-semibold hover:bg-white/25 transition-all duration-300 shadow-lg mb-8">
                       See Tickets
                     </button>
-                    
+
                     {/* Enhanced Progress Bar System - Below Button */}
                     <div className="flex items-center space-x-3">
                       {banners.map((_, index) => (
@@ -523,9 +517,9 @@ const Events: React.FC = () => {
                               {/* Progress Bar Container */}
                               <div className="w-12 h-1.5 bg-white/25 rounded-full overflow-hidden backdrop-blur-sm">
                                 {/* Active Progress Fill - Maximum Smoothness */}
-                                <div 
+                                <div
                                   className="h-full bg-white rounded-full will-change-transform transform-gpu"
-                                  style={{ 
+                                  style={{
                                     width: `${progress}%`,
                                     transform: 'translate3d(0, 0, 0)',
                                     backfaceVisibility: 'hidden',
@@ -542,8 +536,8 @@ const Events: React.FC = () => {
                             /* Inactive Banners - Clean Dots */
                             <div className="relative">
                               <div className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
-                                index < currentBannerIndex 
-                                  ? 'bg-white' 
+                                index < currentBannerIndex
+                                  ? 'bg-white'
                                   : 'bg-white/50'
                               }`}></div>
                               {/* Subtle Hover for Dots */}
@@ -570,12 +564,12 @@ const Events: React.FC = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 md:px-6 py-12">
-        
+
         {/* Browse Events Header */}
         <div className="mb-8">
           <p className="text-gray-600 text-sm mb-2">Browse Events</p>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">{isSearching ? `Search results${searchTerm ? ` for "${searchTerm}"` : ''}` : location}</h2>
-          
+
           {/* Simple Filter Interface */}
           <div className="flex flex-wrap items-center gap-3 relative">
             {/* Location Filter */}
@@ -586,7 +580,7 @@ const Events: React.FC = () => {
 
             {/* Filter Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowFilterModal(!showFilterModal)}
                 className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-blue-200 transition-all duration-200"
               >
@@ -619,7 +613,7 @@ const Events: React.FC = () => {
                         <FiHeart className="mr-2 text-sm" />
                         Most Popular
                       </button>
-                      
+
                       <button
                         onClick={() => {
                           setSortFilter('tickets_sold');
@@ -634,7 +628,7 @@ const Events: React.FC = () => {
                         <FiBarChart className="mr-2 text-sm" />
                         Most Sold
                       </button>
-                      
+
                       <button
                         onClick={() => {
                           setSortFilter('quota_remaining');
@@ -657,7 +651,7 @@ const Events: React.FC = () => {
 
             {/* Date Filter */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowDateFilter(!showDateFilter)}
                 className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-blue-200 transition-all duration-200"
               >
@@ -683,7 +677,7 @@ const Events: React.FC = () => {
                     {/* Calendar Component */}
                     <div className="calendar">
                       <div className="flex items-center justify-between mb-4">
-                        <button 
+                        <button
                           onClick={() => {
                             const newDate = new Date(currentCalendarMonth);
                             newDate.setMonth(newDate.getMonth() - 1);
@@ -696,7 +690,7 @@ const Events: React.FC = () => {
                         <h3 className="font-semibold text-gray-900">
                           {currentCalendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                         </h3>
-                        <button 
+                        <button
                           onClick={() => {
                             const newDate = new Date(currentCalendarMonth);
                             newDate.setMonth(newDate.getMonth() + 1);
@@ -723,7 +717,7 @@ const Events: React.FC = () => {
                           const dayEvents = day.isCurrentMonth ? getEventsForDate(day.date, currentCalendarMonth.getMonth(), currentCalendarMonth.getFullYear()) : [];
                           const hasEvents = dayEvents.length > 0;
                           const uniqueCategories = [...new Set(dayEvents.map(event => event.category))];
-                          
+
                           return (
                             <div
                               key={index}
@@ -740,12 +734,12 @@ const Events: React.FC = () => {
                                 }}
                                 className={`
                                   w-8 h-8 text-sm rounded-full flex items-center justify-center transition-all duration-200 relative
-                                  ${day.isCurrentMonth 
-                                    ? 'text-gray-900 hover:bg-blue-100' 
+                                  ${day.isCurrentMonth
+                                    ? 'text-gray-900 hover:bg-blue-100'
                                     : 'text-gray-300'
                                   }
-                                  ${day.isToday 
-                                    ? 'bg-black text-white' 
+                                  ${day.isToday
+                                    ? 'bg-black text-white'
                                     : ''
                                   }
                                   ${day.isCurrentMonth ? 'cursor-pointer' : 'cursor-default'}
@@ -753,7 +747,7 @@ const Events: React.FC = () => {
                                 `}
                               >
                                 {day.date}
-                                
+
                                 {/* Event indicators */}
                                 {hasEvents && (
                                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 flex space-x-0.5">
@@ -769,7 +763,7 @@ const Events: React.FC = () => {
                                   </div>
                                 )}
                               </button>
-                              
+
                               {/* Hover tooltip for event info */}
                               {hoveredDate === day.date && hasEvents && day.isCurrentMonth && (
                                 <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-3 bg-white border border-gray-200 text-gray-900 px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
@@ -897,8 +891,8 @@ const Events: React.FC = () => {
                     }) : (event.date || 'Tanggal akan diumumkan')}
                   </p>
                       <p className="text-sm font-semibold text-gray-900">
-                    {event.harga_tiket && event.harga_tiket > 0 
-                      ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}` 
+                    {event.harga_tiket && event.harga_tiket > 0
+                      ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}`
                       : (event.price || 'Gratis')}
                   </p>
                     </div>
@@ -918,14 +912,14 @@ const Events: React.FC = () => {
               <span className="text-sm text-gray-500">
                 {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
               </span>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
                 disabled={currentEventIndex === 0}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronLeft className="text-gray-600" />
               </button>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
                 disabled={currentEventIndex + 8 >= eventsToDisplay.length}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -958,8 +952,8 @@ const Events: React.FC = () => {
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-red-600 mb-4">{error}</p>
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Retry
@@ -1053,7 +1047,7 @@ const Events: React.FC = () => {
                 backgroundSize: '20px 20px'
               }}></div>
             </div>
-            
+
             {/* Content */}
             <div className="flex items-center space-x-6 relative z-10">
               {/* MILUAN Logo/Icon */}
@@ -1062,7 +1056,7 @@ const Events: React.FC = () => {
                   <span className="text-white font-bold text-xl">M</span>
                 </div>
               </div>
-              
+
               {/* Text Content */}
               <div>
                 <h3 className="text-white text-lg md:text-xl font-semibold mb-1">
@@ -1073,7 +1067,7 @@ const Events: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* CTA Button */}
             <div className="flex-shrink-0 relative z-10">
               <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg hover:shadow-xl">
@@ -1093,14 +1087,14 @@ const Events: React.FC = () => {
               <span className="text-sm text-gray-500">
                 {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
               </span>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
                 disabled={currentEventIndex === 0}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronLeft className="text-gray-600" />
               </button>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
                 disabled={currentEventIndex + 8 >= eventsToDisplay.length}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1205,14 +1199,14 @@ const Events: React.FC = () => {
               <span className="text-sm text-gray-500">
                 {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
               </span>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
                 disabled={currentEventIndex === 0}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronLeft className="text-gray-600" />
               </button>
-              <button 
+              <button
                 onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
                 disabled={currentEventIndex + 8 >= eventsToDisplay.length}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1341,8 +1335,8 @@ const Events: React.FC = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
-                transition={{ 
-                  duration: 0.6, 
+                transition={{
+                  duration: 0.6,
                   delay: index * 0.1,
                   ease: [0.25, 0.46, 0.45, 0.94]
                 }}
@@ -1355,7 +1349,7 @@ const Events: React.FC = () => {
                     backgroundSize: '24px 24px'
                   }}></div>
                 </div>
-                
+
                 {/* Plugin-based Icons */}
                 <div className="absolute bottom-4 right-4 w-12 h-12 opacity-70 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
                   {category.name === 'Sports' && (
@@ -1399,7 +1393,7 @@ const Events: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Content */}
                 <div className="relative z-10 h-full flex flex-col justify-end">
                   <h4 className="text-lg font-medium">{category.name}</h4>
@@ -1462,8 +1456,8 @@ const Events: React.FC = () => {
                 key={organizer.id}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.5, 
+                transition={{
+                  duration: 0.5,
                   delay: index * 0.1,
                   ease: [0.25, 0.46, 0.45, 0.94]
                 }}
@@ -1477,19 +1471,19 @@ const Events: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-t-3xl"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-                    
+
                     {/* Minimalist Heart */}
                     <button className="absolute top-5 right-5 w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-200 group/heart">
                       <FiHeart className="text-white text-sm group-hover/heart:scale-110 transition-transform duration-200" />
                     </button>
-                    
+
                     {/* Clean Name Overlay */}
                     <div className="absolute bottom-5 left-5 right-5">
                       <h4 className="text-white text-xl font-semibold mb-1 tracking-tight">{organizer.name}</h4>
                       <p className="text-white/80 text-sm font-medium">{organizer.category}</p>
                     </div>
                   </div>
-                  
+
                   {/* Clean Stats Section */}
                   <div className="p-6">
                     <div className="flex items-center justify-between">
@@ -1516,7 +1510,7 @@ const Events: React.FC = () => {
       <PublicFooter />
 
       {/* Auth Modal */}
-      <AuthModal 
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         eventTitle={selectedEventTitle}
