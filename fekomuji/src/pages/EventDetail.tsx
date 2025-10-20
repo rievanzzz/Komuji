@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiUsers, FiTag } from 'react-icons/fi';
+import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiTag } from 'react-icons/fi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
@@ -68,8 +68,10 @@ const EventDetail: React.FC = () => {
       price: apiEvent.harga_tiket && apiEvent.harga_tiket > 0 
         ? `Rp ${apiEvent.harga_tiket.toLocaleString('id-ID')}` 
         : 'Gratis',
-      image: apiEvent.image || '/images/default-event.svg',
-      category: 'Event',
+      // Prefer API-provided full image URL. Fallback to storage URL if flyer_path exists.
+      image: apiEvent.image 
+        || (apiEvent.flyer_path ? `http://localhost:8000/storage/${apiEvent.flyer_path}` : '/images/default-event.svg'),
+      category: apiEvent.category || 'Event',
       organizer: 'Event Organizer',
       capacity: apiEvent.kuota || 0,
       registered: apiEvent.terdaftar || 0
@@ -413,6 +415,11 @@ const EventDetail: React.FC = () => {
               <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-2">
                 {event.judul || 'Event Title'}
               </h1>
+              {event.category && (
+                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-600 border border-blue-100 mb-4">
+                  {event.category}
+                </span>
+              )}
             </div>
 
             {/* Event Details */}
@@ -649,7 +656,7 @@ const EventDetail: React.FC = () => {
                 >
                   <div className="relative">
                     <img
-                      src={event.flyer_path ? `http://localhost:8000${event.flyer_path}` : '/images/default-event.svg'}
+                      src={event.image || (event.flyer_path ? `http://localhost:8000/storage/${event.flyer_path}` : '/images/default-event.svg')}
                       alt={event.judul || event.title || 'Event'}
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {

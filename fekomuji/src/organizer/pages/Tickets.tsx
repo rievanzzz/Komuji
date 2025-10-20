@@ -21,6 +21,14 @@ const Tickets: React.FC = () => {
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    event_id: '',
+    nama_kategori: '',
+    deskripsi: '',
+    harga: '',
+    kuota: ''
+  });
 
   useEffect(() => {
     fetchTickets();
@@ -30,67 +38,96 @@ const Tickets: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/organizer/tickets', {
+      
+      // Fetch organizer's events first
+      const eventsResponse = await fetch('http://localhost:8000/api/events?organizer=true', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setTickets(data.tickets || []);
-      } else {
-        // Mock data for development
-        setTickets([
-          {
-            id: '1',
-            event_id: '1',
-            event_name: 'Tech Conference 2024',
-            name: 'Early Bird',
-            description: 'Limited time early bird pricing',
-            price: 150000,
-            quantity: 100,
-            sold: 85,
-            is_active: true,
-            sale_start: '2024-01-01T00:00:00Z',
-            sale_end: '2024-02-01T23:59:59Z',
-            created_at: '2024-01-01T10:00:00Z'
-          },
-          {
-            id: '2',
-            event_id: '1',
-            event_name: 'Tech Conference 2024',
-            name: 'Regular',
-            description: 'Standard ticket pricing',
-            price: 200000,
-            quantity: 300,
-            sold: 157,
-            is_active: true,
-            sale_start: '2024-02-01T00:00:00Z',
-            sale_end: '2024-03-10T23:59:59Z',
-            created_at: '2024-01-01T10:00:00Z'
-          },
-          {
-            id: '3',
-            event_id: '2',
-            event_name: 'Workshop Design Thinking',
-            name: 'Standard',
-            description: 'Workshop participation ticket',
-            price: 75000,
-            quantity: 50,
-            sold: 45,
-            is_active: true,
-            sale_start: '2024-01-05T00:00:00Z',
-            sale_end: '2024-02-15T23:59:59Z',
-            created_at: '2024-01-05T14:30:00Z'
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        const eventsList = eventsData.data || [];
+        setEvents(eventsList); // Store events for form dropdown
+        
+        // Fetch ticket categories for each event
+        const allTickets: TicketType[] = [];
+        
+        for (const event of eventsList) {
+          try {
+            const ticketsResponse = await fetch(`http://localhost:8000/api/events/${event.id}/ticket-categories`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (ticketsResponse.ok) {
+              const ticketsData = await ticketsResponse.json();
+              const eventTickets = ticketsData.map((ticket: any) => ({
+                id: ticket.id.toString(),
+                event_id: event.id.toString(),
+                event_name: event.judul,
+                name: ticket.nama_kategori,
+                description: ticket.deskripsi || 'Kategori tiket',
+                price: parseFloat(ticket.harga),
+                quantity: ticket.kuota,
+                sold: ticket.terjual,
+                is_active: ticket.is_active,
+                sale_start: event.created_at || '2024-01-01T00:00:00Z',
+                sale_end: event.tanggal_mulai || '2024-12-31T23:59:59Z',
+                created_at: ticket.created_at
+              }));
+              allTickets.push(...eventTickets);
+            }
+          } catch (error) {
+            console.error(`Error fetching tickets for event ${event.id}:`, error);
           }
-        ]);
+        }
+        
+        setTickets(allTickets);
+      } else {
+        console.error('Failed to fetch events');
+        setTickets([]);
       }
     } catch (error) {
       console.error('Error fetching tickets:', error);
+      setTickets([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/events/${formData.event_id}/ticket-categories`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nama_kategori: formData.nama_kategori,
+          deskripsi: formData.deskripsi,
+          harga: parseFloat(formData.harga),
+          kuota: parseInt(formData.kuota)
+        })
+      });
+
+      if (response.ok) {
+        setShowCreateModal(false);
+        setFormData({ event_id: '', nama_kategori: '', deskripsi: '', harga: '', kuota: '' });
+        fetchTickets(); // Refresh the list
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to create ticket category');
+      }
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      alert('Error creating ticket category');
     }
   };
 
@@ -99,7 +136,10 @@ const Tickets: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/organizer/tickets/${ticketId}`, {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+      
+      const response = await fetch(`http://localhost:8000/api/events/${ticket.event_id}/ticket-categories/${ticketId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -325,24 +365,99 @@ const Tickets: React.FC = () => {
         )}
       </div>
 
-      {/* Create Modal Placeholder */}
+      {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Ticket Type</h3>
-            <p className="text-gray-600 mb-4">Ticket creation form will be implemented here.</p>
-            <div className="flex gap-3">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Buat Kategori Tiket</h3>
+            
+            <div className="space-y-4">
+              {/* Event Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Event</label>
+                <select
+                  value={formData.event_id}
+                  onChange={(e) => setFormData({...formData, event_id: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Pilih Event</option>
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>{event.judul}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ticket Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kategori</label>
+                <input
+                  type="text"
+                  value={formData.nama_kategori}
+                  onChange={(e) => setFormData({...formData, nama_kategori: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Regular, VIP, Early Bird, dll"
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                <textarea
+                  value={formData.deskripsi}
+                  onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  placeholder="Deskripsi kategori tiket"
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga (Rp)</label>
+                <input
+                  type="number"
+                  value={formData.harga}
+                  onChange={(e) => setFormData({...formData, harga: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0"
+                  min="0"
+                  required
+                />
+              </div>
+
+              {/* Quota */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kuota</label>
+                <input
+                  type="number"
+                  value={formData.kuota}
+                  onChange={(e) => setFormData({...formData, kuota: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="100"
+                  min="1"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setFormData({ event_id: '', nama_kategori: '', deskripsi: '', harga: '', kuota: '' });
+                }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Batal
               </button>
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleCreateTicket}
+                disabled={!formData.event_id || !formData.nama_kategori || !formData.harga || !formData.kuota}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create
+                Buat Kategori
               </button>
             </div>
           </div>

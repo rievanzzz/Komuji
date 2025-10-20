@@ -86,16 +86,21 @@ const Events: React.FC = () => {
 
   // No transform needed - use data directly like homepage
 
-  // EXACT COPY FROM HOMEPAGE - Fetch events from database
+  // Fetch events from database with search support
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
         console.log('Fetching events...');
 
-        // Use the correct API endpoint
-        const response = await fetch('http://localhost:8000/api/events?sort=terdekat');
+        // Build API URL with search and pagination
+        let apiUrl = 'http://localhost:8000/api/events?sort=terdekat&per_page=50';
+        if (searchTerm && searchTerm.trim().length > 0) {
+          apiUrl += `&search=${encodeURIComponent(searchTerm.trim())}`;
+        }
 
+        const response = await fetch(apiUrl);
+        console.log('API URL:', apiUrl);
         console.log('Response status:', response.status);
 
         if (!response.ok) {
@@ -107,8 +112,7 @@ const Events: React.FC = () => {
 
         const eventsData = data.data || data || [];
         console.log('Events array:', eventsData);
-        console.log('First event image:', eventsData[0]?.image);
-        console.log('First event flyer_path (raw):', eventsData[0]?.flyer_path);
+        console.log('Search term:', searchTerm);
         setEvents(eventsData);
 
         // Always use real data from API, don't fallback to mock data
@@ -124,7 +128,7 @@ const Events: React.FC = () => {
     };
 
     fetchEvents();
-  }, []); // Only fetch once on component mount
+  }, [searchTerm]); // Re-fetch when search term changes
 
   // Sync search term with URL query param `q`
   useEffect(() => {
@@ -207,7 +211,7 @@ const Events: React.FC = () => {
     });
   };
 
-  // Get events to display (combine filters)
+  // Get events to display (only apply month filter, search is handled by API)
   const getFilteredEvents = () => {
     let filtered = [...events];
 
@@ -221,14 +225,7 @@ const Events: React.FC = () => {
         return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === parseInt(year);
       });
     }
-    // Apply search filter if present
-    if (searchTerm && searchTerm.trim().length > 0) {
-      const q = searchTerm.toLowerCase();
-      filtered = filtered.filter(e =>
-        (e.title && e.title.toLowerCase().includes(q)) ||
-        (e.location && e.location.toLowerCase().includes(q))
-      );
-    }
+    // Search is now handled by API, no need for local filtering
 
     return filtered;
   };
@@ -867,7 +864,7 @@ const Events: React.FC = () => {
                   >
                     <div className="relative">
                       <img
-                        src={event.flyer_path ? `http://localhost:8000${event.flyer_path}` : '/images/default-event.svg'}
+                        src={event.image || (event.flyer_path ? `http://localhost:8000/storage/${event.flyer_path}` : '/images/default-event.svg')}
                         alt={event.judul || event.title || 'Event'}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
@@ -875,6 +872,11 @@ const Events: React.FC = () => {
                           target.src = '/images/default-event.svg';
                         }}
                       />
+                      {event.category && (
+                        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm text-gray-700 border border-gray-200">
+                          {event.category}
+                        </span>
+                      )}
                       <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
                         <FiHeart className="text-gray-600" />
                       </button>
@@ -890,6 +892,9 @@ const Events: React.FC = () => {
                       year: 'numeric'
                     }) : (event.date || 'Tanggal akan diumumkan')}
                   </p>
+                      {event.category && (
+                        <p className="text-xs text-blue-600 font-medium mb-1">{event.category}</p>
+                      )}
                       <p className="text-sm font-semibold text-gray-900">
                     {event.harga_tiket && event.harga_tiket > 0
                       ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}`

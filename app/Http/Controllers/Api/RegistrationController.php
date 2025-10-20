@@ -51,6 +51,14 @@ class RegistrationController extends Controller
             ], 404);
         }
 
+        // Check event overall quota
+        if ($event->terdaftar >= $event->kuota) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota event sudah penuh'
+            ], 400);
+        }
+
         // Check ticket category quota
         if ($ticketCategory->terjual >= $ticketCategory->kuota) {
             return response()->json([
@@ -74,6 +82,22 @@ class RegistrationController extends Controller
 
         DB::beginTransaction();
         try {
+            // Double-check quotas inside transaction to prevent race conditions
+            $event->refresh();
+            $ticketCategory->refresh();
+            if ($event->terdaftar >= $event->kuota) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kuota event sudah penuh'
+                ], 400);
+            }
+            if ($ticketCategory->terjual >= $ticketCategory->kuota) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kuota kategori tiket sudah penuh'
+                ], 400);
+            }
+
             // Determine payment status
             $paymentStatus = $ticketCategory->harga == 0 ? 'free' : 'pending';
             

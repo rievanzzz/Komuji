@@ -104,6 +104,27 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
     setTicketCategories(updated);
   };
 
+  const fetchTicketCategories = async (eventId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const categories = await response.json();
+        if (categories.length > 0) {
+          setTicketCategories(categories);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching ticket categories:', error);
+    }
+  };
+
   // Helper function to check if a field should be disabled
   const isFieldDisabled = (fieldName: string) => {
     if (!editingEvent) return false;
@@ -169,6 +190,14 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         sertifikat_template_path: editingEvent.sertifikat_template_path || '',
         kategori_id: editingEvent.kategori_id || 1
       });
+      
+      // Load existing ticket categories if available
+      if (editingEvent.ticket_categories && editingEvent.ticket_categories.length > 0) {
+        setTicketCategories(editingEvent.ticket_categories);
+      } else {
+        // Fetch ticket categories from API
+        fetchTicketCategories(editingEvent.id!);
+      }
     } else {
       setFormData({
         judul: '',
@@ -185,6 +214,18 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         flyer_path: '',
         sertifikat_template_path: ''
       });
+      
+      // Reset ticket categories for new event
+      setTicketCategories([
+        {
+          nama_kategori: 'Regular',
+          deskripsi: 'Tiket reguler dengan akses penuh ke event',
+          harga: 0,
+          kuota: 100,
+          is_active: true
+        }
+      ]);
+      
       setFlyerFile(null);
       setCertificateFile(null);
       setFlyerPreview('');
@@ -363,6 +404,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       
       // Add kategori_id
       eventFormData.append('kategori_id', (formData.kategori_id || editingEvent?.kategori_id || 1).toString());
+      
+      // Add ticket categories as JSON
+      eventFormData.append('ticket_categories', JSON.stringify(ticketCategories));
       
       // Add files if selected
       if (flyerFile) {

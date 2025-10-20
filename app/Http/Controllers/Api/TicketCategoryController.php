@@ -43,6 +43,23 @@ class TicketCategoryController extends Controller
             ], 403);
         }
 
+        // Enforce quota constraints: category quota must not exceed remaining event quota
+        $totalExistingQuota = $event->ticketCategories()->sum('kuota');
+        $remainingQuota = max(0, (int)$event->kuota - (int)$totalExistingQuota);
+
+        if ((int)$request->kuota > $remainingQuota) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota kategori melebihi sisa kuota event',
+                'detail' => [
+                    'event_kuota' => (int)$event->kuota,
+                    'total_kategori' => (int)$totalExistingQuota,
+                    'sisa_event' => $remainingQuota,
+                    'kuota_diminta' => (int)$request->kuota,
+                ]
+            ], 422);
+        }
+
         $category = $event->ticketCategories()->create([
             'nama_kategori' => $request->nama_kategori,
             'deskripsi' => $request->deskripsi,
@@ -85,6 +102,25 @@ class TicketCategoryController extends Controller
                 'status' => 'error',
                 'message' => 'Kategori tiket tidak ditemukan'
             ], 404);
+        }
+
+        // Enforce quota constraints on update
+        $totalOtherCategories = $event->ticketCategories()
+            ->where('id', '!=', $ticketCategory->id)
+            ->sum('kuota');
+        $maxAllowedForThis = max(0, (int)$event->kuota - (int)$totalOtherCategories);
+
+        if ((int)$request->kuota > $maxAllowedForThis) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kuota kategori melebihi kuota event',
+                'detail' => [
+                    'event_kuota' => (int)$event->kuota,
+                    'total_kategori_lain' => (int)$totalOtherCategories,
+                    'maks_untuk_kategori_ini' => $maxAllowedForThis,
+                    'kuota_diminta' => (int)$request->kuota,
+                ]
+            ], 422);
         }
 
         $ticketCategory->update([

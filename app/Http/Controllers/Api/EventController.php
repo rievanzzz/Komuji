@@ -108,7 +108,7 @@ class EventController extends Controller
                 'location' => $event->lokasi,
                 'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
                 'image' => $this->getEventImageUrl($event),
-                'category' => $event->category ? $event->category->name : 'General',
+                'category' => $event->category ? $event->category->nama_kategori : 'General',
                 'ticketsSold' => $event->terdaftar,
                 'totalQuota' => $event->kuota,
                 'popularity' => $this->getPopularityStatus($event),
@@ -218,7 +218,7 @@ class EventController extends Controller
             'harga_tiket' => $event->harga_tiket,
             'image' => $this->getEventImageUrl($event),
             'flyer_path' => $event->flyer_path,
-            'category' => $event->category ? $event->category->name : 'General',
+            'category' => $event->category ? $event->category->nama_kategori : 'General',
             'ticketsSold' => $event->terdaftar,
             'terdaftar' => $event->terdaftar,
             'totalQuota' => $event->kuota,
@@ -279,11 +279,33 @@ class EventController extends Controller
             
             $event = Event::create($data);
             
+            // Handle ticket categories if provided
+            if ($request->has('ticket_categories')) {
+                $ticketCategories = json_decode($request->input('ticket_categories'), true);
+                if (is_array($ticketCategories)) {
+                    foreach ($ticketCategories as $categoryData) {
+                        // Validate required fields
+                        if (empty($categoryData['nama_kategori']) || !isset($categoryData['harga']) || !isset($categoryData['kuota'])) {
+                            continue; // Skip invalid categories
+                        }
+                        
+                        $event->ticketCategories()->create([
+                            'nama_kategori' => $categoryData['nama_kategori'],
+                            'deskripsi' => $categoryData['deskripsi'] ?? '',
+                            'harga' => (float)$categoryData['harga'],
+                            'kuota' => (int)$categoryData['kuota'],
+                            'terjual' => 0,
+                            'is_active' => $categoryData['is_active'] ?? true
+                        ]);
+                    }
+                }
+            }
+            
             DB::commit();
             
             return response()->json([
                 'message' => 'Event berhasil dibuat',
-                'data' => $event->load('category')
+                'data' => $event->load(['category', 'ticketCategories'])
             ], 201);
             
         } catch (\Exception $e) {
@@ -546,6 +568,32 @@ class EventController extends Controller
                 // Update the event with the prepared data
                 $event->update($data);
                 
+                // Handle ticket categories if provided
+                if ($request->has('ticket_categories')) {
+                    $ticketCategories = json_decode($request->input('ticket_categories'), true);
+                    if (is_array($ticketCategories)) {
+                        // Delete existing ticket categories
+                        $event->ticketCategories()->delete();
+                        
+                        // Create new ticket categories
+                        foreach ($ticketCategories as $categoryData) {
+                            // Validate required fields
+                            if (empty($categoryData['nama_kategori']) || !isset($categoryData['harga']) || !isset($categoryData['kuota'])) {
+                                continue; // Skip invalid categories
+                            }
+                            
+                            $event->ticketCategories()->create([
+                                'nama_kategori' => $categoryData['nama_kategori'],
+                                'deskripsi' => $categoryData['deskripsi'] ?? '',
+                                'harga' => (float)$categoryData['harga'],
+                                'kuota' => (int)$categoryData['kuota'],
+                                'terjual' => $categoryData['terjual'] ?? 0, // Preserve existing sold count if available
+                                'is_active' => $categoryData['is_active'] ?? true
+                            ]);
+                        }
+                    }
+                }
+                
                 // Refresh the model to get updated data
                 $event = $event->fresh();
                 
@@ -555,7 +603,7 @@ class EventController extends Controller
                 
                 return response()->json([
                     'message' => 'Event berhasil diperbarui',
-                    'data' => $event->load('category'),
+                    'data' => $event->load(['category', 'ticketCategories']),
                     'success' => true,
                     'changes' => $changes
                 ]);

@@ -28,7 +28,8 @@ interface EventData {
   waktu_mulai: string;
   waktu_selesai: string;
   lokasi: string;
-  flyer_path?: string; // Field utama untuk gambar event
+  flyer_path?: string; // relative path in storage
+  image?: string; // full URL provided by API
 }
 
 const TicketBookingPage: React.FC = () => {
@@ -89,15 +90,32 @@ const TicketBookingPage: React.FC = () => {
         if (eventResponse.ok) {
           const eventData = await eventResponse.json();
           console.log('Event data loaded:', eventData); // Debug log
-          setEvent(eventData);
+          // Normalize image URL
+          const normalized = {
+            ...eventData,
+            image: eventData.image || (eventData.flyer_path ? `http://localhost:8000/storage/${eventData.flyer_path}` : undefined),
+          };
+          setEvent(normalized);
         }
         
         // Fetch ticket categories
         const categoriesResponse = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
+        console.log('Ticket categories response status:', categoriesResponse.status);
+        
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
-          setTicketCategories(categoriesData);
+          console.log('Ticket categories data:', categoriesData);
+          
+          // Transform API data to match frontend interface
+          const transformedCategories = categoriesData.map((cat: any) => ({
+            ...cat,
+            harga: parseFloat(cat.harga) // Convert string to number
+          }));
+          
+          console.log('Transformed categories:', transformedCategories);
+          setTicketCategories(transformedCategories);
         } else {
+          console.log('Failed to fetch ticket categories, using fallback data');
           // Fallback data
           setTicketCategories([
             {
@@ -313,8 +331,14 @@ const TicketBookingPage: React.FC = () => {
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Kategori Tiket</h2>
                   
-                  <div className="space-y-3">
-                    {ticketCategories.map((category) => {
+                  {ticketCategories.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Tidak ada kategori tiket tersedia untuk event ini.</p>
+                      <p className="text-xs text-gray-400 mt-2">Debug: {JSON.stringify(ticketCategories)}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {ticketCategories.map((category) => {
                       const isAvailable = category.is_active && category.terjual < category.kuota;
                       
                       return (
@@ -370,7 +394,8 @@ const TicketBookingPage: React.FC = () => {
                         </div>
                       );
                     })}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -648,13 +673,13 @@ const TicketBookingPage: React.FC = () => {
                 <div className="mb-6">
                   <div className="flex gap-3">
                     {/* Event Image - Same logic as EventDetail */}
-                    {event?.flyer_path ? (
+                    {(event?.image || event?.flyer_path) ? (
                       <img 
-                        src={`http://localhost:8000${event.flyer_path}`}
+                        src={event.image || `http://localhost:8000/storage/${event.flyer_path}`}
                         alt={event.judul || 'Event'}
                         className="w-16 h-16 rounded-lg object-cover shadow-sm"
                         onError={(e) => {
-                          console.log('Image failed to load:', event.flyer_path);
+                          console.log('Image failed to load:', event?.image || event?.flyer_path);
                           // Fallback to gradient if image fails to load
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -665,7 +690,7 @@ const TicketBookingPage: React.FC = () => {
                     ) : null}
                     <div 
                       className={`w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm ${
-                        event?.flyer_path ? 'hidden' : 'flex'
+                        (event?.image || event?.flyer_path) ? 'hidden' : 'flex'
                       }`}
                     >
                       {event?.judul?.charAt(0) || 'E'}
