@@ -50,7 +50,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
     waktu_mulai: '',
     waktu_selesai: '',
     lokasi: '',
-    kuota: 0,
+    kuota: 0, // Will be calculated from ticket categories
     harga_tiket: 0,
     is_published: false,
     approval_type: 'auto',
@@ -182,7 +182,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         waktu_mulai: editingEvent.waktu_mulai ? editingEvent.waktu_mulai.substring(0, 5) : '',
         waktu_selesai: editingEvent.waktu_selesai ? editingEvent.waktu_selesai.substring(0, 5) : '',
         lokasi: editingEvent.lokasi || '',
-        kuota: editingEvent.kuota || 0,
+        kuota: 0, // Will be calculated from ticket categories
         harga_tiket: editingEvent.harga_tiket || 0,
         is_published: editingEvent.is_published || false,
         approval_type: editingEvent.approval_type || 'auto',
@@ -207,7 +207,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         waktu_mulai: '',
         waktu_selesai: '',
         lokasi: '',
-        kuota: 0,
+        kuota: 0, // Will be calculated from ticket categories
         harga_tiket: 0,
         is_published: false,
         approval_type: 'auto',
@@ -238,7 +238,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'kuota' || name === 'harga_tiket' ? parseInt(value) || 0 : 
+      [name]: name === 'harga_tiket' ? parseInt(value) || 0 : 
               name === 'is_published' ? value === 'true' : value
     }));
 
@@ -350,8 +350,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       newErrors.lokasi = 'Lokasi acara wajib diisi';
     }
 
-    if (formData.kuota <= 0) {
-      newErrors.kuota = 'Kuota harus lebih dari 0';
+    // Validate ticket categories
+    const totalQuota = ticketCategories.reduce((total, category) => total + (category.kuota || 0), 0);
+    if (totalQuota <= 0) {
+      newErrors.kuota = 'Total kuota dari kategori tiket harus lebih dari 0';
     }
 
     setErrors(newErrors);
@@ -397,7 +399,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       eventFormData.append('waktu_mulai', formatTime(formData.waktu_mulai));
       eventFormData.append('waktu_selesai', formatTime(formData.waktu_selesai));
       eventFormData.append('lokasi', formData.lokasi);
-      eventFormData.append('kuota', formData.kuota.toString());
+      // Calculate total quota from ticket categories
+      const totalQuota = ticketCategories.reduce((total, category) => total + (category.kuota || 0), 0);
+      eventFormData.append('kuota', totalQuota.toString());
       eventFormData.append('harga_tiket', (formData.harga_tiket || 0).toString());
       eventFormData.append('is_published', formData.is_published ? '1' : '0');
       eventFormData.append('approval_type', formData.approval_type || 'auto');
@@ -644,22 +648,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <FiUsers className="w-4 h-4 text-blue-600" />
-                Kuota Peserta *
+                Total Kuota Peserta
               </label>
-              <input
-                type="number"
-                name="kuota"
-                value={formData.kuota}
-                onChange={handleInputChange}
-                min={editingEvent ? (editingEvent.terdaftar || 1) : 1}
-                disabled={isFieldDisabled('kuota')}
-                className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400 ${
-                  errors.kuota ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                } ${isFieldDisabled('kuota') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-                placeholder="Contoh: 50"
-              />
-              {errors.kuota && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.kuota}</p>}
-              {isFieldDisabled('kuota') && <p className="text-amber-600 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-amber-500 rounded-full"></span>{getDisabledMessage('kuota')}</p>}
+              <div className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-semibold text-lg">
+                {ticketCategories.reduce((total, category) => total + (category.kuota || 0), 0)} peserta
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Kuota otomatis terhitung dari total semua kategori tiket</p>
             </div>
 
             <div>

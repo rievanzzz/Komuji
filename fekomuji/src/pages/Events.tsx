@@ -9,6 +9,57 @@ import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 
+// Price Display Component
+interface PriceDisplayProps {
+  eventId: number;
+}
+
+const PriceDisplay: React.FC<PriceDisplayProps> = ({ eventId }) => {
+  const [priceRange, setPriceRange] = useState<string>('Loading...');
+
+  useEffect(() => {
+    const fetchTicketCategories = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
+        if (response.ok) {
+          const categories = await response.json();
+          
+          if (categories && categories.length > 0) {
+            const prices = categories
+              .filter((cat: any) => cat.is_active)
+              .map((cat: any) => parseFloat(cat.harga))
+              .sort((a: number, b: number) => a - b);
+            
+            if (prices.length === 0) {
+              setPriceRange('Tidak tersedia');
+            } else if (prices[0] === 0 && prices.length === 1) {
+              setPriceRange('Gratis');
+            } else if (prices[0] === 0) {
+              const maxPrice = Math.max(...prices.filter((p: number) => p > 0));
+              setPriceRange(`Gratis - Rp ${maxPrice.toLocaleString('id-ID')}`);
+            } else if (prices[0] === prices[prices.length - 1]) {
+              setPriceRange(`Rp ${prices[0].toLocaleString('id-ID')}`);
+            } else {
+              setPriceRange(`Mulai dari Rp ${prices[0].toLocaleString('id-ID')}`);
+            }
+          } else {
+            setPriceRange('Gratis');
+          }
+        } else {
+          setPriceRange('Gratis');
+        }
+      } catch (error) {
+        console.error('Error fetching ticket categories:', error);
+        setPriceRange('Gratis');
+      }
+    };
+
+    fetchTicketCategories();
+  }, [eventId]);
+
+  return <span>{priceRange}</span>;
+};
+
 interface EventData {
   id: number;
   judul: string;
@@ -896,10 +947,8 @@ const Events: React.FC = () => {
                         <p className="text-xs text-blue-600 font-medium mb-1">{event.category}</p>
                       )}
                       <p className="text-sm font-semibold text-gray-900">
-                    {event.harga_tiket && event.harga_tiket > 0
-                      ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}`
-                      : (event.price || 'Gratis')}
-                  </p>
+                        <PriceDisplay eventId={event.id} />
+                      </p>
                     </div>
                   </motion.div>
                 ))}

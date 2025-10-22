@@ -145,14 +145,8 @@ function App() {
         setLoading(true);
         console.log('Fetching events...');
 
-        // Try multiple API endpoints
-        let response;
-        try {
-          response = await fetch('http://localhost/Komuji/api/events?sort=terdekat');
-        } catch (err) {
-          console.log('First URL failed, trying alternative...');
-          response = await fetch('http://localhost:8000/api/events?sort=terdekat');
-        }
+        // Use consistent API endpoint
+        const response = await fetch('http://localhost:8000/api/events?sort=terdekat');
 
         console.log('Response status:', response.status);
 

@@ -92,8 +92,8 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                       </div>
                     </Link>
                     <Link
-                      to="/history/transactions"
-                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
+                      to="/transaksi"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                     >
                       <FiCreditCard size={16} className="text-green-600" />
                       <div>
@@ -161,7 +161,7 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                         Riwayat Event
                       </Link>
                       <Link
-                        to="/history/transactions"
+                        to="/transaksi"
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors mt-1"
                       >
                         <FiCreditCard size={16} />
@@ -261,7 +261,7 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                     <FiCalendar size={16} className="mr-2" />
                     Riwayat Event
                   </Link>
-                  <Link to="/history/transactions" className="flex items-center py-2 hover:text-gray-600">
+                  <Link to="/transaksi" className="flex items-center py-2 hover:text-gray-600">
                     <FiCreditCard size={16} className="mr-2" />
                     Riwayat Transaksi
                   </Link>

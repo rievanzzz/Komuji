@@ -1,10 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiTag } from 'react-icons/fi';
+import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiTag, FiDownload } from 'react-icons/fi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
 import { useAuth } from '../contexts/AuthContext';
+
+// Price Display Component for Event Detail
+interface EventPriceDisplayProps {
+  eventId: number;
+}
+
+const EventPriceDisplay: React.FC<EventPriceDisplayProps> = ({ eventId }) => {
+  const [priceRange, setPriceRange] = useState<string>('Loading...');
+
+  useEffect(() => {
+    const fetchTicketCategories = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
+        if (response.ok) {
+          const categories = await response.json();
+          
+          if (categories && categories.length > 0) {
+            const prices = categories
+              .filter((cat: any) => cat.is_active)
+              .map((cat: any) => parseFloat(cat.harga))
+              .sort((a: number, b: number) => a - b);
+            
+            if (prices.length === 0) {
+              setPriceRange('Tidak tersedia');
+            } else if (prices[0] === 0 && prices.length === 1) {
+              setPriceRange('Free');
+            } else if (prices[0] === 0) {
+              const maxPrice = Math.max(...prices.filter((p: number) => p > 0));
+              setPriceRange(`Free - Rp ${maxPrice.toLocaleString('id-ID')}`);
+            } else if (prices[0] === prices[prices.length - 1]) {
+              setPriceRange(`Rp ${prices[0].toLocaleString('id-ID')}`);
+            } else {
+              setPriceRange(`Rp ${prices[0].toLocaleString('id-ID')} - Rp ${prices[prices.length - 1].toLocaleString('id-ID')}`);
+            }
+          } else {
+            setPriceRange('Free');
+          }
+        } else {
+          setPriceRange('Free');
+        }
+      } catch (error) {
+        console.error('Error fetching ticket categories:', error);
+        // Check if it's a network error
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          console.error('Backend server tidak berjalan. Jalankan: php artisan serve');
+          setPriceRange('Server Error');
+        } else {
+          setPriceRange('Free');
+        }
+      }
+    };
+
+    fetchTicketCategories();
+  }, [eventId]);
+
+  return <span>{priceRange}</span>;
+};
 
 interface EventDetailData {
   id: number;
@@ -48,6 +105,8 @@ const EventDetail: React.FC = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<EventDetailData[]>([]);
+  const [userRegistration, setUserRegistration] = useState<any>(null);
+  const [checkingRegistration, setCheckingRegistration] = useState(false);
 
   // Transform API data to display format
   const transformEventData = (apiEvent: any): EventDetailData => {
@@ -79,6 +138,44 @@ const EventDetail: React.FC = () => {
     
     console.log('Transformed event detail:', transformed);
     return transformed;
+  };
+
+  // Check if user is registered for this event
+  const checkUserRegistration = async () => {
+    if (!isAuthenticated || !id) return;
+    
+    try {
+      setCheckingRegistration(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) return;
+      
+      const response = await fetch('http://localhost:8000/api/my-registrations', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const registrations = data.data || data || [];
+        
+        // Find registration for this event
+        const eventRegistration = registrations.find((reg: any) => 
+          reg.event_id.toString() === id
+        );
+        
+        if (eventRegistration) {
+          setUserRegistration(eventRegistration);
+          console.log('User registration found:', eventRegistration);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user registration:', error);
+    } finally {
+      setCheckingRegistration(false);
+    }
   };
 
   // Fetch event detail from API
@@ -155,6 +252,13 @@ const EventDetail: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  // Check user registration when authenticated and event is loaded
+  useEffect(() => {
+    if (isAuthenticated && event) {
+      checkUserRegistration();
+    }
+  }, [isAuthenticated, event?.id]); // Only depend on event.id to avoid infinite re-renders
 
   // Fetch related events
   useEffect(() => {
@@ -474,10 +578,7 @@ const EventDetail: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500 font-medium">Price</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {event.harga_tiket && event.harga_tiket > 0 
-                      ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}` 
-                      : 'Free'
-                    }
+                    <EventPriceDisplay eventId={event.id} />
                   </p>
                 </div>
               </div>
@@ -501,16 +602,41 @@ const EventDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Buy Ticket Button */}
-            <button
-              onClick={handleRegister}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              {isAuthenticated ? 
-                (event.harga_tiket && event.harga_tiket > 0 ? 'Buy Ticket' : 'Register Free') : 
-                'Login to Register'
-              }
-            </button>
+            {/* Buy Ticket Button or E-Ticket Button */}
+            {checkingRegistration ? (
+              <button
+                disabled
+                className="w-full bg-gray-400 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg cursor-not-allowed"
+              >
+                Checking Registration...
+              </button>
+            ) : userRegistration ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate(`/transaksi/${userRegistration.id}/eticket`)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <FiDownload className="w-5 h-5" />
+                  Download E-Tiket
+                </button>
+                <button
+                  onClick={() => navigate(`/transaksi/${userRegistration.id}`)}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-medium text-base transition-all duration-200"
+                >
+                  Lihat Detail Transaksi
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleRegister}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                {isAuthenticated ? 
+                  (event.harga_tiket && event.harga_tiket > 0 ? 'Buy Ticket' : 'Register Free') : 
+                  'Login to Register'
+                }
+              </button>
+            )}
           </div>
         </div>
 
@@ -680,9 +806,7 @@ const EventDetail: React.FC = () => {
                       }) : (event.date || 'Tanggal akan diumumkan')}
                     </p>
                     <p className="text-sm font-semibold text-gray-900">
-                      {event.harga_tiket && event.harga_tiket > 0 
-                        ? `Rp ${event.harga_tiket.toLocaleString('id-ID')}` 
-                        : (event.price || 'Gratis')}
+                      <EventPriceDisplay eventId={event.id} />
                     </p>
                   </div>
                 </div>

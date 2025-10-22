@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiClock, FiUser, FiMail, FiCalendar, FiCreditCard, FiCheck, FiArrowLeft, FiArrowRight, FiInfo, FiMapPin } from 'react-icons/fi';
+import { FiClock, FiCheck, FiArrowLeft, FiInfo, FiDownload, FiMail, FiCalendar, FiMapPin } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import PublicHeader from '../components/PublicHeader';
+import Invoice from '../components/Invoice';
+import ETicket from '../components/ETicket';
+import { EmailService, type EmailTicketData } from '../services/emailService';
+import { QRCodeService, type TicketQRData } from '../services/qrCodeService';
 
 interface TicketCategory {
   id: number;
@@ -39,6 +43,9 @@ const TicketBookingPage: React.FC = () => {
   
   const [step, setStep] = useState<'categories' | 'participant' | 'payment' | 'success'>('categories');
   const [registrationResult, setRegistrationResult] = useState<any>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [showETicket, setShowETicket] = useState(false);
+  const [ticketQRCode, setTicketQRCode] = useState<string>('');
   const [event, setEvent] = useState<EventData | null>(null);
   const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<TicketCategory | null>(null);
@@ -50,6 +57,53 @@ const TicketBookingPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Generate QR Code for ticket
+  const generateTicketQR = async (registrationData: any) => {
+    try {
+      const qrData: TicketQRData = {
+        ticketId: registrationData.id || registrationData.ticket_id,
+        ticketNumber: registrationData.ticket_number || `TKT-${Date.now()}`,
+        participantName: participantData.nama_peserta,
+        participantEmail: participantData.email_peserta,
+        eventTitle: event?.judul || '',
+        eventDate: event?.tanggal_mulai || '',
+        ticketCategory: selectedCategory?.nama_kategori || '',
+        timestamp: new Date().toISOString()
+      };
+
+      const qrCode = await QRCodeService.generateTicketQR(qrData);
+      setTicketQRCode(qrCode);
+      return qrCode;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return null;
+    }
+  };
+
+  // Send e-ticket via email
+  const sendETicketEmail = async (registrationData: any) => {
+    try {
+      const emailData: EmailTicketData = {
+        participantName: participantData.nama_peserta,
+        participantEmail: participantData.email_peserta,
+        eventTitle: event?.judul || '',
+        eventDate: event?.tanggal_mulai || '',
+        eventTime: `${event?.waktu_mulai} - ${event?.waktu_selesai}` || '',
+        eventLocation: event?.lokasi || '',
+        ticketCategory: selectedCategory?.nama_kategori || '',
+        ticketPrice: selectedCategory?.harga || 0,
+        ticketNumber: registrationData.ticket_number || `TKT-${Date.now()}`,
+        ticketId: registrationData.id || registrationData.ticket_id,
+        organizerName: 'KOMUJI Event Platform'
+      };
+
+      await EmailService.sendETicket(emailData);
+      console.log('E-ticket sent successfully');
+    } catch (error) {
+      console.error('Error sending e-ticket:', error);
+    }
+  };
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const [paymentMethod, setPaymentMethod] = useState<string>('');
 
@@ -157,9 +211,14 @@ const TicketBookingPage: React.FC = () => {
   };
 
   const handleCategorySelect = (category: TicketCategory) => {
-    setSelectedCategory(category);
-    setStep('participant');
+    // Toggle selection: if same category clicked, deselect it
+    if (selectedCategory?.id === category.id) {
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(category);
+    }
   };
+
 
   const handleParticipantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,9 +259,7 @@ const TicketBookingPage: React.FC = () => {
         jenis_kelamin: participantData.jenis_kelamin,
         tanggal_lahir: participantData.tanggal_lahir,
         email_peserta: participantData.email_peserta,
-        total_harga: selectedCategory?.harga || 0,
-        payment_status: selectedCategory?.harga === 0 ? 'paid' : 'pending', // Gratis langsung paid
-        payment_method: selectedCategory?.harga === 0 ? 'free' : paymentMethod
+        payment_method: selectedCategory?.harga === 0 ? 'free' : (paymentMethod || 'free')
       };
 
       console.log('Sending registration data:', registrationData);
@@ -219,17 +276,24 @@ const TicketBookingPage: React.FC = () => {
 
       const data = await response.json();
       console.log('Registration response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Pendaftaran gagal');
+      
+      if (response.ok) {
+        console.log('Registration successful:', data);
+        setRegistrationResult(data);
+        
+        // Generate QR Code for ticket
+        await generateTicketQR(data);
+        
+        // Send e-ticket via email
+        await sendETicketEmail(data);
+        
+        setStep('success');
+      } else {
+        throw new Error(data.message || 'Registration failed');
       }
-
-      // Simpan hasil registrasi untuk ditampilkan di invoice
-      setRegistrationResult(data);
-      setStep('success');
-    } catch (err) {
-      console.error('Registration error:', err);
-      setError(err instanceof Error ? err.message : 'Pendaftaran gagal. Silakan coba lagi.');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('Gagal melakukan pendaftaran. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -283,23 +347,33 @@ const TicketBookingPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
       
-      <div className="pt-20 pb-12">
-        <div className="max-w-6xl mx-auto px-6">
+      <div className="pt-24 pb-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
-            <button
-              onClick={() => navigate(`/events/${eventId}`)}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-            >
-              <FiArrowLeft size={20} />
-              <span>Kembali ke Detail Event</span>
-            </button>
+            <div className="mb-6">
+              <button
+                onClick={() => navigate(`/events/${eventId}`)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium text-sm border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md"
+              >
+                <FiArrowLeft size={18} />
+                <span>Kembali ke Detail Event</span>
+              </button>
+            </div>
             
-            <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Beli Tiket</h1>
-                  <p className="text-gray-600 mt-1">{event?.judul}</p>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-1">Beli Tiket</h1>
+                  <p className="text-gray-600 text-lg font-medium">{event?.judul}</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      day: 'numeric', 
+                      month: 'long',
+                      year: 'numeric'
+                    }) : 'Tanggal akan diumumkan'} • {event?.lokasi}
+                  </p>
                 </div>
                 
                 {/* Timer */}
@@ -341,13 +415,17 @@ const TicketBookingPage: React.FC = () => {
                       {ticketCategories.map((category) => {
                       const isAvailable = category.is_active && category.terjual < category.kuota;
                       
+                      const isSelected = selectedCategory?.id === category.id;
+                      
                       return (
                         <div
                           key={category.id}
                           className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                            isAvailable
-                              ? 'border-gray-200 hover:border-blue-300'
-                              : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                            !isAvailable
+                              ? 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                              : isSelected
+                                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                                : 'border-gray-200 hover:border-blue-300'
                           }`}
                           onClick={() => {
                             if (isAvailable) {
@@ -370,25 +448,15 @@ const TicketBookingPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Quantity Selector */}
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                            <span className="text-sm text-gray-500">
-                              This ticket is personal and can be exchanged for an FDC.
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <button 
-                                className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                −
-                              </button>
-                              <span className="w-8 text-center">1</span>
-                              <button 
-                                className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                +
-                              </button>
+                          {/* Ticket Info */}
+                          <div className="mt-3 pt-3 border-t">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-500">
+                                Tiket personal, dapat ditukar dengan sertifikat
+                              </span>
+                              <span className="text-sm font-medium text-green-600">
+                                Tersedia: {category.kuota - category.terjual} tiket
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -401,120 +469,117 @@ const TicketBookingPage: React.FC = () => {
 
               {/* Step 2: Participant Data */}
               {step === 'participant' && selectedCategory && (
-                <div className="space-y-6">
-                  {/* Detail Pembeli Section */}
-                  <div className="bg-white rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-gray-900">Detail Pembeli</h2>
-                      <button className="text-blue-600 text-sm hover:underline">Ubah Data</button>
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  {/* Header Section */}
+                  <div className="mb-6 pb-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold">2</span>
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-gray-900">Data Peserta</h2>
+                        <p className="text-gray-600 text-sm">Lengkapi informasi peserta event</p>
+                      </div>
                     </div>
                     
-                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                      <div className="text-sm font-medium text-gray-900">{user?.name || 'Arievan 123'}</div>
-                      <div className="text-sm text-gray-600">{user?.email || 'arievan920@gmail.com'}</div>
-                      <div className="flex items-center mt-2 text-sm text-blue-600">
-                        <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                        E-Tiket akan dikirim ke email ini
+                    {/* Selected Ticket Info */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-sm font-medium text-blue-900">Tiket {selectedCategory.nama_kategori}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-blue-600">
+                          {selectedCategory.harga === 0 ? 'Gratis' : `Rp ${selectedCategory.harga.toLocaleString('id-ID')}`}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Pengunjung Section */}
-                  <div className="bg-white rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 bg-green-100 text-green-600 rounded text-sm flex items-center justify-center font-medium">1</span>
-                        <h3 className="text-lg font-semibold text-gray-900">Pengunjung 1</h3>
-                      </div>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" className="rounded" defaultChecked />
-                        Sama dengan detail pembeli
-                      </label>
-                    </div>
-
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-600 mb-1">Kategori Tiket</div>
-                      <div className="font-medium text-gray-900">{selectedCategory.nama_kategori}</div>
-                    </div>
-
-                    <form onSubmit={handleParticipantSubmit} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nama Lengkap
+                  <form onSubmit={handleParticipantSubmit} className="space-y-6">
+                    {/* Form Fields Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Nama Lengkap */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Nama Lengkap <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
                           value={participantData.nama_peserta}
                           onChange={(e) => setParticipantData({ ...participantData, nama_peserta: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Masukkan nama lengkap"
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                          placeholder="Masukkan nama lengkap sesuai identitas"
                           required
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email
+                      {/* Email */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Email <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="email"
                           value={participantData.email_peserta}
                           onChange={(e) => setParticipantData({ ...participantData, email_peserta: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Masukkan email"
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                          placeholder="contoh@email.com"
                           required
                         />
+                        <p className="text-xs text-gray-500 mt-1">E-tiket akan dikirim ke email ini</p>
                       </div>
 
+                      {/* Tanggal Lahir */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tanggal Lahir *
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Tanggal Lahir <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="date"
                           value={participantData.tanggal_lahir}
                           onChange={(e) => setParticipantData({ ...participantData, tanggal_lahir: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
                           required
                         />
                       </div>
 
+                      {/* Jenis Kelamin */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Jenis Kelamin
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Jenis Kelamin <span className="text-red-500">*</span>
                         </label>
-                        <div className="flex gap-6">
-                          <label className="flex items-center">
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors bg-gray-50 hover:bg-blue-50">
                             <input
                               type="radio"
                               value="L"
                               checked={participantData.jenis_kelamin === 'L'}
                               onChange={(e) => setParticipantData({ ...participantData, jenis_kelamin: e.target.value as 'L' | 'P' })}
-                              className="mr-2 text-blue-600"
+                              className="mr-3 text-blue-600"
                             />
-                            <span className="flex items-center gap-1">
-                              <span className="text-blue-500">♂</span>
-                              Laki - Laki
+                            <span className="font-medium text-gray-700">
+                              Laki-laki
                             </span>
                           </label>
-                          <label className="flex items-center">
+                          <label className="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 transition-colors bg-gray-50 hover:bg-pink-50">
                             <input
                               type="radio"
                               value="P"
                               checked={participantData.jenis_kelamin === 'P'}
                               onChange={(e) => setParticipantData({ ...participantData, jenis_kelamin: e.target.value as 'L' | 'P' })}
-                              className="mr-2 text-blue-600"
+                              className="mr-3 text-pink-600"
                             />
-                            <span className="flex items-center gap-1">
-                              <span className="text-pink-500">♀</span>
+                            <span className="font-medium text-gray-700">
                               Perempuan
                             </span>
                           </label>
                         </div>
                       </div>
+                    </div>
 
-                    </form>
-                  </div>
+
+                  </form>
                 </div>
               )}
 
@@ -558,25 +623,25 @@ const TicketBookingPage: React.FC = () => {
 
               {/* Step 4: Success - Invoice/E-Ticket */}
               {step === 'success' && registrationResult && (
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  {/* Header Success */}
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+                  {/* Clean Success Header */}
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FiCheck className="text-green-600" size={32} />
+                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FiCheck className="text-white" size={24} />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      {selectedCategory?.harga === 0 ? 'Pendaftaran Berhasil!' : 'Invoice Dibuat!'}
+                      {selectedCategory?.harga === 0 ? 'Pendaftaran Berhasil' : 'Invoice Dibuat'}
                     </h2>
                     <p className="text-gray-600">
                       {selectedCategory?.harga === 0 
-                        ? 'E-ticket Anda telah berhasil dibuat'
-                        : 'Silakan lakukan pembayaran untuk mengaktifkan tiket'
+                        ? 'E-ticket telah dikirim ke email Anda'
+                        : 'Silakan lakukan pembayaran'
                       }
                     </p>
                   </div>
 
-                  {/* Invoice/Ticket Details */}
-                  <div className="border rounded-lg p-6 mb-6">
+                  {/* Clean Ticket Details */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
                     <div className="flex justify-between items-start mb-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">
@@ -595,15 +660,24 @@ const TicketBookingPage: React.FC = () => {
                     {/* Event Info */}
                     <div className="border-t border-b py-4 mb-4">
                       <h4 className="font-medium text-gray-900 mb-2">{event?.judul}</h4>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>📅 {event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', { 
-                          weekday: 'long',
-                          day: 'numeric', 
-                          month: 'long', 
-                          year: 'numeric' 
-                        }) : 'TBA'}</p>
-                        <p>🕐 {event?.waktu_mulai} - {event?.waktu_selesai}</p>
-                        <p>📍 {event?.lokasi}</p>
+                      <div className="text-sm text-gray-600 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <FiCalendar size={14} className="text-gray-400" />
+                          <span>{event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', { 
+                            weekday: 'long',
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          }) : 'TBA'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiClock size={14} className="text-gray-400" />
+                          <span>{event?.waktu_mulai} - {event?.waktu_selesai}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FiMapPin size={14} className="text-gray-400" />
+                          <span>{event?.lokasi}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -629,37 +703,67 @@ const TicketBookingPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* QR Code */}
-                    <div className="text-center py-6 border-t">
-                      <p className="text-sm text-gray-600 mb-4">QR Code untuk Check-in</p>
-                      <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-                        <div className="w-32 h-32 bg-gray-900 flex items-center justify-center text-white text-xs">
-                          QR CODE
-                          <br />
-                          {registrationResult.data?.kode_pendaftaran?.slice(-6) || '123456'}
-                        </div>
+                    {/* QR Code - Minimalist */}
+                    <div className="text-center py-6 border-t border-gray-200">
+                      <p className="text-sm text-gray-600 mb-4">QR Code Check-in</p>
+                      
+                      <div className="inline-block p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(JSON.stringify({
+                            ticketId: registrationResult.data?.id || 'TKT-' + Date.now(),
+                            ticketNumber: registrationResult.data?.kode_pendaftaran || 'REG-' + Date.now(),
+                            participantName: participantData.nama_peserta,
+                            participantEmail: participantData.email_peserta,
+                            eventTitle: event?.judul || 'Event',
+                            eventDate: event?.tanggal_mulai || new Date().toISOString().split('T')[0],
+                            ticketCategory: selectedCategory?.nama_kategori || 'Regular',
+                            timestamp: new Date().toISOString()
+                          }))}`}
+                          alt="QR Code" 
+                          className="w-40 h-40 rounded-xl shadow-lg"
+                          onError={(e) => {
+                            // Fallback to placeholder if QR API fails
+                            const target = e.target as HTMLImageElement;
+                            target.outerHTML = `
+                              <div class="w-40 h-40 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex flex-col items-center justify-center text-white shadow-inner">
+                                <div class="text-xs font-bold mb-2">QR CODE</div>
+                                <div class="text-2xl font-mono font-bold">${(registrationResult.data?.kode_pendaftaran || '123456').slice(-6)}</div>
+                                <div class="text-xs mt-2 opacity-75">SCAN ME</div>
+                              </div>
+                            `;
+                          }}
+                        />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Tunjukkan QR code ini saat check-in di lokasi event
+                      
+                      <p className="text-xs text-gray-500 mt-3">
+                        Tunjukkan QR code ini saat check-in
                       </p>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-4">
+                  {/* Simple Action Buttons */}
+                  <div className="flex gap-3 pt-4">
                     <button
-                      onClick={() => window.print()}
-                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      onClick={() => setShowETicket(true)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
-                      📄 Cetak {selectedCategory?.harga === 0 ? 'E-Ticket' : 'Invoice'}
+                      <FiDownload size={18} />
+                      E-Ticket
                     </button>
                     <button
-                      onClick={() => navigate(`/events/${eventId}`)}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                      onClick={() => setShowInvoice(true)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-medium"
                     >
-                      Kembali ke Event
+                      <FiMail size={18} />
+                      Invoice
                     </button>
                   </div>
+                  <button
+                    onClick={() => navigate(`/events/${eventId}`)}
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium mt-3"
+                  >
+                    Kembali ke Event
+                  </button>
                 </div>
               )}
             </div>
@@ -713,30 +817,24 @@ const TicketBookingPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Ticket Details */}
-                <div className="mb-6 pb-4 border-b border-gray-100">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm font-medium text-gray-700">1 Tiket Dipesan</span>
-                    <button className="text-blue-600 text-sm hover:underline font-medium">Lihat Detail</button>
-                  </div>
-                  
-                  {selectedCategory && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="text-sm font-medium text-gray-900 mb-1">
-                        {selectedCategory.nama_kategori}
-                      </div>
-                      <div className="text-xs text-gray-600 mb-2">
-                        {selectedCategory.deskripsi}
-                      </div>
+                {/* Selected Ticket */}
+                {selectedCategory && (
+                  <div className="mb-6 pb-4 border-b border-gray-200">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">1x tiket</span>
-                        <span className="text-sm font-semibold text-gray-900">
-                          {selectedCategory.harga === 0 ? 'Gratis' : `Rp ${selectedCategory.harga.toLocaleString('id-ID')}`}
-                        </span>
+                        <div className="flex-1 pr-3">
+                          <h4 className="text-base font-semibold text-gray-900 mb-1">{selectedCategory.nama_kategori}</h4>
+                          <p className="text-xs text-gray-600 leading-normal">{selectedCategory.deskripsi}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-base font-bold text-gray-900">
+                            {selectedCategory.harga === 0 ? 'Gratis' : `Rp ${selectedCategory.harga.toLocaleString('id-ID')}`}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
                 {/* Price Breakdown */}
                 <div className="mb-6 pb-4 border-b border-gray-100 space-y-3">
@@ -828,6 +926,86 @@ const TicketBookingPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Invoice Modal */}
+    {showInvoice && registrationResult && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Invoice</h2>
+            <button
+              onClick={() => setShowInvoice(false)}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="p-4">
+            <Invoice
+              data={{
+                id: registrationResult.data?.id || registrationResult.id,
+                eventTitle: event?.judul || '',
+                eventDate: event?.tanggal_mulai || '',
+                eventTime: `${event?.waktu_mulai} - ${event?.waktu_selesai}`,
+                eventLocation: event?.lokasi || '',
+                participantName: participantData.nama_peserta,
+                participantEmail: participantData.email_peserta,
+                ticketCategory: selectedCategory?.nama_kategori || '',
+                ticketPrice: selectedCategory?.harga || 0,
+                registrationDate: new Date().toISOString(),
+                invoiceNumber: `INV-${registrationResult.data?.kode_pendaftaran || Date.now()}`,
+                qrCode: ticketQRCode
+              }}
+              onPrint={() => window.print()}
+            />
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* E-Ticket Modal */}
+    {showETicket && registrationResult && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h2 className="text-xl font-semibold">E-Ticket</h2>
+            <button
+              onClick={() => setShowETicket(false)}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="p-4">
+            <ETicket
+              data={{
+                id: registrationResult.data?.id || registrationResult.id,
+                ticketNumber: registrationResult.data?.kode_pendaftaran || `TKT-${Date.now()}`,
+                eventTitle: event?.judul || '',
+                eventDate: event?.tanggal_mulai || '',
+                eventTime: `${event?.waktu_mulai} - ${event?.waktu_selesai}`,
+                eventLocation: event?.lokasi || '',
+                participantName: participantData.nama_peserta,
+                participantEmail: participantData.email_peserta,
+                ticketCategory: selectedCategory?.nama_kategori || '',
+                ticketPrice: selectedCategory?.harga || 0,
+                registrationDate: new Date().toISOString(),
+                eventImage: event?.image || (event?.flyer_path ? `http://localhost:8000/storage/${event.flyer_path}` : undefined)
+              }}
+              onShare={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: `E-Ticket: ${event?.judul || 'Event'}`,
+                    text: `Tiket untuk event ${event?.judul || 'Event'}`,
+                    url: window.location.href
+                  });
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };

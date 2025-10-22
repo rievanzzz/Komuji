@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
-import { SignIn, SignUp, Events, Profile, History, EventDetail } from './pages';
+import { SignIn, SignUp, Events, Profile, EventDetail } from './pages';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Transaksi from './pages/Transaksi';
+import TransactionDetail from './pages/TransactionDetail';
+import ETicket from './pages/ETicket';
 import EventHistory from './pages/EventHistory';
-import TransactionHistory from './pages/TransactionHistory';
 import OrganizerLogin from './pages/OrganizerLogin';
 import TicketBookingPage from './pages/TicketBooking';
 import { AuthProvider } from './contexts/AuthContext';
@@ -13,12 +15,14 @@ import { Dashboard, EventManagementFixed, Participants, Tickets, Finance, Settin
 import ParticipantsNew from './organizer/pages/ParticipantsNew';
 import OrganizerEventDetail from './organizer/pages/EventDetail';
 import { ProtectedOrganizerRoute, ErrorBoundary } from './components';
+import TestPage from './TestPage';
 
 const AppRouter = () => {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/test" element={<TestPage />} />
           <Route path="/" element={<App />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
@@ -29,9 +33,11 @@ const AppRouter = () => {
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/events/:eventId/book" element={<TicketBookingPage />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/history" element={<History />} />
+          <Route path="/history" element={<Transaksi />} />
+          <Route path="/transaksi" element={<Transaksi />} />
+          <Route path="/transaksi/:id" element={<TransactionDetail />} />
+          <Route path="/transaksi/:id/eticket" element={<ETicket />} />
           <Route path="/history/events" element={<EventHistory />} />
-          <Route path="/history/transactions" element={<TransactionHistory />} />
           
           {/* Organizer Routes - Protected */}
           <Route path="/organizer" element={<ProtectedOrganizerRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedOrganizerRoute>} />

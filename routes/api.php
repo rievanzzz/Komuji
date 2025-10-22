@@ -91,11 +91,18 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         });
     });
 
+    // Event registration - available for all authenticated users
+    Route::post('/events/{event}/register', [RegistrationController::class, 'register']);
+    Route::get('/my-registrations', [RegistrationController::class, 'myRegistrations']);
+    
+    // Email service endpoints
+    Route::post('/send-eticket', [RegistrationController::class, 'sendETicket']);
+    Route::post('/send-confirmation', [RegistrationController::class, 'sendConfirmation']);
+    Route::post('/send-reminder', [RegistrationController::class, 'sendReminder']);
+    Route::post('/send-invoice', [RegistrationController::class, 'sendInvoice']);
+
     // Peserta routes
     Route::middleware('role:peserta')->group(function () {
-        // Event registration
-        Route::get('/my-registrations', [RegistrationController::class, 'myRegistrations']);
-        Route::post('/events/{event}/register', [RegistrationController::class, 'register']);
 
         // Registration management
         Route::delete('/registrations/{registration}/cancel', [RegistrationController::class, 'cancelRegistration']);

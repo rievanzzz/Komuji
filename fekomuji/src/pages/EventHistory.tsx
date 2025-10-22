@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiMapPin, FiCheckCircle, FiXCircle, FiAlertCircle, FiDownload, FiAward, FiSearch, FiX } from 'react-icons/fi';
+import { FiCalendar, FiMapPin, FiCheckCircle, FiXCircle, FiAlertCircle, FiDownload, FiSearch, FiX } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
@@ -9,9 +9,15 @@ interface EventRegistration {
   id: number;
   user_id: number;
   event_id: number;
-  status: 'approved' | 'pending' | 'rejected';
+  ticket_category_id: number;
+  nama_peserta: string;
+  jenis_kelamin: string;
+  tanggal_lahir: string;
+  email_peserta: string;
   kode_pendaftaran: string;
-  alasan_ditolak?: string;
+  payment_status: 'paid' | 'pending' | 'failed';
+  payment_method?: string;
+  total_harga: number;
   created_at: string;
   updated_at: string;
   event: {
@@ -24,22 +30,14 @@ interface EventRegistration {
     waktu_selesai: string;
     lokasi: string;
     flyer_path?: string;
+    image?: string;
     kuota: number;
     terdaftar: number;
   };
-  attendance?: {
+  ticket_category?: {
     id: number;
-    registration_id: number;
-    token: string;
-    waktu_hadir?: string;
-    is_verified: boolean;
-  };
-  certificate?: {
-    id: number;
-    registration_id: number;
-    nomor_sertifikat: string;
-    file_path: string;
-    generated_at: string;
+    nama_kategori: string;
+    harga: number;
   };
 }
 
@@ -47,7 +45,7 @@ const EventHistory: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [selectedTicket, setSelectedTicket] = useState<EventRegistration | null>(null);
@@ -68,7 +66,7 @@ const EventHistory: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/user/registrations', {
+      const response = await fetch('http://localhost:8000/api/registrations', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -97,33 +95,33 @@ const EventHistory: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'text-green-600 bg-green-50 border-green-200';
+      case 'paid': return 'text-green-600 bg-green-50 border-green-200';
       case 'pending': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'rejected': return 'text-red-600 bg-red-50 border-red-200';
+      case 'failed': return 'text-red-600 bg-red-50 border-red-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <FiCheckCircle className="w-4 h-4" />;
+      case 'paid': return <FiCheckCircle className="w-4 h-4" />;
       case 'pending': return <FiAlertCircle className="w-4 h-4" />;
-      case 'rejected': return <FiXCircle className="w-4 h-4" />;
+      case 'failed': return <FiXCircle className="w-4 h-4" />;
       default: return <FiAlertCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'approved': return 'Disetujui';
-      case 'pending': return 'Menunggu';
-      case 'rejected': return 'Ditolak';
+      case 'paid': return 'Payment Success';
+      case 'pending': return 'Pending';
+      case 'failed': return 'Failed';
       default: return 'Unknown';
     }
   };
 
   const filteredRegistrations = registrations.filter(reg => {
-    const matchesFilter = filter === 'all' || reg.status === filter;
+    const matchesFilter = filter === 'all' || reg.payment_status === filter;
     const matchesSearch = reg.event.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reg.event.lokasi.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -370,9 +368,9 @@ const EventHistory: React.FC = () => {
 
                     {/* Status and Actions */}
                     <div className="flex items-center gap-4">
-                      <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(registration.status)}`}>
-                        {getStatusIcon(registration.status)}
-                        {getStatusText(registration.status)}
+                      <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(registration.payment_status)}`}>
+                        {getStatusIcon(registration.payment_status)}
+                        {getStatusText(registration.payment_status)}
                       </div>
                       
                       <div className="flex gap-2">
@@ -386,14 +384,7 @@ const EventHistory: React.FC = () => {
                           Lihat E-Tiket
                         </button>
                         
-                        {registration.certificate && (
-                          <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                            <FiAward className="w-4 h-4 inline mr-1" />
-                            Sertifikat
-                          </button>
-                        )}
-                        
-                        {registration.status === 'approved' && registration.attendance && (
+                        {registration.payment_status === 'paid' && (
                           <button 
                             onClick={() => downloadTicket(registration)}
                             className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
@@ -504,18 +495,13 @@ const EventHistory: React.FC = () => {
                 <div className="font-mono text-lg font-bold text-blue-600">{selectedTicket.kode_pendaftaran}</div>
               </div>
 
-              {selectedTicket.attendance && (
-                <div>
-                  <label className="text-sm text-gray-500">Status Kehadiran</label>
-                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    selectedTicket.attendance.is_verified 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {selectedTicket.attendance.is_verified ? 'Sudah Absen' : 'Belum Absen'}
-                  </div>
+              <div>
+                <label className="text-sm text-gray-500">Status Pembayaran</label>
+                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.payment_status)}`}>
+                  {getStatusIcon(selectedTicket.payment_status)}
+                  {getStatusText(selectedTicket.payment_status)}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -525,9 +511,9 @@ const EventHistory: React.FC = () => {
               >
                 Download Tiket
               </button>
-              {selectedTicket.attendance && (
+              {selectedTicket.payment_status === 'paid' && (
                 <button className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                  Absen Sekarang
+                  Lihat E-Ticket
                 </button>
               )}
             </div>

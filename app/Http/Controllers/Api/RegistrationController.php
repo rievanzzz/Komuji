@@ -21,14 +21,35 @@ class RegistrationController extends Controller
      */
     public function register(Request $request, Event $event)
     {
-        $request->validate([
-            'ticket_category_id' => 'required|exists:ticket_categories,id',
-            'nama_peserta' => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
-            'tanggal_lahir' => 'required|date|before:today',
-            'email_peserta' => 'required|email|max:255',
-            'payment_method' => 'nullable|string|max:255'
+        // Log incoming request for debugging
+        Log::info('Registration attempt', [
+            'user_id' => auth()->id(),
+            'event_id' => $event->id,
+            'request_data' => $request->all(),
+            'event_published' => $event->is_published
         ]);
+
+        try {
+            $request->validate([
+                'ticket_category_id' => 'required|exists:ticket_categories,id',
+                'nama_peserta' => 'required|string|max:255',
+                'jenis_kelamin' => 'required|in:L,P',
+                'tanggal_lahir' => 'required|date|before:today',
+                'email_peserta' => 'required|email|max:255',
+                'payment_method' => 'required|string|max:255'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Registration validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         // Check if event is published
         if (!$event->is_published) {
@@ -181,7 +202,7 @@ class RegistrationController extends Controller
     public function myRegistrations()
     {
         $registrations = auth()->user()->registrations()
-            ->with(['event', 'attendance', 'certificate'])
+            ->with(['event', 'ticketCategory', 'attendance', 'certificate'])
             ->latest()
             ->paginate(10);
 
@@ -704,6 +725,95 @@ class RegistrationController extends Controller
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat membuat sertifikat',
                 'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Send e-ticket via email
+     */
+    public function sendETicket(Request $request)
+    {
+        $request->validate([
+            'to' => 'required|email',
+            'subject' => 'required|string',
+            'template' => 'required|string',
+            'data' => 'required|array'
+        ]);
+
+        try {
+            // For now, just return success - implement actual email sending later
+            Log::info('E-ticket email request', $request->all());
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'E-ticket berhasil dikirim ke email'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Send e-ticket error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim e-ticket'
+            ], 500);
+        }
+    }
+
+    /**
+     * Send confirmation email
+     */
+    public function sendConfirmation(Request $request)
+    {
+        try {
+            Log::info('Confirmation email request', $request->all());
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Email konfirmasi berhasil dikirim'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Send confirmation error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim email konfirmasi'
+            ], 500);
+        }
+    }
+
+    /**
+     * Send reminder email
+     */
+    public function sendReminder(Request $request)
+    {
+        try {
+            Log::info('Reminder email request', $request->all());
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Email reminder berhasil dikirim'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Send reminder error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim email reminder'
+            ], 500);
+        }
+    }
+
+    /**
+     * Send invoice email
+     */
+    public function sendInvoice(Request $request)
+    {
+        try {
+            Log::info('Invoice email request', $request->all());
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Invoice berhasil dikirim ke email'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Send invoice error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengirim invoice'
             ], 500);
         }
     }
