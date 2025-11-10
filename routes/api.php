@@ -3,10 +3,15 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\Admin\PanitiaController as AdminPanitiaController;
+use App\Http\Controllers\Api\Admin\TransactionController as AdminTransactionController;
+use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\TicketCategoryController;
-use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\PanitiaUpgradeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,8 +47,20 @@ Route::get('/test', function () {
 
 // Authentication routes
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register-panitia', [AuthController::class, 'registerPanitia']);
+Route::get('/registration-options', [AuthController::class, 'getRegistrationOptions']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLink']);
+Route::get('/reset-password/{token}', function ($token) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Silakan gunakan token ini untuk mereset password',
+        'token' => $token
+    ]);
+})->name('password.reset');
+Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset']);
 
 // Public event routes
 Route::get('/events', [EventController::class, 'index']);
@@ -54,12 +71,17 @@ Route::get('/events/{event}/ticket-categories', [TicketCategoryController::class
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // User routes
     Route::get('/user', [UserController::class, 'profile']);
-    Route::get('/profile', [UserController::class, 'profile']); // Alternative endpoint
-    Route::get('/user/profile', [UserController::class, 'profile']); // Alternative endpoint
-    Route::get('/me', [UserController::class, 'profile']); // Alternative endpoint
+    Route::get('/profile', [UserController::class, 'profile']); 
+    Route::get('/me', [UserController::class, 'profile']); 
+    Route::get('/user/profile', [UserController::class, 'profile']); 
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
-    Route::put('/profile', [UserController::class, 'updateProfile']); // Alternative endpoint
+    Route::put('/profile', [UserController::class, 'updateProfile']); 
     Route::post('/user/change-password', [UserController::class, 'changePassword']);
+
+    // Panitia upgrade routes
+    Route::get('/upgrade/check-eligibility', [PanitiaUpgradeController::class, 'checkEligibility']);
+    Route::get('/upgrade/status', [PanitiaUpgradeController::class, 'getStatus']);
+    Route::post('/upgrade/to-panitia', [PanitiaUpgradeController::class, 'upgrade']); 
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -118,11 +140,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/registrations/{registration}/certificate', [RegistrationController::class, 'generateCertificate']);
     });
 
-    // Panitia routes - allow both panitia and admin
-    Route::middleware('role:panitia,admin')->group(function () {
+    // Panitia routes - with business logic checks
+    Route::middleware(['role:panitia,admin', 'panitia.status', 'panitia.limits'])->group(function () {
         // Event management
-        Route::post('/events', [EventController::class, 'store']);
-        Route::put('/events/{event}', [EventController::class, 'update']);
+        Route::post('/events', [EventController::class, 'store'])
+            ->middleware('check.creation.time');
+        Route::put('/events/{event}', [EventController::class, 'update'])
+            ->middleware('check.creation.time');
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
 
         // Ticket category management
@@ -170,4 +194,31 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
         return response()->json($data);
     });
+
+    // Admin routes
+    Route::middleware('admin.only')->prefix('admin')->group(function () {
+        // Panitia management
+        Route::get('/panitias', [AdminPanitiaController::class, 'index']);
+        Route::get('/panitias/pending', [AdminPanitiaController::class, 'pending']);
+        Route::get('/panitias/stats', [AdminPanitiaController::class, 'stats']);
+        Route::post('/panitias/{id}/approve', [AdminPanitiaController::class, 'approve']);
+        Route::post('/panitias/{id}/reject', [AdminPanitiaController::class, 'reject']);
+        Route::post('/panitias/{id}/suspend', [AdminPanitiaController::class, 'suspend']);
+
+        // Transaction management
+        Route::get('/transactions', [AdminTransactionController::class, 'index']);
+        Route::get('/transactions/stats', [AdminTransactionController::class, 'stats']);
+        Route::get('/transactions/{id}', [AdminTransactionController::class, 'show']);
+        Route::get('/transactions/export', [AdminTransactionController::class, 'export']);
+
+        // Settings management
+        Route::get('/settings', [AdminSettingController::class, 'index']);
+        Route::get('/settings/business', [AdminSettingController::class, 'business']);
+        Route::put('/settings/{key}', [AdminSettingController::class, 'update']);
+        Route::post('/settings/batch', [AdminSettingController::class, 'updateBatch']);
+        Route::post('/settings/reset', [AdminSettingController::class, 'reset']);
+    });
+
+    // Public settings (accessible by all authenticated users)
+    Route::get('/settings/public', [AdminSettingController::class, 'public']);
 });

@@ -582,8 +582,22 @@ const SignUp = () => {
               className="w-80 space-y-4"
             >
               <div className="text-center mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Atau daftar dengan</h3>
-                <p className="text-sm text-gray-600">Pilih salah satu opsi di bawah untuk mendaftar dengan cepat</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Pilihan Pendaftaran</h3>
+                <p className="text-sm text-gray-600">Pilih jenis akun yang ingin Anda buat</p>
+              </div>
+              
+              <Link 
+                to="/signup-panitia"
+                className="w-full flex items-center justify-center px-6 py-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all duration-200 text-sm shadow-sm mb-4"
+              >
+                <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                Daftar Sebagai Panitia Event
+              </Link>
+              
+              <div className="text-center mb-4">
+                <span className="text-sm text-gray-500">atau</span>
               </div>
               
               <button className="w-full flex items-center justify-center px-6 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm shadow-sm">

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\PanitiaProfile;
+use App\Models\Setting;
+use App\Models\Notification;
 use App\Notifications\SendOtpNotification;
 use App\Notifications\VerifyEmailNotification;
 use App\Notifications\ResetPasswordNotification;
@@ -287,5 +290,175 @@ class AuthController extends Controller
         return $status == Password::PASSWORD_RESET
             ? response()->json(['message' => 'Password berhasil direset. Silakan login dengan password baru.'], 200)
             : response()->json(['message' => 'Gagal mereset password. Token tidak valid atau sudah kadaluwarsa.'], 400);
+    }
+
+    // ========================
+    // Register Panitia (Event Organizer)
+    // ========================
+    public function registerPanitia(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users',
+            'no_handphone' => 'required|string|max:20',
+            'alamat' => 'required|string',
+            'pendidikan_terakhir' => 'required|in:SD/MI,SMP/MTS,SMA/SMK,Diploma,Sarjana,Lainnya',
+            'password' => [
+                'required',
+                'confirmed',
+                'min:8',
+                'regex:/[A-Z]/',      // huruf besar
+                'regex:/[a-z]/',      // huruf kecil
+                'regex:/[0-9]/',      // angka
+                'regex:/[\W_]/'       // karakter spesial
+            ],
+            // Additional panitia fields
+            'organization_name' => 'required|string|max:255',
+            'organization_description' => 'required|string|max:1000',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'website' => 'nullable|url|max:255'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $otpExpiresAt = Carbon::now()->addMinutes(5);
+
+            // Create user with panitia role
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'no_handphone' => $request->no_handphone,
+                'alamat' => $request->alamat,
+                'pendidikan_terakhir' => $request->pendidikan_terakhir,
+                'password' => Hash::make($request->password),
+                'otp' => $otp,
+                'otp_expires_at' => $otpExpiresAt,
+                'status_akun' => 'belum_verifikasi',
+                'role' => 'panitia',
+            ]);
+
+            // Create panitia profile
+            $autoApprove = Setting::get('auto_approve_panitia', false);
+            $trialDays = Setting::get('trial_duration_days', 60);
+            $maxEvents = Setting::get('premium_max_active_events', 999);
+
+            $panitiaProfile = PanitiaProfile::create([
+                'user_id' => $user->id,
+                'status' => $autoApprove ? 'approved' : 'pending',
+                'plan_type' => 'trial',
+                'trial_start' => $autoApprove ? now() : null,
+                'trial_end' => $autoApprove ? now()->addDays($trialDays) : null,
+                'max_active_events' => $autoApprove ? $maxEvents : 1,
+                'organization_name' => $request->organization_name,
+                'organization_description' => $request->organization_description,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'website' => $request->website
+            ]);
+
+            // If auto approved, start trial immediately
+            if ($autoApprove) {
+                $panitiaProfile->update([
+                    'approved_at' => now(),
+                    'approved_by' => null // System approved
+                ]);
+                
+                // Send approval notification
+                Notification::notifyPanitiaApproved($user->id);
+            }
+
+            DB::commit();
+
+            // Send OTP email
+            try {
+                Mail::send('emails.otp', ['otp' => $otp, 'user' => $user], function($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject('Kode Verifikasi OTP - Pendaftaran Panitia');
+                });
+                Log::info('Panitia OTP email sent to: ' . $user->email);
+            } catch (\Exception $e) {
+                Log::error('Gagal mengirim email OTP panitia: ' . $e->getMessage());
+            }
+
+            $message = $autoApprove 
+                ? 'Registrasi panitia berhasil dan langsung disetujui! Silakan verifikasi email dengan OTP.'
+                : 'Registrasi panitia berhasil! Silakan verifikasi email dan tunggu persetujuan admin.';
+
+            return response()->json([
+                'message' => $message,
+                'status' => $autoApprove ? 'approved' : 'pending',
+                'otp' => config('app.debug') ? $otp : null // Only in debug mode
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Panitia registration error: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'Gagal mendaftar sebagai panitia. Silakan coba lagi.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    // ========================
+    // Get Registration Options
+    // ========================
+    public function getRegistrationOptions()
+    {
+        try {
+            $options = [
+                'roles' => [
+                    [
+                        'value' => 'peserta',
+                        'label' => 'Peserta Event',
+                        'description' => 'Daftar dan ikuti berbagai event menarik'
+                    ],
+                    [
+                        'value' => 'panitia',
+                        'label' => 'Panitia Event',
+                        'description' => 'Buat dan kelola event Anda sendiri'
+                    ]
+                ],
+                'panitia_info' => [
+                    'auto_approve' => Setting::get('auto_approve_panitia', false),
+                    'trial_duration' => Setting::get('trial_duration_days', 60),
+                    'premium_price' => Setting::get('premium_monthly_price', 100000),
+                    'features' => [
+                        'trial' => [
+                            'duration' => Setting::get('trial_duration_days', 60) . ' hari',
+                            'max_events' => 'Unlimited',
+                            'analytics' => 'Lengkap',
+                            'support' => 'Priority'
+                        ],
+                        'free' => [
+                            'max_events' => Setting::get('free_max_active_events', 1),
+                            'analytics' => 'Basic',
+                            'support' => 'Standard'
+                        ],
+                        'premium' => [
+                            'max_events' => 'Unlimited',
+                            'analytics' => 'Advanced',
+                            'support' => 'Priority',
+                            'promotion' => 'Homepage featured'
+                        ]
+                    ]
+                ]
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $options
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get registration options error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil opsi registrasi'
+            ], 500);
+        }
     }
 }

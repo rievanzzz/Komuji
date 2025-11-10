@@ -211,4 +211,82 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
 
         return $otp;
     }
+
+    // New relationships for business model
+    public function panitiaProfile()
+    {
+        return $this->hasOne(PanitiaProfile::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function panitiaTransactions()
+    {
+        return $this->hasMany(Transaction::class, 'panitia_id');
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class)->orderBy('created_at', 'desc');
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->hasMany(Notification::class)->where('is_read', false);
+    }
+
+    // Business logic methods
+    public function isPanitia()
+    {
+        return $this->role === 'panitia';
+    }
+
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isPeserta()
+    {
+        return $this->role === 'peserta';
+    }
+
+    public function canCreateEvent()
+    {
+        if (!$this->isPanitia()) return false;
+        
+        $profile = $this->panitiaProfile;
+        return $profile && $profile->can_create_event;
+    }
+
+    public function getActivePlan()
+    {
+        if (!$this->isPanitia()) return null;
+        
+        $profile = $this->panitiaProfile;
+        if (!$profile) return null;
+
+        // Check if premium is active
+        if ($profile->plan_type === 'premium' && !$profile->is_premium_expired) {
+            return 'premium';
+        }
+
+        // Check if trial is active
+        if ($profile->plan_type === 'trial' && !$profile->is_trial_expired) {
+            return 'trial';
+        }
+
+        return 'free';
+    }
+
+    public function getSaldoAttribute()
+    {
+        if (!$this->isPanitia()) return 0;
+        
+        $profile = $this->panitiaProfile;
+        return $profile ? $profile->saldo : 0;
+    }
 }

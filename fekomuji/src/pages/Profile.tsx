@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiEdit3, FiX } from 'react-icons/fi';
+import { FiEdit3, FiX, FiStar } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { useAuth } from '../contexts/AuthContext';
@@ -479,12 +480,24 @@ const Profile: React.FC = () => {
                     <p className="text-gray-600 mb-2">
                       {profile?.email || 'email@example.com'}
                     </p>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {profile?.role === 'peserta' ? 'Peserta' : profile?.role || 'Anggota'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {profile?.role === 'peserta' ? 'Peserta' : profile?.role || 'Anggota'}
+                      </span>
+                      {profile?.role === 'peserta' && (
+                        <Link
+                          to="/upgrade-to-panitia"
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
+                        >
+                          <FiStar className="w-3 h-3 mr-1" />
+                          Upgrade ke Panitia
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                <div className="flex gap-2">
                 <button
                   onClick={handleEditToggle}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -501,6 +514,7 @@ const Profile: React.FC = () => {
                     </>
                   )}
                 </button>
+                </div>
               </div>
             </div>
           </div>

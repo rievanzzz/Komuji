@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
 import { SignIn, SignUp, Events, Profile, EventDetail } from './pages';
+import SignUpPanitia from './pages/SignUpPanitia';
+import UpgradeToPanitia from './pages/UpgradeToPanitia';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Transaksi from './pages/Transaksi';
@@ -31,6 +33,8 @@ const AppRouter = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/signup-panitia" element={<SignUpPanitia />} />
+          <Route path="/upgrade-to-panitia" element={<UpgradeToPanitia />} />
           <Route path="/organizer-login" element={<OrganizerLogin />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/:id" element={<EventDetail />} />
