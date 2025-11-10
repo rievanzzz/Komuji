@@ -54,7 +54,11 @@ Route::get('/events/{event}/ticket-categories', [TicketCategoryController::class
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // User routes
     Route::get('/user', [UserController::class, 'profile']);
+    Route::get('/profile', [UserController::class, 'profile']); // Alternative endpoint
+    Route::get('/user/profile', [UserController::class, 'profile']); // Alternative endpoint
+    Route::get('/me', [UserController::class, 'profile']); // Alternative endpoint
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
+    Route::put('/profile', [UserController::class, 'updateProfile']); // Alternative endpoint
     Route::post('/user/change-password', [UserController::class, 'changePassword']);
 
     // Logout

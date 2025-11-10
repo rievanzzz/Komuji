@@ -17,9 +17,29 @@ class UserController extends Controller
      */
     public function profile(): JsonResponse
     {
+        $user = auth()->user();
+        
+        // Map database field names to frontend expected field names
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->no_handphone, // Map no_handphone to phone
+            'no_handphone' => $user->no_handphone, // Keep original for compatibility
+            'address' => $user->alamat, // Map alamat to address
+            'alamat' => $user->alamat, // Keep original for compatibility
+            'last_education' => $user->pendidikan_terakhir, // Map pendidikan_terakhir to last_education
+            'pendidikan_terakhir' => $user->pendidikan_terakhir, // Keep original for compatibility
+            'role' => $user->role,
+            'status_akun' => $user->status_akun,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'email_verified_at' => $user->email_verified_at
+        ];
+        
         return response()->json([
             'status' => 'success',
-            'data' => auth()->user()
+            'data' => $userData
         ]);
     }
 
@@ -32,10 +52,28 @@ class UserController extends Controller
             $user = auth()->user();
             $user->update($request->validated());
 
+            // Return updated user data with proper field mapping
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->no_handphone, // Map no_handphone to phone
+                'no_handphone' => $user->no_handphone, // Keep original for compatibility
+                'address' => $user->alamat, // Map alamat to address
+                'alamat' => $user->alamat, // Keep original for compatibility
+                'last_education' => $user->pendidikan_terakhir, // Map pendidikan_terakhir to last_education
+                'pendidikan_terakhir' => $user->pendidikan_terakhir, // Keep original for compatibility
+                'role' => $user->role,
+                'status_akun' => $user->status_akun,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+                'email_verified_at' => $user->email_verified_at
+            ];
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Profil berhasil diperbarui',
-                'data' => $user->fresh()
+                'data' => $userData
             ]);
         } catch (\Exception $e) {
             return response()->json([
