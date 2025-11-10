@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
+import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2, FiPlus, FiMinus, FiTag, FiMusic, FiBriefcase, FiCoffee, FiHeart, FiChevronDown } from 'react-icons/fi';
+import { MdSports, MdTheaterComedy, MdFamilyRestroom, MdPalette } from 'react-icons/md';
 
 interface TicketCategory {
   id?: number;
@@ -45,6 +46,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   const [formData, setFormData] = useState<Event>({
     judul: '',
     deskripsi: '',
+    kategori_id: 1, // Default to first category
     tanggal_mulai: '',
     tanggal_selesai: '',
     waktu_mulai: '',
@@ -57,6 +59,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
     flyer_path: '',
     sertifikat_template_path: ''
   });
+  const [isSingleDay, setIsSingleDay] = useState(false);
+  const [isOpenEnded, setIsOpenEnded] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
@@ -65,6 +70,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   const [certificatePreview, setCertificatePreview] = useState<string>('');
   const flyerInputRef = useRef<HTMLInputElement>(null);
   const certificateInputRef = useRef<HTMLInputElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   
   // Ticket categories state
   const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([
@@ -191,6 +197,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         kategori_id: editingEvent.kategori_id || 1
       });
       
+      // Check if event is single day
+      setIsSingleDay(editingEvent.tanggal_mulai === editingEvent.tanggal_selesai);
+      
+      // Check if event is open-ended (waktu_selesai is 23:59 or empty)
+      setIsOpenEnded(!editingEvent.waktu_selesai || editingEvent.waktu_selesai === '23:59:00' || editingEvent.waktu_selesai === '23:59');
+      
       // Load existing ticket categories if available
       if (editingEvent.ticket_categories && editingEvent.ticket_categories.length > 0) {
         setTicketCategories(editingEvent.ticket_categories);
@@ -202,6 +214,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       setFormData({
         judul: '',
         deskripsi: '',
+        kategori_id: 1, // Default to first category
         tanggal_mulai: '',
         tanggal_selesai: '',
         waktu_mulai: '',
@@ -230,18 +243,50 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       setCertificateFile(null);
       setFlyerPreview('');
       setCertificatePreview('');
+      
+      // Reset states for new event
+      setIsSingleDay(false);
+      setIsOpenEnded(false);
     }
     setErrors({});
   }, [editingEvent, isOpen]);
 
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+
+    if (categoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [categoryDropdownOpen]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'harga_tiket' ? parseInt(value) || 0 : 
-              name === 'is_published' ? value === 'true' : value
+      [name]: type === 'checkbox' ? checked : value
     }));
-
+    
+    // Auto-set tanggal_selesai when tanggal_mulai changes and isSingleDay is true
+    if (name === 'tanggal_mulai' && isSingleDay) {
+      setFormData(prev => ({
+        ...prev,
+        tanggal_mulai: value,
+        tanggal_selesai: value
+      }));
+    }
+    
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -249,6 +294,72 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       }));
     }
   };
+
+  const handleSingleDayChange = (checked: boolean) => {
+    setIsSingleDay(checked);
+    if (checked && formData.tanggal_mulai) {
+      setFormData(prev => ({
+        ...prev,
+        tanggal_selesai: prev.tanggal_mulai
+      }));
+    }
+  };
+
+  const handleOpenEndedChange = (checked: boolean) => {
+    setIsOpenEnded(checked);
+    if (checked) {
+      setFormData(prev => ({
+        ...prev,
+        waktu_selesai: '23:59'
+      }));
+    }
+  };
+
+  const handleCategorySelect = (categoryId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      kategori_id: categoryId
+    }));
+    setCategoryDropdownOpen(false);
+    
+    // Clear error when category is selected
+    if (errors.kategori_id) {
+      setErrors(prev => ({
+        ...prev,
+        kategori_id: ''
+      }));
+    }
+  };
+
+  // Generate time options (every 15 minutes)
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = `${hour.toString().padStart(2, '0')}.${minute.toString().padStart(2, '0')}`;
+        options.push({
+          value: timeString,
+          label: displayTime
+        });
+      }
+    }
+    return options;
+  };
+
+  const timeOptions = generateTimeOptions();
+
+  // Event categories data
+  const eventCategories = [
+    { id: 1, name: 'Sports', icon: MdSports },
+    { id: 2, name: 'Concerts', icon: FiMusic },
+    { id: 3, name: 'Theater', icon: MdTheaterComedy },
+    { id: 4, name: 'Comedy', icon: FiHeart },
+    { id: 5, name: 'Arts & Culture', icon: MdPalette },
+    { id: 6, name: 'Food & Drink', icon: FiCoffee },
+    { id: 7, name: 'Business', icon: FiBriefcase },
+    { id: 8, name: 'Family', icon: MdFamilyRestroom }
+  ];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'flyer' | 'certificate') => {
     const file = e.target.files?.[0];
@@ -324,11 +435,15 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       newErrors.deskripsi = 'Deskripsi acara wajib diisi';
     }
 
+    if (!formData.kategori_id) {
+      newErrors.kategori_id = 'Kategori event wajib dipilih';
+    }
+
     if (!formData.tanggal_mulai) {
       newErrors.tanggal_mulai = 'Tanggal mulai wajib diisi';
     }
 
-    if (!formData.tanggal_selesai) {
+    if (!isSingleDay && !formData.tanggal_selesai) {
       newErrors.tanggal_selesai = 'Tanggal selesai wajib diisi';
     }
 
@@ -342,7 +457,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       newErrors.waktu_mulai = 'Waktu mulai wajib diisi';
     }
 
-    if (!formData.waktu_selesai) {
+    if (!isOpenEnded && !formData.waktu_selesai) {
       newErrors.waktu_selesai = 'Waktu selesai wajib diisi';
     }
 
@@ -544,11 +659,126 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
               />
               {errors.deskripsi && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.deskripsi}</p>}
             </div>
+
+            {/* Event Category */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <FiTag className="w-4 h-4 text-blue-600" />
+                Kategori Event *
+              </label>
+              
+              {/* Custom Dropdown */}
+              <div className="relative" ref={categoryDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                  className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-left bg-white flex items-center justify-between ${
+                    errors.kategori_id ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {formData.kategori_id ? (
+                      <>
+                        {React.createElement(eventCategories.find(cat => cat.id === formData.kategori_id)?.icon || FiTag, {
+                          className: "w-5 h-5 text-blue-600"
+                        })}
+                        <span className="text-gray-900">
+                          {eventCategories.find(cat => cat.id === formData.kategori_id)?.name}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-gray-500">Pilih kategori event</span>
+                    )}
+                  </div>
+                  <FiChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                    categoryDropdownOpen ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
+                {/* Dropdown Options */}
+                {categoryDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto">
+                    {eventCategories.map((category) => (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => handleCategorySelect(category.id)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        {React.createElement(category.icon, {
+                          className: "w-5 h-5 text-blue-600"
+                        })}
+                        <span className="text-gray-900">{category.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {errors.kategori_id && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.kategori_id}</p>}
+            </div>
+          </div>
+
+          {/* Date Duration Options */}
+          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                <FiCalendar className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Durasi Event</h3>
+                <p className="text-sm text-gray-600">Pilih berapa hari event akan berlangsung</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div 
+                className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+                  isSingleDay 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                onClick={() => handleSingleDayChange(true)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                    isSingleDay ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                  }`}>
+                    {isSingleDay && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 mb-1">Satu Hari</div>
+                    <div className="text-sm text-gray-600 leading-relaxed">Event dimulai dan selesai di hari yang sama</div>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+                  !isSingleDay 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                onClick={() => handleSingleDayChange(false)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                    !isSingleDay ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                  }`}>
+                    {!isSingleDay && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 mb-1">Multi Hari</div>
+                    <div className="text-sm text-gray-600 leading-relaxed">Event berlangsung lebih dari satu hari</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <label className="flex text-sm font-semibold text-gray-800 mb-3 items-center gap-2">
                 <FiCalendar className="w-4 h-4 text-blue-600" />
                 Tanggal Mulai *
               </label>
@@ -567,62 +797,167 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <label className="flex text-sm font-semibold text-gray-800 mb-3 items-center gap-2">
                 <FiCalendar className="w-4 h-4 text-blue-600" />
-                Tanggal Selesai *
+                Tanggal Selesai {!isSingleDay && '*'}
               </label>
               <input
                 type="date"
                 name="tanggal_selesai"
                 value={formData.tanggal_selesai}
                 onChange={handleInputChange}
-                disabled={isFieldDisabled('tanggal_selesai')}
+                disabled={isSingleDay || isFieldDisabled('tanggal_selesai')}
                 className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 ${
                   errors.tanggal_selesai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                } ${isFieldDisabled('tanggal_selesai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                } ${(isSingleDay || isFieldDisabled('tanggal_selesai')) ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
               />
               {errors.tanggal_selesai && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.tanggal_selesai}</p>}
               {isFieldDisabled('tanggal_selesai') && <p className="text-amber-600 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-amber-500 rounded-full"></span>{getDisabledMessage('tanggal_selesai')}</p>}
+              {isSingleDay && <p className="text-blue-600 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-blue-500 rounded-full"></span>Tanggal selesai akan sama dengan tanggal mulai</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <FiClock className="w-4 h-4 text-blue-600" />
-                Waktu Mulai *
-              </label>
-              <input
-                type="time"
-                name="waktu_mulai"
-                value={formData.waktu_mulai}
-                onChange={handleInputChange}
-                disabled={isFieldDisabled('waktu_mulai')}
-                className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 ${
-                  errors.waktu_mulai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                } ${isFieldDisabled('waktu_mulai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-              />
-              {errors.waktu_mulai && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.waktu_mulai}</p>}
-              {isFieldDisabled('waktu_mulai') && <p className="text-amber-600 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-amber-500 rounded-full"></span>{getDisabledMessage('waktu_mulai')}</p>}
+          {/* Time Section with Professional Layout */}
+          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <FiClock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Waktu Pelaksanaan</h3>
+                <p className="text-sm text-gray-600">Tentukan jadwal waktu event berlangsung</p>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <FiClock className="w-4 h-4 text-blue-600" />
-                Waktu Selesai *
-              </label>
-              <input
-                type="time"
-                name="waktu_selesai"
-                value={formData.waktu_selesai}
-                onChange={handleInputChange}
-                disabled={isFieldDisabled('waktu_selesai')}
-                className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 ${
-                  errors.waktu_selesai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                } ${isFieldDisabled('waktu_selesai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-              />
-              {errors.waktu_selesai && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.waktu_selesai}</p>}
-              {isFieldDisabled('waktu_selesai') && <p className="text-amber-600 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-amber-500 rounded-full"></span>{getDisabledMessage('waktu_selesai')}</p>}
+            <div className="space-y-5">
+              {/* Start Time */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  Waktu Mulai *
+                </label>
+                <select
+                  name="waktu_mulai"
+                  value={formData.waktu_mulai}
+                  onChange={handleInputChange}
+                  disabled={isFieldDisabled('waktu_mulai')}
+                  className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 bg-white ${
+                    errors.waktu_mulai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
+                  } ${isFieldDisabled('waktu_mulai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                >
+                  <option value="">Pilih waktu mulai</option>
+                  {timeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.waktu_mulai && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                    {errors.waktu_mulai}
+                  </p>
+                )}
+                {isFieldDisabled('waktu_mulai') && (
+                  <p className="text-amber-600 text-sm mt-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                    {getDisabledMessage('waktu_mulai')}
+                  </p>
+                )}
+              </div>
+
+              {/* End Time Options */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-4">
+                  Waktu Selesai {!isOpenEnded && '*'}
+                </label>
+                
+                {/* Time Mode Selection */}
+                <div className="space-y-4 mb-5">
+                  <div 
+                    className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+                      !isOpenEnded 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                    onClick={() => handleOpenEndedChange(false)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                        !isOpenEnded ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                      }`}>
+                        {!isOpenEnded && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 mb-1">Waktu Tertentu</div>
+                        <div className="text-sm text-gray-600 leading-relaxed">Event berakhir pada jam yang ditentukan</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div 
+                    className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+                      isOpenEnded 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                    onClick={() => handleOpenEndedChange(true)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                        isOpenEnded ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                      }`}>
+                        {isOpenEnded && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 mb-1">Sampai Selesai</div>
+                        <div className="text-sm text-gray-600 leading-relaxed">Event berakhir ketika acara selesai</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Selector (only show if not open-ended) */}
+                {!isOpenEnded && (
+                  <select
+                    name="waktu_selesai"
+                    value={formData.waktu_selesai}
+                    onChange={handleInputChange}
+                    disabled={isFieldDisabled('waktu_selesai')}
+                    className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 bg-white ${
+                      errors.waktu_selesai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
+                    } ${isFieldDisabled('waktu_selesai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                  >
+                    <option value="">Pilih waktu selesai</option>
+                    {timeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Status Messages */}
+                {errors.waktu_selesai && (
+                  <p className="text-red-500 text-sm mt-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                    {errors.waktu_selesai}
+                  </p>
+                )}
+                {isFieldDisabled('waktu_selesai') && (
+                  <p className="text-amber-600 text-sm mt-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                    {getDisabledMessage('waktu_selesai')}
+                  </p>
+                )}
+                {isOpenEnded && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-blue-700 text-sm flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Event akan berlangsung sampai acara selesai secara alami
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

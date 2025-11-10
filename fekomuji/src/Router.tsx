@@ -7,6 +7,8 @@ import Transaksi from './pages/Transaksi';
 import TransactionDetail from './pages/TransactionDetail';
 import ETicket from './pages/ETicket';
 import EventHistory from './pages/EventHistory';
+import CheckIn from './pages/CheckIn';
+import DebugRegistration from './pages/DebugRegistration';
 import OrganizerLogin from './pages/OrganizerLogin';
 import TicketBookingPage from './pages/TicketBooking';
 import { AuthProvider } from './contexts/AuthContext';
@@ -23,6 +25,7 @@ const AppRouter = () => {
       <Router>
         <Routes>
           <Route path="/test" element={<TestPage />} />
+          <Route path="/debug-registration" element={<DebugRegistration />} />
           <Route path="/" element={<App />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
@@ -38,17 +41,18 @@ const AppRouter = () => {
           <Route path="/transaksi/:id" element={<TransactionDetail />} />
           <Route path="/transaksi/:id/eticket" element={<ETicket />} />
           <Route path="/history/events" element={<EventHistory />} />
-          
+          <Route path="/events/:eventId/checkin" element={<CheckIn />} />
+
           {/* Organizer Routes - Protected */}
           <Route path="/organizer" element={<ProtectedOrganizerRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events" element={<ProtectedOrganizerRoute><ErrorBoundary><EventManagementFixed /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events/:id" element={<ProtectedOrganizerRoute><ErrorBoundary><OrganizerEventDetail /></ErrorBoundary></ProtectedOrganizerRoute>} />
-        
+
           <Route path="/organizer/participants" element={<ProtectedOrganizerRoute><ErrorBoundary><ParticipantsNew /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/tickets" element={<ProtectedOrganizerRoute><ErrorBoundary><Tickets /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/finance" element={<ProtectedOrganizerRoute><ErrorBoundary><Finance /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/settings" element={<ProtectedOrganizerRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedOrganizerRoute>} />
-          
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

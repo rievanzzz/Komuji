@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings, FiCalendar, FiCreditCard, FiChevronDown } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationDropdown from './NotificationDropdown';
 
 interface PublicHeaderProps {
   className?: string;
@@ -132,6 +133,10 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                 )}
               </div>
             )}
+            
+            {/* Notifications */}
+            {isAuthenticated && <NotificationDropdown />}
+            
             {/* User Menu */}
             <div className="relative group">
               {isAuthenticated ? (

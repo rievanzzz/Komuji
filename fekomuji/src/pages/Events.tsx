@@ -23,13 +23,13 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({ eventId }) => {
         const response = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
         if (response.ok) {
           const categories = await response.json();
-          
+
           if (categories && categories.length > 0) {
             const prices = categories
               .filter((cat: any) => cat.is_active)
               .map((cat: any) => parseFloat(cat.harga))
               .sort((a: number, b: number) => a - b);
-            
+
             if (prices.length === 0) {
               setPriceRange('Tidak tersedia');
             } else if (prices[0] === 0 && prices.length === 1) {

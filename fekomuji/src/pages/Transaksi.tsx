@@ -87,8 +87,20 @@ const Transaksi: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('API Response:', data);
-        console.log('First registration payment_status:', data.data?.[0]?.payment_status);
-        console.log('First registration status:', data.data?.[0]?.status);
+        console.log('Registrations count:', (data.data || data || []).length);
+        
+        // Log each registration for debugging
+        (data.data || data || []).forEach((reg: Registration, index: number) => {
+          console.log(`Registration ${index + 1}:`, {
+            id: reg.id,
+            event: reg.event?.judul,
+            payment_status: reg.payment_status,
+            status: reg.status,
+            total_harga: reg.total_harga,
+            created_at: reg.created_at
+          });
+        });
+        
         setRegistrations(data.data || data || []);
       } else if (response.status === 401) {
         localStorage.removeItem('token');
@@ -105,7 +117,7 @@ const Transaksi: React.FC = () => {
   };
 
   // Function to determine effective status for display
-  const getEffectiveStatus = (registration: Registration) => {
+  const getEffectiveStatus = (registration: Registration): string => {
     console.log('Registration data for getEffectiveStatus:', {
       id: registration.id,
       total_harga: registration.total_harga,
@@ -119,9 +131,16 @@ const Transaksi: React.FC = () => {
       return 'paid'; // Free tickets are automatically successful
     }
     
-    // For paid tickets, use payment_status
-    console.log('Paid ticket, using payment_status:', registration.payment_status);
-    return registration.payment_status;
+    // For paid tickets, prioritize payment_status, but fallback to status if needed
+    let effectiveStatus = registration.payment_status || registration.status || 'pending';
+    
+    // Handle various success status variations
+    if (['approved', 'success', 'completed'].includes(effectiveStatus)) {
+      effectiveStatus = 'paid';
+    }
+    
+    console.log('Final effective status:', effectiveStatus);
+    return effectiveStatus;
   };
 
   const getStatusColor = (status: string) => {
@@ -168,25 +187,124 @@ const Transaksi: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    try {
+      // Handle various date formats
+      let date: Date;
+      
+      // If it's a timestamp with many zeros, clean it up
+      if (dateString && dateString.includes('00000000')) {
+        // Extract the main date part before the excessive zeros
+        const cleanDateString = dateString.split('00000000')[0];
+        date = new Date(cleanDateString);
+      } else {
+        date = new Date(dateString);
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateString);
+        return 'Tanggal tidak valid';
+      }
+      
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Tanggal tidak valid';
+    }
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      let date: Date;
+      
+      // Handle various date formats
+      if (dateString && dateString.includes('00000000')) {
+        const cleanDateString = dateString.split('00000000')[0];
+        date = new Date(cleanDateString);
+      } else {
+        date = new Date(dateString);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return '00:00';
+      }
+      
+      return date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error, dateString);
+      return '00:00';
+    }
   };
 
   const filteredRegistrations = registrations.filter(reg => {
-    const matchesFilter = filter === 'all' || reg.payment_status === filter;
+    const effectiveStatus = getEffectiveStatus(reg);
+    
+    // Debug logging for filter
+    console.log('Filtering registration:', {
+      id: reg.id,
+      event: reg.event.judul,
+      payment_status: reg.payment_status,
+      status: reg.status,
+      effectiveStatus: effectiveStatus,
+      total_harga: reg.total_harga,
+      currentFilter: filter
+    });
+    
+    // Filter logic based on effective status
+    let matchesFilter = false;
+    if (filter === 'all') {
+      matchesFilter = true;
+    } else if (filter === 'paid') {
+      // Include all successful payment statuses - be more inclusive
+      const successStatuses = ['paid', 'approved', 'success', 'completed'];
+      matchesFilter = successStatuses.includes(effectiveStatus) || 
+                     successStatuses.includes(reg.payment_status) ||
+                     successStatuses.includes(reg.status) ||
+                     reg.total_harga === 0 || // Free tickets
+                     effectiveStatus === 'paid'; // Direct check
+      
+      console.log('Paid filter check:', {
+        effectiveStatusMatch: successStatuses.includes(effectiveStatus),
+        paymentStatusMatch: successStatuses.includes(reg.payment_status),
+        statusMatch: successStatuses.includes(reg.status),
+        isFreeTicket: reg.total_harga === 0,
+        finalMatch: matchesFilter
+      });
+    } else if (filter === 'pending') {
+      matchesFilter = effectiveStatus === 'pending' || reg.payment_status === 'pending';
+    } else if (filter === 'failed') {
+      matchesFilter = effectiveStatus === 'failed' || reg.payment_status === 'failed';
+    }
+    
     const matchesSearch = reg.event.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reg.kode_pendaftaran.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    
+    const result = matchesFilter && matchesSearch;
+    console.log('Filter result:', { matchesFilter, matchesSearch, result });
+    
+    return result;
+  });
+
+  // Log filter summary
+  console.log('Filter Summary:', {
+    totalRegistrations: registrations.length,
+    filteredCount: filteredRegistrations.length,
+    currentFilter: filter,
+    searchQuery: searchQuery,
+    registrationStatuses: registrations.map(reg => ({
+      id: reg.id,
+      payment_status: reg.payment_status,
+      status: reg.status,
+      total_harga: reg.total_harga,
+      effectiveStatus: getEffectiveStatus(reg)
+    }))
   });
 
   if (!isAuthenticated) {
@@ -234,6 +352,10 @@ const Transaksi: React.FC = () => {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Transaksi</h1>
+            <p className="text-gray-600 mt-1">
+              {filteredRegistrations.length} dari {registrations.length} transaksi
+              {filter !== 'all' && ` (filter: ${filter === 'paid' ? 'Payment Success' : filter === 'pending' ? 'Pending' : 'Failed'})`}
+            </p>
           </div>
 
           {/* Search and Filter */}
@@ -243,7 +365,7 @@ const Transaksi: React.FC = () => {
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Cari nama event"
+                placeholder="Cari nama event atau kode registrasi"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 bg-white"
@@ -255,15 +377,34 @@ const Transaksi: React.FC = () => {
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as any)}
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[160px]"
+                className={`appearance-none bg-white border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[160px] ${
+                  filter !== 'all' 
+                    ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' 
+                    : 'border-gray-200 text-gray-700'
+                }`}
               >
                 <option value="all">All Transaction</option>
                 <option value="paid">Payment Success</option>
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
               </select>
-              <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <FiChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${
+                filter !== 'all' ? 'text-blue-600' : 'text-gray-400'
+              }`} />
             </div>
+
+            {/* Reset Filter Button */}
+            {(filter !== 'all' || searchQuery) && (
+              <button
+                onClick={() => {
+                  setFilter('all');
+                  setSearchQuery('');
+                }}
+                className="px-4 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors whitespace-nowrap"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
 
           {/* Transaction List */}

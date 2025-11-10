@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiCheckCircle, FiXCircle, FiAlertCircle, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { FiCalendar, FiSearch, FiX, FiLogIn, FiChevronDown, FiDownload, FiAward } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
+import { generateToken, generateQRData } from '../utils/tokenGenerator';
+import { generateQRCode } from '../utils/qrGenerator';
 
 interface EventRegistration {
   id: number;
@@ -21,6 +24,10 @@ interface EventRegistration {
   total_harga: number;
   invoice_number?: string;
   qr_code?: string;
+  token?: string; // 10 digit token for check-in
+  qr_data?: string; // QR code image data URL
+  attendance_status?: 'not_attended' | 'attended';
+  check_in_time?: string;
   created_at: string;
   updated_at: string;
   event: {
@@ -56,12 +63,15 @@ interface EventRegistration {
 
 const EventHistory: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [certificateFilter, setCertificateFilter] = useState<'all' | 'with_certificate' | 'without_certificate'>('all');
   const [selectedTicket, setSelectedTicket] = useState<EventRegistration | null>(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [qrCodeImage, setQrCodeImage] = useState<string>('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -91,6 +101,35 @@ const EventHistory: React.FC = () => {
     };
   }, [showTicketModal]);
 
+  // Generate token and QR code for ticket
+  const generateTicketData = async (registration: EventRegistration) => {
+    try {
+      // Generate token if not exists
+      const token = registration.token || generateToken();
+
+      // Generate QR data
+      const qrData = generateQRData(token, registration.event_id, registration.user_id);
+
+      // Generate QR code image
+      const qrImage = await generateQRCode(qrData, 200);
+
+      setQrCodeImage(qrImage);
+
+      // Update registration with token (in real app, this would be saved to backend)
+      const updatedRegistration = {
+        ...registration,
+        token,
+        qr_data: qrImage
+      };
+
+      setSelectedTicket(updatedRegistration);
+
+    } catch (error) {
+      console.error('Error generating ticket data:', error);
+      setQrCodeImage('');
+    }
+  };
+
   const fetchEventHistory = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -102,7 +141,7 @@ const EventHistory: React.FC = () => {
       }
 
       console.log('Fetching event history with token:', token.substring(0, 20) + '...');
-      
+
       const response = await fetch('http://localhost:8000/api/my-registrations', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -115,11 +154,11 @@ const EventHistory: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('API Response data:', data);
-        
+
         const registrationsData = data.data || data || [];
         console.log('Registrations found:', registrationsData.length);
         console.log('Registration data:', registrationsData);
-        
+
         setRegistrations(registrationsData);
       } else if (response.status === 401) {
         console.log('Token expired or invalid');
@@ -129,12 +168,12 @@ const EventHistory: React.FC = () => {
         console.log('API error:', response.status);
         const errorText = await response.text();
         console.log('Error response:', errorText);
-        
+
         setRegistrations([]);
       }
     } catch (error) {
       console.error('Error fetching event history:', error);
-      
+
       setRegistrations([]);
     } finally {
       setLoading(false);
@@ -152,16 +191,6 @@ const EventHistory: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string | undefined) => {
-    switch (status) {
-      case 'paid': return <FiCheckCircle className="w-4 h-4" />;
-      case 'approved': return <FiCheckCircle className="w-4 h-4" />;
-      case 'pending': return <FiAlertCircle className="w-4 h-4" />;
-      case 'failed': return <FiXCircle className="w-4 h-4" />;
-      case 'rejected': return <FiXCircle className="w-4 h-4" />;
-      default: return <FiCheckCircle className="w-4 h-4" />;
-    }
-  };
 
   const getStatusText = (status: string | undefined) => {
     switch (status) {
@@ -174,28 +203,87 @@ const EventHistory: React.FC = () => {
     }
   };
 
+  // Format date function to handle problematic date strings
+  const formatDate = (dateString: string) => {
+    try {
+      // Handle various date formats
+      let date: Date;
+      
+      // If it's a timestamp with many zeros, clean it up
+      if (dateString && dateString.includes('00000000')) {
+        // Extract the main date part before the excessive zeros
+        const cleanDateString = dateString.split('00000000')[0];
+        date = new Date(cleanDateString);
+      } else {
+        date = new Date(dateString);
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateString);
+        return 'Tanggal tidak valid';
+      }
+      
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return 'Tanggal tidak valid';
+    }
+  };
+
+
+  // Helper function to get event status
+  const getEventStatus = (event: any) => {
+    if (!event.tanggal_mulai) return 'unknown';
+
+    const now = new Date();
+    const eventStartDate = new Date(event.tanggal_mulai);
+    const eventEndDate = event.tanggal_selesai ? new Date(event.tanggal_selesai) : eventStartDate;
+
+    // Add time if available
+    if (event.waktu_mulai) {
+      const [hours, minutes] = event.waktu_mulai.split(':');
+      eventStartDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    }
+
+    if (event.waktu_selesai) {
+      const [hours, minutes] = event.waktu_selesai.split(':');
+      eventEndDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      // If no end time, assume event lasts 2 hours
+      eventEndDate.setTime(eventStartDate.getTime() + (2 * 60 * 60 * 1000));
+    }
+
+    if (now < eventStartDate) {
+      return 'upcoming'; // Event belum dimulai
+    } else if (now >= eventStartDate && now <= eventEndDate) {
+      return 'ongoing'; // Event sedang berlangsung
+    } else {
+      return 'finished'; // Event sudah selesai
+    }
+  };
+
   const filteredRegistrations = registrations.filter(reg => {
     const matchesSearch = reg.event.judul?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reg.event.lokasi?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Filter by time (upcoming vs past)
-    if (!reg.event.tanggal_mulai) {
-      return matchesSearch; // If no date, show in all tabs
-    }
-    
-    const eventDate = new Date(reg.event.tanggal_mulai);
-    if (isNaN(eventDate.getTime())) {
-      return matchesSearch; // If invalid date, show in all tabs
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const matchesTab = activeTab === 'upcoming' 
-      ? eventDate >= today 
-      : eventDate < today;
-    
-    return matchesSearch && matchesTab;
+
+    // Filter by event status
+    const eventStatus = getEventStatus(reg.event);
+
+    const matchesTab = activeTab === 'upcoming'
+      ? (eventStatus === 'upcoming' || eventStatus === 'ongoing')
+      : eventStatus === 'finished';
+
+    // Filter by certificate availability
+    const matchesCertificate = certificateFilter === 'all' || 
+      (certificateFilter === 'with_certificate' && reg.certificate) ||
+      (certificateFilter === 'without_certificate' && !reg.certificate);
+
+    return matchesSearch && matchesTab && matchesCertificate;
   });
 
 
@@ -227,7 +315,7 @@ const EventHistory: React.FC = () => {
     ctx.fillStyle = '#374151';
     ctx.font = '20px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText(`Tanggal: ${new Date(registration.event.tanggal_mulai).toLocaleDateString('id-ID')}`, 50, 200);
+    ctx.fillText(`Tanggal: ${formatDate(registration.event.tanggal_mulai)}`, 50, 200);
     ctx.fillText(`Waktu: ${registration.event.waktu_mulai} - ${registration.event.waktu_selesai}`, 50, 240);
     ctx.fillText(`Lokasi: ${registration.event.lokasi}`, 50, 280);
     ctx.fillText(`Kode Pendaftaran: ${registration.kode_pendaftaran}`, 50, 320);
@@ -286,7 +374,7 @@ const EventHistory: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       <div className="pt-24 pb-16">
         <div className="max-w-6xl mx-auto px-6">
           {/* Header */}
@@ -307,21 +395,21 @@ const EventHistory: React.FC = () => {
             className="mb-8"
           >
             <div className="flex gap-8 border-b border-gray-200">
-              <button 
+              <button
                 onClick={() => setActiveTab('upcoming')}
                 className={`pb-4 font-medium transition-colors ${
-                  activeTab === 'upcoming' 
-                    ? 'text-blue-600 border-b-2 border-blue-600' 
+                  activeTab === 'upcoming'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 Event Mendatang
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('past')}
                 className={`pb-4 font-medium transition-colors ${
-                  activeTab === 'past' 
-                    ? 'text-blue-600 border-b-2 border-blue-600' 
+                  activeTab === 'past'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -330,22 +418,58 @@ const EventHistory: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Search */}
+          {/* Search and Filter */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="mb-8"
           >
-            <div className="flex-1 relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Cari nama event"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 bg-white"
-              />
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari nama event"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 bg-white"
+                />
+              </div>
+
+              {/* Certificate Filter */}
+              <div className="relative">
+                <select
+                  value={certificateFilter}
+                  onChange={(e) => setCertificateFilter(e.target.value as any)}
+                  className={`appearance-none bg-white border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[180px] ${
+                    certificateFilter !== 'all' 
+                      ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' 
+                      : 'border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <option value="all">Semua Event</option>
+                  <option value="with_certificate">Event Bersertifikat</option>
+                  <option value="without_certificate">Tanpa Sertifikat</option>
+                </select>
+                <FiChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${
+                  certificateFilter !== 'all' ? 'text-blue-600' : 'text-gray-400'
+                }`} />
+              </div>
+
+              {/* Reset Filter Button */}
+              {(certificateFilter !== 'all' || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setCertificateFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className="px-4 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors whitespace-nowrap"
+                >
+                  Reset Filter
+                </button>
+              )}
             </div>
           </motion.div>
 
@@ -372,7 +496,7 @@ const EventHistory: React.FC = () => {
                       {(registration.event.image || registration.event.flyer_path) ? (
                         <img
                           src={
-                            registration.event.image || 
+                            registration.event.image ||
                             (registration.event.flyer_path ? `http://localhost:8000/storage/${registration.event.flyer_path}` : null) ||
                             '/images/default-event.jpg'
                           }
@@ -395,20 +519,36 @@ const EventHistory: React.FC = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {registration.event.judul}
                       </h3>
-                      
-                      <div className={`inline-flex items-center gap-1.5 text-sm font-medium mb-2 ${getStatusColor(registration.payment_status)}`}>
-                        <div className="w-2 h-2 rounded-full bg-current"></div>
-                        {getStatusText(registration.payment_status)}
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`inline-flex items-center gap-1.5 text-sm font-medium ${getStatusColor(registration.payment_status)}`}>
+                          <div className="w-2 h-2 rounded-full bg-current"></div>
+                          {getStatusText(registration.payment_status)}
+                        </div>
+
+                        {/* Event Status Badge */}
+                        {(() => {
+                          const eventStatus = getEventStatus(registration.event);
+                          const statusConfig = {
+                            upcoming: { text: 'Mendatang', color: 'bg-blue-100 text-blue-700' },
+                            ongoing: { text: 'Berlangsung', color: 'bg-green-100 text-green-700' },
+                            finished: { text: 'Selesai', color: 'bg-gray-100 text-gray-700' },
+                            unknown: { text: 'TBA', color: 'bg-gray-100 text-gray-500' }
+                          };
+                          const config = statusConfig[eventStatus as keyof typeof statusConfig] || statusConfig.unknown;
+
+                          return (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+                              {config.text}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <div className="text-sm text-gray-600">
                         <div className="mb-1">Tanggal Acara</div>
                         <div className="text-gray-900">
-                          {registration.event.tanggal_mulai ? new Date(registration.event.tanggal_mulai).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          }) : 'TBA'}, {registration.event.waktu_mulai || '00:00'} - {registration.event.waktu_selesai || '00:00'} WIB
+                          {registration.event.tanggal_mulai ? formatDate(registration.event.tanggal_mulai) : 'Tanggal tidak tersedia'} {registration.event.waktu_mulai || '00:00'} - {registration.event.waktu_selesai || '00:00'} WIB
                         </div>
                       </div>
                     </div>
@@ -421,16 +561,80 @@ const EventHistory: React.FC = () => {
                           1 Tiket
                         </div>
                       </div>
-                      
-                      <button 
-                        onClick={() => {
-                          setSelectedTicket(registration);
-                          setShowTicketModal(true);
-                        }}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-100"
-                      >
-                        Lihat E-Tiket
-                      </button>
+
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={async () => {
+                            setShowTicketModal(true);
+                            await generateTicketData(registration);
+                          }}
+                          className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-100"
+                        >
+                          Lihat E-Tiket
+                        </button>
+
+                        {/* Download Certificate Button */}
+                        {(() => {
+                          const eventStatus = getEventStatus(registration.event);
+                          const hasAttended = registration.attendance?.is_verified || registration.attendance?.waktu_hadir;
+                          const eventFinished = eventStatus === 'finished';
+                          const canDownloadCertificate = registration.certificate && hasAttended && eventFinished;
+                          
+                          if (canDownloadCertificate) {
+                            return (
+                              <button
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = `http://localhost:8000${registration.certificate!.file_path}`;
+                                  link.download = `sertifikat-${registration.certificate!.nomor_sertifikat}.pdf`;
+                                  link.click();
+                                }}
+                                className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded-lg text-sm font-medium hover:bg-yellow-100 transition-colors border border-yellow-100 flex items-center gap-2"
+                              >
+                                <FiDownload className="w-4 h-4" />
+                                Download Sertifikat
+                              </button>
+                            );
+                          } else if (registration.certificate && !hasAttended) {
+                            return (
+                              <div className="px-4 py-2 bg-gray-50 text-gray-500 rounded-lg text-sm font-medium border border-gray-100 flex items-center gap-2">
+                                <FiAward className="w-4 h-4" />
+                                Sertifikat (Perlu Absen)
+                              </div>
+                            );
+                          } else if (registration.certificate && hasAttended && !eventFinished) {
+                            return (
+                              <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium border border-blue-100 flex items-center gap-2">
+                                <FiAward className="w-4 h-4" />
+                                Sertifikat (Tunggu Event Selesai)
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+
+                        {/* Check-in Button for Today's Events */}
+                        {(() => {
+                          const eventStatus = getEventStatus(registration.event);
+                          const today = new Date().toDateString();
+                          const eventDate = new Date(registration.event.tanggal_mulai).toDateString();
+                          const isToday = today === eventDate;
+
+                          if (isToday && (eventStatus === 'upcoming' || eventStatus === 'ongoing')) {
+                            return (
+                              <button
+                                onClick={() => navigate(`/events/${registration.event_id}/checkin`)}
+                                className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors border border-green-100 flex items-center gap-2"
+                              >
+                                <FiLogIn className="w-4 h-4" />
+                                Check-in
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -448,8 +652,8 @@ const EventHistory: React.FC = () => {
                 {activeTab === 'upcoming' ? 'Belum Ada Event Mendatang' : 'Belum Ada Event yang Telah Berlalu'}
               </h3>
               <p className="text-gray-500 mb-6">
-                {activeTab === 'upcoming' 
-                  ? 'Anda belum terdaftar di event mendatang apapun' 
+                {activeTab === 'upcoming'
+                  ? 'Anda belum terdaftar di event mendatang apapun'
                   : 'Anda belum pernah mengikuti event sebelumnya'
                 }
               </p>
@@ -468,7 +672,7 @@ const EventHistory: React.FC = () => {
 
       {/* E-Ticket Modal */}
       {showTicketModal && selectedTicket && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4 pt-20"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
@@ -495,8 +699,18 @@ const EventHistory: React.FC = () => {
             <div className="p-6">
               {/* QR Code Section */}
               <div className="text-center mb-6">
-                <div className="w-32 h-32 bg-gray-900 mx-auto rounded-lg flex items-center justify-center mb-3">
-                  <div className="text-white text-xs font-medium">QR CODE</div>
+                <div className="w-32 h-32 mx-auto rounded-lg overflow-hidden mb-3 border border-gray-200">
+                  {qrCodeImage ? (
+                    <img
+                      src={qrCodeImage}
+                      alt="QR Code"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                      <div className="text-white text-xs font-medium">QR CODE</div>
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">Scan QR code untuk absensi</p>
               </div>
@@ -521,11 +735,7 @@ const EventHistory: React.FC = () => {
                   <div>
                     <div className="text-sm text-gray-500 mb-1">Tanggal</div>
                     <div className="text-sm font-medium text-gray-900">
-                      {selectedTicket.event.tanggal_mulai ? new Date(selectedTicket.event.tanggal_mulai).toLocaleDateString('id-ID', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      }) : 'TBA'}
+                      {selectedTicket.event.tanggal_mulai ? formatDate(selectedTicket.event.tanggal_mulai) : 'N/A'}
                     </div>
                   </div>
                   <div>
@@ -544,6 +754,13 @@ const EventHistory: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Kode Tiket</div>
                   <div className="text-sm font-bold text-blue-600">{selectedTicket.kode_pendaftaran}</div>
+                </div>
+
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Token Check-in</div>
+                  <div className="text-lg font-bold text-green-600 font-mono tracking-wider">
+                    {selectedTicket.token || 'Generating...'}
+                  </div>
                 </div>
 
                 <div>

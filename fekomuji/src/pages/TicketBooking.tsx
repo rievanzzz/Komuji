@@ -7,6 +7,9 @@ import Invoice from '../components/Invoice';
 import ETicket from '../components/ETicket';
 import { EmailService, type EmailTicketData } from '../services/emailService';
 import { QRCodeService, type TicketQRData } from '../services/qrCodeService';
+import { generateToken, generateQRData } from '../utils/tokenGenerator';
+import { generateQRCode } from '../utils/qrGenerator';
+import { sendRegistrationEmail, type RegistrationEmailData } from '../utils/emailService';
 
 interface TicketCategory {
   id: number;
@@ -40,7 +43,7 @@ const TicketBookingPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  
+
   const [step, setStep] = useState<'categories' | 'participant' | 'payment' | 'success'>('categories');
   const [registrationResult, setRegistrationResult] = useState<any>(null);
   const [showInvoice, setShowInvoice] = useState(false);
@@ -81,27 +84,52 @@ const TicketBookingPage: React.FC = () => {
     }
   };
 
-  // Send e-ticket via email
+  // Send e-ticket via email with token and QR code
   const sendETicketEmail = async (registrationData: any) => {
     try {
-      const emailData: EmailTicketData = {
-        participantName: participantData.nama_peserta,
-        participantEmail: participantData.email_peserta,
+      // Generate token for check-in
+      const token = generateToken();
+
+      // Generate QR data
+      const qrData = generateQRData(token, parseInt(eventId!), user?.id || 0);
+
+      // Generate QR code image
+      const qrCodeImage = await generateQRCode(qrData, 200);
+
+      // Format date
+      const eventDate = event?.tanggal_mulai ?
+        new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }) : '';
+
+      const emailData: RegistrationEmailData = {
+        recipientEmail: participantData.email_peserta,
+        recipientName: participantData.nama_peserta,
         eventTitle: event?.judul || '',
-        eventDate: event?.tanggal_mulai || '',
-        eventTime: `${event?.waktu_mulai} - ${event?.waktu_selesai}` || '',
+        eventDate: eventDate,
+        eventTime: `${event?.waktu_mulai} - ${event?.waktu_selesai}`,
         eventLocation: event?.lokasi || '',
-        ticketCategory: selectedCategory?.nama_kategori || '',
-        ticketPrice: selectedCategory?.harga || 0,
-        ticketNumber: registrationData.ticket_number || `TKT-${Date.now()}`,
-        ticketId: registrationData.id || registrationData.ticket_id,
-        organizerName: 'KOMUJI Event Platform'
+        token: token,
+        qrCodeImage: qrCodeImage,
+        registrationCode: registrationData.kode_pendaftaran || `REG-${Date.now()}`
       };
 
-      await EmailService.sendETicket(emailData);
-      console.log('E-ticket sent successfully');
+      const emailSent = await sendRegistrationEmail(emailData);
+
+      if (emailSent) {
+        console.log('✅ Registration email sent successfully');
+
+        // Store token in registration data (in real app, save to backend)
+        registrationData.token = token;
+        registrationData.qr_data = qrCodeImage;
+      } else {
+        console.error('❌ Failed to send registration email');
+      }
+
     } catch (error) {
-      console.error('Error sending e-ticket:', error);
+      console.error('Error sending registration email:', error);
     }
   };
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
@@ -138,7 +166,7 @@ const TicketBookingPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch event details
         const eventResponse = await fetch(`http://localhost:8000/api/events/${eventId}`);
         if (eventResponse.ok) {
@@ -151,21 +179,21 @@ const TicketBookingPage: React.FC = () => {
           };
           setEvent(normalized);
         }
-        
+
         // Fetch ticket categories
         const categoriesResponse = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
         console.log('Ticket categories response status:', categoriesResponse.status);
-        
+
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
           console.log('Ticket categories data:', categoriesData);
-          
+
           // Transform API data to match frontend interface
           const transformedCategories = categoriesData.map((cat: any) => ({
             ...cat,
             harga: parseFloat(cat.harga) // Convert string to number
           }));
-          
+
           console.log('Transformed categories:', transformedCategories);
           setTicketCategories(transformedCategories);
         } else {
@@ -222,7 +250,7 @@ const TicketBookingPage: React.FC = () => {
 
   const handleParticipantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!participantData.nama_peserta || !participantData.tanggal_lahir || !participantData.email_peserta) {
       setError('Semua field harus diisi');
       return;
@@ -252,6 +280,13 @@ const TicketBookingPage: React.FC = () => {
         return;
       }
 
+      // Validasi format email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(participantData.email_peserta)) {
+        setError('Format email tidak valid');
+        return;
+      }
+
       // Data sesuai dengan struktur database Registration model
       const registrationData = {
         ticket_category_id: selectedCategory?.id,
@@ -259,7 +294,9 @@ const TicketBookingPage: React.FC = () => {
         jenis_kelamin: participantData.jenis_kelamin,
         tanggal_lahir: participantData.tanggal_lahir,
         email_peserta: participantData.email_peserta,
-        payment_method: selectedCategory?.harga === 0 ? 'free' : (paymentMethod || 'free')
+        payment_method: selectedCategory?.harga === 0 ? 'free' : (paymentMethod || 'free'),
+        // Add unique identifier to allow multiple registrations
+        registration_note: `Registered by user for ${participantData.email_peserta} at ${new Date().toISOString()}`
       };
 
       console.log('Sending registration data:', registrationData);
@@ -276,24 +313,65 @@ const TicketBookingPage: React.FC = () => {
 
       const data = await response.json();
       console.log('Registration response:', data);
-      
+
       if (response.ok) {
         console.log('Registration successful:', data);
         setRegistrationResult(data);
-        
+
         // Generate QR Code for ticket
         await generateTicketQR(data);
-        
+
         // Send e-ticket via email
         await sendETicketEmail(data);
-        
+
         setStep('success');
       } else {
-        throw new Error(data.message || 'Registration failed');
+        // Handle specific error cases
+        let errorMessage = 'Gagal melakukan pendaftaran. Silakan coba lagi.';
+
+        if (response.status === 422) {
+          // Validation errors
+          if (data.errors) {
+            const firstError = Object.values(data.errors)[0];
+            errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
+        } else if (response.status === 409) {
+          // Conflict - already registered
+          if (data.message && data.message.includes('email')) {
+            errorMessage = 'Email ini sudah terdaftar di event ini. Gunakan email berbeda untuk mendaftar lagi.';
+          } else {
+            errorMessage = 'Anda sudah terdaftar di event ini. Untuk mendaftar lagi dengan email berbeda, silakan logout dan login dengan akun lain, atau hubungi admin.';
+          }
+        } else if (response.status === 400) {
+          // Bad request
+          errorMessage = data.message || 'Data yang dikirim tidak valid. Periksa kembali form Anda.';
+        } else if (response.status === 401) {
+          // Unauthorized
+          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
+        } else if (response.status === 403) {
+          // Forbidden
+          errorMessage = 'Anda tidak memiliki akses untuk mendaftar event ini.';
+        } else if (response.status >= 500) {
+          // Server error
+          errorMessage = 'Terjadi kesalahan server. Silakan coba lagi dalam beberapa saat.';
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+
+        console.error('Registration failed:', {
+          status: response.status,
+          data: data,
+          message: errorMessage
+        });
+
+        setError(errorMessage);
+        return;
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError('Gagal melakukan pendaftaran. Silakan coba lagi.');
+      setError('Terjadi kesalahan jaringan. Periksa koneksi internet Anda dan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -304,18 +382,18 @@ const TicketBookingPage: React.FC = () => {
       setError('Pilih metode pembayaran');
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
 
       // Untuk tiket berbayar, buat registrasi dengan status pending
       await handleRegistration();
-      
+
       // TODO: Integrate dengan payment gateway
       // Untuk sementara, tampilkan pesan bahwa sistem pembayaran belum tersedia
       alert('Sistem pembayaran belum tersedia. Registrasi Anda telah disimpan dengan status pending.');
-      
+
     } catch (err) {
       console.error('Payment error:', err);
       setError('Gagal memproses pembayaran. Silakan coba lagi.');
@@ -346,7 +424,7 @@ const TicketBookingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
-      
+
       <div className="pt-24 pb-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -360,7 +438,7 @@ const TicketBookingPage: React.FC = () => {
                 <span>Kembali ke Detail Event</span>
               </button>
             </div>
-            
+
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -369,13 +447,13 @@ const TicketBookingPage: React.FC = () => {
                   <p className="text-gray-500 text-sm mt-1">
                     {event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
                       weekday: 'long',
-                      day: 'numeric', 
+                      day: 'numeric',
                       month: 'long',
                       year: 'numeric'
                     }) : 'Tanggal akan diumumkan'} • {event?.lokasi}
                   </p>
                 </div>
-                
+
                 {/* Timer */}
                 {(step === 'participant' || step === 'payment') && (
                   <div className="bg-orange-100 text-orange-800 px-4 py-2 rounded-lg flex items-center gap-2">
@@ -384,7 +462,7 @@ const TicketBookingPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
             </div>
           </div>
 
@@ -393,9 +471,21 @@ const TicketBookingPage: React.FC = () => {
             <div className="lg:col-span-2">
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center">
-                    <FiInfo className="text-red-500 mr-2" size={16} />
-                    <p className="text-red-700 text-sm">{error}</p>
+                  <div className="flex items-start gap-2">
+                    <FiInfo className="text-red-500 mt-0.5 flex-shrink-0" size={16} />
+                    <div className="flex-1">
+                      <p className="text-red-700 text-sm">{error}</p>
+                      {error.includes('sudah terdaftar') && (
+                        <div className="mt-2 text-xs text-red-600">
+                          <p><strong>Tips:</strong></p>
+                          <ul className="list-disc list-inside space-y-1 mt-1">
+                            <li>Pastikan menggunakan email yang berbeda</li>
+                            <li>Cek apakah email sudah pernah digunakan untuk event ini</li>
+                            <li>Hubungi admin jika masih bermasalah</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -404,7 +494,7 @@ const TicketBookingPage: React.FC = () => {
               {step === 'categories' && (
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Kategori Tiket</h2>
-                  
+
                   {ticketCategories.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-gray-500">Tidak ada kategori tiket tersedia untuk event ini.</p>
@@ -414,9 +504,9 @@ const TicketBookingPage: React.FC = () => {
                     <div className="space-y-3">
                       {ticketCategories.map((category) => {
                       const isAvailable = category.is_active && category.terjual < category.kuota;
-                      
+
                       const isSelected = selectedCategory?.id === category.id;
-                      
+
                       return (
                         <div
                           key={category.id}
@@ -440,14 +530,14 @@ const TicketBookingPage: React.FC = () => {
                               </div>
                               <p className="text-gray-600 text-sm">{category.deskripsi}</p>
                             </div>
-                            
+
                             <div className="text-right ml-4">
                               <div className="text-lg font-bold text-gray-900">
                                 {category.harga === 0 ? 'Gratis' : `Rp ${category.harga.toLocaleString('id-ID')}`}
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Ticket Info */}
                           <div className="mt-3 pt-3 border-t">
                             <div className="flex items-center justify-between">
@@ -481,7 +571,7 @@ const TicketBookingPage: React.FC = () => {
                         <p className="text-gray-600 text-sm">Lengkapi informasi peserta event</p>
                       </div>
                     </div>
-                    
+
                     {/* Selected Ticket Info */}
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                       <div className="flex items-center justify-between">
@@ -587,7 +677,7 @@ const TicketBookingPage: React.FC = () => {
               {step === 'payment' && selectedCategory && (
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Metode Pembayaran</h2>
-                  
+
                   <div className="space-y-4 mb-6">
                     {['Bank Transfer', 'E-Wallet (GoPay, OVO, DANA)', 'Virtual Account'].map((method) => (
                       <label key={method} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
@@ -633,7 +723,7 @@ const TicketBookingPage: React.FC = () => {
                       {selectedCategory?.harga === 0 ? 'Pendaftaran Berhasil' : 'Invoice Dibuat'}
                     </h2>
                     <p className="text-gray-600">
-                      {selectedCategory?.harga === 0 
+                      {selectedCategory?.harga === 0
                         ? 'E-ticket telah dikirim ke email Anda'
                         : 'Silakan lakukan pembayaran'
                       }
@@ -663,11 +753,11 @@ const TicketBookingPage: React.FC = () => {
                       <div className="text-sm text-gray-600 space-y-2">
                         <div className="flex items-center gap-2">
                           <FiCalendar size={14} className="text-gray-400" />
-                          <span>{event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', { 
+                          <span>{event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
                             weekday: 'long',
-                            day: 'numeric', 
-                            month: 'long', 
-                            year: 'numeric' 
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
                           }) : 'TBA'}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -706,9 +796,9 @@ const TicketBookingPage: React.FC = () => {
                     {/* QR Code - Minimalist */}
                     <div className="text-center py-6 border-t border-gray-200">
                       <p className="text-sm text-gray-600 mb-4">QR Code Check-in</p>
-                      
+
                       <div className="inline-block p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <img 
+                        <img
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(JSON.stringify({
                             ticketId: registrationResult.data?.id || 'TKT-' + Date.now(),
                             ticketNumber: registrationResult.data?.kode_pendaftaran || 'REG-' + Date.now(),
@@ -719,7 +809,7 @@ const TicketBookingPage: React.FC = () => {
                             ticketCategory: selectedCategory?.nama_kategori || 'Regular',
                             timestamp: new Date().toISOString()
                           }))}`}
-                          alt="QR Code" 
+                          alt="QR Code"
                           className="w-40 h-40 rounded-xl shadow-lg"
                           onError={(e) => {
                             // Fallback to placeholder if QR API fails
@@ -734,7 +824,7 @@ const TicketBookingPage: React.FC = () => {
                           }}
                         />
                       </div>
-                      
+
                       <p className="text-xs text-gray-500 mt-3">
                         Tunjukkan QR code ini saat check-in
                       </p>
@@ -772,13 +862,13 @@ const TicketBookingPage: React.FC = () => {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Detail Pesanan</h3>
-                
+
                 {/* Event Image & Info */}
                 <div className="mb-6">
                   <div className="flex gap-3">
                     {/* Event Image - Same logic as EventDetail */}
                     {(event?.image || event?.flyer_path) ? (
-                      <img 
+                      <img
                         src={event.image || `http://localhost:8000/storage/${event.flyer_path}`}
                         alt={event.judul || 'Event'}
                         className="w-16 h-16 rounded-lg object-cover shadow-sm"
@@ -792,7 +882,7 @@ const TicketBookingPage: React.FC = () => {
                         }}
                       />
                     ) : null}
-                    <div 
+                    <div
                       className={`w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm ${
                         (event?.image || event?.flyer_path) ? 'hidden' : 'flex'
                       }`}
@@ -804,10 +894,10 @@ const TicketBookingPage: React.FC = () => {
                         {event?.judul || 'Judul Event Baru'}
                       </h4>
                       <div className="text-xs text-gray-600 mb-1">
-                        {event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', { 
-                          day: 'numeric', 
-                          month: 'long', 
-                          year: 'numeric' 
+                        {event?.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
                         }) : '2 Oktober 2025'}
                       </div>
                       <div className="text-xs text-gray-600">
@@ -816,7 +906,7 @@ const TicketBookingPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Selected Ticket */}
                 {selectedCategory && (
                   <div className="mb-6 pb-4 border-b border-gray-200">
@@ -835,7 +925,7 @@ const TicketBookingPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Price Breakdown */}
                 <div className="mb-6 pb-4 border-b border-gray-100 space-y-3">
                   <div className="flex justify-between items-center">
@@ -849,7 +939,7 @@ const TicketBookingPage: React.FC = () => {
                     <span className="text-sm font-medium text-gray-900">Rp 0</span>
                   </div>
                 </div>
-                
+
                 {/* Total */}
                 <div className="mb-6 bg-blue-50 rounded-lg p-4">
                   <div className="flex justify-between items-center">
@@ -863,28 +953,28 @@ const TicketBookingPage: React.FC = () => {
                 {/* Action Buttons */}
                 <div className="space-y-3">
                   {step === 'categories' && selectedCategory && (
-                    <button 
+                    <button
                       onClick={() => setStep('participant')}
                       className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                     >
                       {Number(selectedCategory.harga) === 0 ? 'Lanjutkan' : 'Bayar Sekarang'}
                     </button>
                   )}
-                  
+
                   {step === 'participant' && (
-                    <button 
+                    <button
                       onClick={() => {
                         // Validasi form dulu
                         if (!participantData.nama_peserta || !participantData.email_peserta || !participantData.tanggal_lahir) {
                           setError('Semua field harus diisi');
                           return;
                         }
-                        
+
                         // Debug log untuk memastikan harga tiket
                         console.log('Selected category:', selectedCategory);
                         console.log('Harga tiket:', selectedCategory?.harga);
                         console.log('Is free ticket?', selectedCategory?.harga === 0);
-                        
+
                         // Jika gratis, langsung daftar. Jika berbayar, ke payment
                         const harga = Number(selectedCategory?.harga) || 0;
                         if (harga === 0) {
@@ -901,9 +991,9 @@ const TicketBookingPage: React.FC = () => {
                       {loading ? 'Memproses...' : Number(selectedCategory?.harga) === 0 ? 'Daftar Gratis' : 'Lanjut ke Pembayaran'}
                     </button>
                   )}
-                  
+
                   {step === 'payment' && (
-                    <button 
+                    <button
                       onClick={handlePayment}
                       disabled={loading}
                       className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
@@ -913,7 +1003,7 @@ const TicketBookingPage: React.FC = () => {
                   )}
 
                   {step !== 'success' && (
-                    <button 
+                    <button
                       onClick={() => navigate(`/events/${eventId}`)}
                       className="w-full border-2 border-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                     >

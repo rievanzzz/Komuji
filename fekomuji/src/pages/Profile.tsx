@@ -54,7 +54,7 @@ const Profile: React.FC = () => {
       console.log('=== PROFILE DEBUG START ===');
       console.log('AuthContext user:', user);
       console.log('isAuthenticated:', isAuthenticated);
-      
+
       // Priority 1: Use data from AuthContext if available
       if (user && user.id) {
         console.log('Using AuthContext user data:', user);
@@ -62,7 +62,7 @@ const Profile: React.FC = () => {
         const phoneNumber = userData.phone || userData.no_telepon || userData.phoneNumber || '';
         const userAddress = userData.address || userData.alamat || '';
         const userEducation = userData.last_education || userData.pendidikan_terakhir || userData.education || '';
-        
+
         console.log('Extracted phone number:', phoneNumber);
         console.log('Raw user data for phone:', {
           phone: userData.phone,
@@ -71,7 +71,7 @@ const Profile: React.FC = () => {
         });
         console.log('Extracted address:', userAddress);
         console.log('Extracted education:', userEducation);
-        
+
         setProfile({
           id: user.id.toString(),
           name: user.name || '',
@@ -82,7 +82,7 @@ const Profile: React.FC = () => {
           role: user.role || 'peserta',
           created_at: userData.created_at || new Date().toISOString()
         });
-        
+
         setEditForm({
           name: user.name || '',
           phone: phoneNumber,
@@ -95,7 +95,7 @@ const Profile: React.FC = () => {
       // Priority 2: Try API endpoints
       const token = localStorage.getItem('token');
       console.log('Token from localStorage:', token);
-      
+
       const endpoints = [
         'http://localhost:8000/api/profile',
         'http://localhost:8000/api/user/profile',
@@ -142,7 +142,7 @@ const Profile: React.FC = () => {
           role: profileData.role || 'peserta',
           created_at: profileData.created_at || new Date().toISOString()
         });
-        
+
         setEditForm({
           name: profileData.name || '',
           phone: profileData.phone || profileData.no_telepon || '',
@@ -154,7 +154,7 @@ const Profile: React.FC = () => {
         console.log('All API endpoints failed, using localStorage data');
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         console.log('LocalStorage user data:', userData);
-        
+
         if (userData.id) {
           setProfile({
             id: userData.id.toString(),
@@ -192,7 +192,7 @@ const Profile: React.FC = () => {
       // Fallback ke data user dari localStorage
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       console.log('Fallback to localStorage user data:', userData);
-      
+
       if (userData.id) {
         setProfile({
           id: userData.id,
@@ -234,7 +234,7 @@ const Profile: React.FC = () => {
   const fetchCertificates = async () => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Try multiple possible API endpoints for certificates
       const endpoints = [
         'http://localhost:8000/api/my-certificates',
@@ -277,7 +277,7 @@ const Profile: React.FC = () => {
           file_path: cert.file_path || cert.path || cert.certificate_path || '',
           generated_at: cert.generated_at || cert.created_at || new Date().toISOString()
         }));
-        
+
         setCertificates(transformedCertificates);
       } else {
         console.log('All certificate API endpoints failed, showing empty state');
@@ -309,7 +309,7 @@ const Profile: React.FC = () => {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -325,7 +325,7 @@ const Profile: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      
+
       // Try multiple possible API endpoints for updating profile
       const endpoints = [
         { url: 'http://localhost:8000/api/profile', method: 'PUT' },
@@ -384,7 +384,7 @@ const Profile: React.FC = () => {
           address: updatedProfile.address || updatedProfile.alamat || editForm.address,
           last_education: updatedProfile.last_education || updatedProfile.pendidikan_terakhir || editForm.last_education
         });
-        
+
         // Update localStorage user data
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const updatedUserData = {
@@ -395,10 +395,10 @@ const Profile: React.FC = () => {
           last_education: editForm.last_education
         };
         localStorage.setItem('user', JSON.stringify(updatedUserData));
-        
+
         setIsEditing(false);
         setErrors({ success: 'Profil berhasil diperbarui!' });
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => {
           setErrors({});
@@ -451,60 +451,52 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       {/* Professional Layout */}
       <div className="pt-24 pb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-7xl mx-auto px-6"
-        >
-          {/* Hero Header */}
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
-            <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-black px-12 py-16">
+        <div className="max-w-4xl mx-auto px-6">
+          {/* Professional Header */}
+          <div className="bg-white rounded-lg border border-gray-200 mb-8">
+            <div className="px-8 py-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                  {/* Professional Avatar */}
+                <div className="flex items-center gap-6">
+                  {/* Clean Avatar */}
                   <div className="relative">
-                    <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center shadow-2xl">
-                      <span className="text-4xl font-bold text-gray-900">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <span className="text-xl font-semibold text-gray-700">
                         {profile?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white"></div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                   </div>
-                  <div className="text-white">
-                    <h1 className="text-4xl font-bold mb-3 tracking-tight">
+                  
+                  <div>
+                    <h1 className="text-2xl font-semibold text-gray-900 mb-1">
                       {profile?.name || 'Nama Pengguna'}
                     </h1>
-                    <p className="text-gray-300 text-xl mb-2 font-medium">
+                    <p className="text-gray-600 mb-2">
                       {profile?.email || 'email@example.com'}
                     </p>
-                    <div className="flex items-center gap-3">
-                      <span className="px-4 py-2 bg-white/20 rounded-full text-sm font-medium backdrop-blur-sm">
-                        {profile?.role === 'peserta' ? 'Peserta' : profile?.role || 'Anggota'}
-                      </span>
-                      <span className="px-4 py-2 bg-green-500/20 text-green-300 rounded-full text-sm font-medium">
-                        Aktif
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {profile?.role === 'peserta' ? 'Peserta' : profile?.role || 'Anggota'}
+                    </span>
                   </div>
                 </div>
+
                 <button
                   onClick={handleEditToggle}
-                  className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   {isEditing ? (
                     <>
-                      <FiX className="w-5 h-5 inline mr-3" />
+                      <FiX className="w-4 h-4 mr-2" />
                       Batal
                     </>
                   ) : (
                     <>
-                      <FiEdit3 className="w-5 h-5 inline mr-3" />
+                      <FiEdit3 className="w-4 h-4 mr-2" />
                       Edit Profil
                     </>
                   )}
@@ -513,318 +505,249 @@ const Profile: React.FC = () => {
             </div>
           </div>
 
-          {/* Professional Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Quick Actions */}
-            <div className="lg:col-span-1 space-y-6">
-              {errors.general && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-r-xl shadow-sm">
-                  <div className="font-semibold">Error</div>
-                  <div>{errors.general}</div>
-                </div>
-              )}
-              
-              {errors.success && (
-                <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-6 py-4 rounded-r-xl shadow-sm">
-                  <div className="font-semibold">Berhasil</div>
-                  <div>{errors.success}</div>
-                </div>
-              )}
-
-              {/* Quick Actions Card */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Pengaturan Cepat</h3>
-                <div className="space-y-4">
-                  <button className="w-full bg-gradient-to-r from-gray-900 to-black text-white p-5 rounded-xl text-left hover:from-gray-800 hover:to-gray-900 transition-all duration-300 group shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-semibold mb-1">Ganti Password</div>
-                        <div className="text-gray-300 text-sm">Perbarui keamanan akun</div>
-                      </div>
-                      <FiEdit3 className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </button>
-                  
-                  <button className="w-full bg-white border-2 border-gray-200 p-5 rounded-xl text-left hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 group shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-semibold text-gray-900 mb-1">Bahasa</div>
-                        <div className="text-gray-600 text-sm">Bahasa Indonesia</div>
-                      </div>
-                      <div className="w-5 h-5 bg-green-500 rounded-full"></div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Stats Card */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Statistik</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                    <div>
-                      <div className="text-2xl font-bold text-blue-600">{certificates.length}</div>
-                      <div className="text-blue-700 text-sm font-medium">Event Diikuti</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                    <div>
-                      <div className="text-2xl font-bold text-green-600">{certificates.length}</div>
-                      <div className="text-green-700 text-sm font-medium">Sertifikat</div>
-                    </div>
-                  </div>
+          {/* Error/Success Messages */}
+          {errors.general && (
+            <div className="rounded-md bg-red-50 p-4 mb-6">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <div className="mt-2 text-sm text-red-700">{errors.general}</div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Right Column - Main Content */}
-            <div className="lg:col-span-2 space-y-8">
-
-              {/* Professional Profile Information */}
-              {!isEditing && (
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-6 border-b border-gray-200">
-                    <h3 className="text-2xl font-bold text-gray-900">Informasi Personal</h3>
-                    <p className="text-gray-600 mt-1">Data pribadi dan informasi akun Anda</p>
-                  </div>
-                  <div className="p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Nama Lengkap</label>
-                        <div className="text-lg font-semibold text-gray-900 bg-gray-50 px-4 py-3 rounded-lg border">
-                          {profile?.name || 'Belum diisi'}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Alamat Email</label>
-                        <div className="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-lg border">
-                          {profile?.email || 'Belum diisi'}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Nomor Telepon</label>
-                        <div className="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-lg border">
-                          {profile?.phone || 'Belum diisi'}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pendidikan</label>
-                        <div className="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-lg border">
-                          {profile?.last_education || 'Belum diisi'}
-                        </div>
-                      </div>
-                      
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Alamat</label>
-                        <div className="text-lg text-gray-900 bg-gray-50 px-4 py-3 rounded-lg border min-h-[80px] flex items-start">
-                          {profile?.address || 'Belum diisi'}
-                        </div>
-                      </div>
-                      
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Bergabung Sejak</label>
-                        <div className="text-lg text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 rounded-lg border border-blue-200">
-                          {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('id-ID', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          }) : 'Tidak tersedia'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+          {errors.success && (
+            <div className="rounded-md bg-green-50 p-4 mb-6">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800">Berhasil</h3>
+                  <div className="mt-2 text-sm text-green-700">{errors.success}</div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* Professional Edit Form */}
-              {isEditing && (
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
-                    <h3 className="text-2xl font-bold text-gray-900">Edit Informasi Personal</h3>
-                    <p className="text-gray-600 mt-1">Perbarui data pribadi Anda</p>
-                  </div>
-                  <div className="p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Full Name */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                          Nama Lengkap *
-                        </label>
-                        <input
-                          type="text"
-                          name="name"
-                          value={editForm.name}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg"
-                          placeholder="Masukkan nama lengkap"
-                        />
-                        {errors.name && (
-                          <p className="text-red-500 text-sm mt-2 flex items-center">
-                            <span className="w-4 h-4 bg-red-500 rounded-full mr-2 flex-shrink-0"></span>
-                            {errors.name}
-                          </p>
-                        )}
-                      </div>
+          {/* Main Content */}
+          <div className="space-y-8">
 
-                      {/* Phone Number */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                          Nomor Telepon
-                        </label>
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={editForm.phone}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg"
-                          placeholder="08123456789"
-                        />
-                        {errors.phone && (
-                          <p className="text-red-500 text-sm mt-2 flex items-center">
-                            <span className="w-4 h-4 bg-red-500 rounded-full mr-2 flex-shrink-0"></span>
-                            {errors.phone}
-                          </p>
-                        )}
-                      </div>
+            {/* Professional Profile Information */}
+            {!isEditing && (
+              <div className="bg-white rounded-lg border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Informasi Personal</h3>
+                </div>
+                <div className="p-6">
+                  <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Nama Lengkap</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile?.name || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Email</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile?.email || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Nomor Telepon</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile?.phone || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Pendidikan</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile?.last_education || '-'}</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-sm font-medium text-gray-500">Alamat</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile?.address || '-'}</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-sm font-medium text-gray-500">Bergabung Sejak</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('id-ID', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            )}
 
-                      {/* Education */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                          Pendidikan Terakhir
-                        </label>
-                        <select
-                          name="last_education"
-                          value={editForm.last_education}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg bg-white"
-                        >
-                          <option value="">Pilih pendidikan terakhir</option>
-                          <option value="SD">SD</option>
-                          <option value="SMP">SMP</option>
-                          <option value="SMA/SMK">SMA/SMK</option>
-                          <option value="D3">D3</option>
-                          <option value="S1">S1</option>
-                          <option value="S2">S2</option>
-                          <option value="S3">S3</option>
-                        </select>
-                        {errors.last_education && (
-                          <p className="text-red-500 text-sm mt-2 flex items-center">
-                            <span className="w-4 h-4 bg-red-500 rounded-full mr-2 flex-shrink-0"></span>
-                            {errors.last_education}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Address */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                          Alamat
-                        </label>
-                        <textarea
-                          name="address"
-                          value={editForm.address}
-                          onChange={handleInputChange}
-                          rows={4}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none text-lg"
-                          placeholder="Masukkan alamat lengkap"
-                        />
-                        {errors.address && (
-                          <p className="text-red-500 text-sm mt-2 flex items-center">
-                            <span className="w-4 h-4 bg-red-500 rounded-full mr-2 flex-shrink-0"></span>
-                            {errors.address}
-                          </p>
-                        )}
-                      </div>
+            {/* Professional Edit Form */}
+            {isEditing && (
+              <div className="bg-white rounded-lg border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Edit Informasi Personal</h3>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                    {/* Full Name */}
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        Nama Lengkap *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        id="name"
+                        value={editForm.name}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Masukkan nama lengkap"
+                      />
+                      {errors.name && (
+                        <p className="mt-2 text-sm text-red-600">{errors.name}</p>
+                      )}
                     </div>
 
-                    {/* Save Button */}
-                    <div className="flex justify-end mt-8 pt-6 border-t border-gray-200">
-                      <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-300 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    {/* Phone Number */}
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                        Nomor Telepon
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        id="phone"
+                        value={editForm.phone}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="08123456789"
+                      />
+                      {errors.phone && (
+                        <p className="mt-2 text-sm text-red-600">{errors.phone}</p>
+                      )}
+                    </div>
+
+                    {/* Education */}
+                    <div>
+                      <label htmlFor="last_education" className="block text-sm font-medium text-gray-700">
+                        Pendidikan Terakhir
+                      </label>
+                      <select
+                        name="last_education"
+                        id="last_education"
+                        value={editForm.last_education}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
-                        {saving ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline mr-2"></div>
-                            Menyimpan...
-                          </>
-                        ) : (
-                          'Simpan Perubahan'
-                        )}
-                      </button>
+                        <option value="">Pilih pendidikan terakhir</option>
+                        <option value="SD">SD</option>
+                        <option value="SMP">SMP</option>
+                        <option value="SMA/SMK">SMA/SMK</option>
+                        <option value="D3">D3</option>
+                        <option value="S1">S1</option>
+                        <option value="S2">S2</option>
+                        <option value="S3">S3</option>
+                      </select>
+                      {errors.last_education && (
+                        <p className="mt-2 text-sm text-red-600">{errors.last_education}</p>
+                      )}
+                    </div>
+
+                    {/* Address */}
+                    <div className="sm:col-span-2">
+                      <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                        Alamat
+                      </label>
+                      <textarea
+                        name="address"
+                        id="address"
+                        value={editForm.address}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Masukkan alamat lengkap"
+                      />
+                      {errors.address && (
+                        <p className="mt-2 text-sm text-red-600">{errors.address}</p>
+                      )}
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Professional Certificates Section */}
-              {certificates.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 px-8 py-6 border-b border-gray-200">
-                    <h3 className="text-2xl font-bold text-gray-900">Sertifikat Terbaru</h3>
-                    <p className="text-gray-600 mt-1">Pencapaian dan sertifikat yang telah Anda peroleh</p>
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-6">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Menyimpan...
+                        </>
+                      ) : (
+                        'Simpan Perubahan'
+                      )}
+                    </button>
                   </div>
-                  <div className="p-8">
-                    <div className="space-y-6">
-                      {certificates.slice(0, 3).map((cert) => (
-                        <div key={cert.id} className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-6 hover:shadow-md transition-all duration-300">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
-                                <FiEdit3 className="w-6 h-6 text-white" />
-                              </div>
-                              <div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-1">{cert.event_title}</h4>
-                                <p className="text-sm text-gray-600">
-                                  Diterbitkan: {new Date(cert.generated_at).toLocaleDateString('id-ID', {
-                                    year: 'numeric',
-                                    month: 'long', 
-                                    day: 'numeric'
-                                  })}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">No: {cert.nomor_sertifikat}</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-3">
-                              <button
-                                onClick={() => window.open(`http://localhost:8000${cert.file_path}`, '_blank')}
-                                className="bg-white border-2 border-gray-200 hover:border-blue-500 text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg font-medium transition-all duration-300"
-                              >
-                                Lihat
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = `http://localhost:8000${cert.file_path}`;
-                                  link.download = `sertifikat-${cert.nomor_sertifikat}.pdf`;
-                                  link.click();
-                                }}
-                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg"
-                              >
-                                Download
-                              </button>
-                            </div>
+                </div>
+              </div>
+            )}
+
+            {/* Professional Certificates Section */}
+            {certificates.length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Sertifikat</h3>
+                  <p className="mt-1 text-sm text-gray-600">{certificates.length} sertifikat tersedia</p>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {certificates.slice(0, 3).map((cert) => (
+                      <div key={cert.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{cert.event_title}</h4>
+                            <p className="text-sm text-gray-500">
+                              {new Date(cert.generated_at).toLocaleDateString('id-ID', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">No: {cert.nomor_sertifikat}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => window.open(`http://localhost:8000${cert.file_path}`, '_blank')}
+                              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              Lihat
+                            </button>
+                            <button
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `http://localhost:8000${cert.file_path}`;
+                                link.download = `sertifikat-${cert.nomor_sertifikat}.pdf`;
+                                link.click();
+                              }}
+                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              Download
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                    {certificates.length > 3 && (
-                      <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-                        <button className="text-blue-600 hover:text-blue-800 font-semibold transition-colors">
-                          Lihat semua {certificates.length} sertifikat →
-                        </button>
                       </div>
-                    )}
+                    ))}
                   </div>
+                  {certificates.length > 3 && (
+                    <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+                      <button className="text-blue-600 hover:text-blue-500 text-sm font-medium">
+                        Lihat semua {certificates.length} sertifikat →
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <PublicFooter />

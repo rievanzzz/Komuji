@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiTag, FiDownload } from 'react-icons/fi';
+import { FiHeart, FiShare2, FiArrowLeft, FiMapPin, FiClock, FiCalendar, FiTag, FiDownload, FiLogIn, FiCheckCircle } from 'react-icons/fi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
@@ -20,13 +20,13 @@ const EventPriceDisplay: React.FC<EventPriceDisplayProps> = ({ eventId }) => {
         const response = await fetch(`http://localhost:8000/api/events/${eventId}/ticket-categories`);
         if (response.ok) {
           const categories = await response.json();
-          
+
           if (categories && categories.length > 0) {
             const prices = categories
               .filter((cat: any) => cat.is_active)
               .map((cat: any) => parseFloat(cat.harga))
               .sort((a: number, b: number) => a - b);
-            
+
             if (prices.length === 0) {
               setPriceRange('Tidak tersedia');
             } else if (prices[0] === 0 && prices.length === 1) {
@@ -97,7 +97,7 @@ const EventDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  
+
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,11 +111,11 @@ const EventDetail: React.FC = () => {
   // Transform API data to display format
   const transformEventData = (apiEvent: any): EventDetailData => {
     console.log('Raw API Event Data:', apiEvent);
-    
+
     // Validate date
     const eventDate = apiEvent.tanggal_mulai ? new Date(apiEvent.tanggal_mulai) : null;
     const isValidDate = eventDate && !isNaN(eventDate.getTime());
-    
+
     const transformed = {
       ...apiEvent,
       // Computed display properties
@@ -124,18 +124,18 @@ const EventDetail: React.FC = () => {
       date: isValidDate ? apiEvent.tanggal_mulai : new Date().toISOString().split('T')[0],
       time: `${apiEvent.waktu_mulai || '00:00'} - ${apiEvent.waktu_selesai || '23:59'}`,
       location: apiEvent.lokasi || 'Lokasi akan diumumkan',
-      price: apiEvent.harga_tiket && apiEvent.harga_tiket > 0 
-        ? `Rp ${apiEvent.harga_tiket.toLocaleString('id-ID')}` 
+      price: apiEvent.harga_tiket && apiEvent.harga_tiket > 0
+        ? `Rp ${apiEvent.harga_tiket.toLocaleString('id-ID')}`
         : 'Gratis',
       // Prefer API-provided full image URL. Fallback to storage URL if flyer_path exists.
-      image: apiEvent.image 
+      image: apiEvent.image
         || (apiEvent.flyer_path ? `http://localhost:8000/storage/${apiEvent.flyer_path}` : '/images/default-event.svg'),
       category: apiEvent.category || 'Event',
       organizer: 'Event Organizer',
       capacity: apiEvent.kuota || 0,
       registered: apiEvent.terdaftar || 0
     };
-    
+
     console.log('Transformed event detail:', transformed);
     return transformed;
   };
@@ -143,29 +143,29 @@ const EventDetail: React.FC = () => {
   // Check if user is registered for this event
   const checkUserRegistration = async () => {
     if (!isAuthenticated || !id) return;
-    
+
     try {
       setCheckingRegistration(true);
       const token = localStorage.getItem('token');
-      
+
       if (!token) return;
-      
+
       const response = await fetch('http://localhost:8000/api/my-registrations', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const registrations = data.data || data || [];
-        
+
         // Find registration for this event
-        const eventRegistration = registrations.find((reg: any) => 
+        const eventRegistration = registrations.find((reg: any) =>
           reg.event_id.toString() === id
         );
-        
+
         if (eventRegistration) {
           setUserRegistration(eventRegistration);
           console.log('User registration found:', eventRegistration);
@@ -184,7 +184,7 @@ const EventDetail: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         console.log('Fetching event with ID:', id);
         const response = await fetch(`http://localhost:8000/api/events/${id}`, {
           method: 'GET',
@@ -193,9 +193,9 @@ const EventDetail: React.FC = () => {
             'Content-Type': 'application/json',
           }
         });
-        
+
         console.log('API Response status:', response.status);
-        
+
         if (!response.ok) {
           if (response.status === 404) {
             throw new Error('Event tidak ditemukan');
@@ -205,21 +205,21 @@ const EventDetail: React.FC = () => {
             throw new Error('Gagal memuat data event');
           }
         }
-        
+
         const data = await response.json();
         console.log('API Response data:', data);
-        
+
         if (!data) {
           throw new Error('Data event tidak valid');
         }
-        
+
         const transformedEvent = transformEventData(data);
         console.log('Transformed event data:', transformedEvent);
         setEvent(transformedEvent);
-        
+
       } catch (err) {
         console.error('Error fetching event:', err);
-        
+
         // Fallback to mock data for development
         const mockEvent = {
           id: parseInt(id || '1'),
@@ -236,7 +236,7 @@ const EventDetail: React.FC = () => {
           terdaftar: 25,
           is_published: true
         };
-        
+
         const transformedEvent = transformEventData(mockEvent);
         setEvent(transformedEvent);
         setError('Using fallback data - API not available');
@@ -265,24 +265,24 @@ const EventDetail: React.FC = () => {
     const fetchRelatedEvents = async () => {
       try {
         console.log('Fetching related events...');
-        
+
         // Try multiple endpoints to get events
         let response = await fetch('http://localhost:8000/api/events');
-        
+
         if (!response.ok) {
           console.log('First endpoint failed, trying alternative...');
           response = await fetch('http://localhost:8000/api/events?sort=terdekat');
         }
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('Raw events data:', data);
           console.log('Data type:', typeof data, 'Length:', Array.isArray(data) ? data.length : 'Not array');
-          
+
           // Handle different response formats
           let eventsArray = Array.isArray(data) ? data : (data.data || []);
           console.log('Events array:', eventsArray);
-          
+
           if (eventsArray.length === 0) {
             console.log('No events found in response, using fallback data');
             // Fallback static data - same structure as real API data
@@ -327,21 +327,21 @@ const EventDetail: React.FC = () => {
                 flyer_path: undefined // Will use default image like real API
               }
             ];
-            
+
             // Use fallback data directly - same structure as API
             setRelatedEvents(fallbackEvents);
             return;
           }
-          
+
           // Filter out current event
           const currentEventId = parseInt(id || '0');
           const filtered = eventsArray.filter((evt: any) => {
             console.log('Comparing event ID:', evt.id, 'with current:', currentEventId);
             return evt.id !== currentEventId;
           });
-          
+
           console.log('Filtered events:', filtered.length);
-          
+
           // If we have events, take random 3 or all available
           let selectedEvents = [];
           if (filtered.length > 0) {
@@ -353,12 +353,12 @@ const EventDetail: React.FC = () => {
               selectedEvents = shuffled.slice(0, 3);
             }
           }
-          
+
           console.log('Selected events before transform:', selectedEvents);
-          
+
           // Use raw data directly for related events - same as Events page
           const processedEvents = selectedEvents;
-          
+
           console.log('Processed events for related:', processedEvents);
           setRelatedEvents(processedEvents);
         } else {
@@ -381,7 +381,7 @@ const EventDetail: React.FC = () => {
       setShowAuthModal(true);
       return;
     }
-    
+
     // Navigate to ticket booking page
     navigate(`/events/${id}/book`);
   };
@@ -450,7 +450,7 @@ const EventDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       {/* Back Button */}
       <div className="max-w-7xl mx-auto px-6 pt-8">
         <button
@@ -490,14 +490,14 @@ const EventDetail: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             {/* Floating Action Buttons */}
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 onClick={() => setIsLiked(!isLiked)}
                 className={`p-3 rounded-full shadow-lg backdrop-blur-sm transition-all duration-200 ${
-                  isLiked 
-                    ? 'bg-red-500 text-white' 
+                  isLiked
+                    ? 'bg-red-500 text-white'
                     : 'bg-white/90 text-gray-700 hover:bg-white'
                 }`}
               >
@@ -536,7 +536,7 @@ const EventDetail: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-500 font-medium">Date</p>
                   <p className="text-gray-900 font-semibold">
-                    {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('en-US', { 
+                    {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString('en-US', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
@@ -593,50 +593,25 @@ const EventDetail: React.FC = () => {
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${Math.min(((event.terdaftar || 0) / (event.kuota || 1)) * 100, 100)}%` 
+                  style={{
+                    width: `${Math.min(((event.terdaftar || 0) / (event.kuota || 1)) * 100, 100)}%`
                   }}
                 ></div>
               </div>
             </div>
 
-            {/* Buy Ticket Button or E-Ticket Button */}
-            {checkingRegistration ? (
-              <button
-                disabled
-                className="w-full bg-gray-400 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg cursor-not-allowed"
-              >
-                Checking Registration...
-              </button>
-            ) : userRegistration ? (
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate(`/transaksi/${userRegistration.id}/eticket`)}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  <FiDownload className="w-5 h-5" />
-                  Download E-Tiket
-                </button>
-                <button
-                  onClick={() => navigate(`/transaksi/${userRegistration.id}`)}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-medium text-base transition-all duration-200"
-                >
-                  Lihat Detail Transaksi
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleRegister}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                {isAuthenticated ? 
-                  (event.harga_tiket && event.harga_tiket > 0 ? 'Buy Ticket' : 'Register Free') : 
-                  'Login to Register'
-                }
-              </button>
-            )}
+            {/* Buy Ticket Button - Always Available */}
+            <button
+              onClick={handleRegister}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              {isAuthenticated ?
+                (event.harga_tiket && event.harga_tiket > 0 ? 'Buy Ticket' : 'Register Free') :
+                'Login to Register'
+              }
+            </button>
           </div>
         </div>
 
@@ -647,10 +622,10 @@ const EventDetail: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">About This Event</h2>
             <div className="prose prose-gray max-w-none">
               <p className="text-gray-700 leading-relaxed">
-                {showFullDescription 
+                {showFullDescription
                   ? (event.deskripsi || 'Event description will be available soon. Stay tuned for more information about this exciting event.')
-                  : (event.deskripsi && event.deskripsi.length > 300 
-                      ? `${event.deskripsi.substring(0, 300)}...` 
+                  : (event.deskripsi && event.deskripsi.length > 300
+                      ? `${event.deskripsi.substring(0, 300)}...`
                       : (event.deskripsi || 'Event description will be available soon. Stay tuned for more information about this exciting event.')
                     )
                 }
@@ -674,24 +649,24 @@ const EventDetail: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-900 mb-1">{event.kuota || 0}</div>
                 <div className="text-sm text-gray-600">Max Attendees</div>
               </div>
-              
+
               <div className="text-center p-4 bg-gray-50 rounded-xl">
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {event.waktu_mulai && event.waktu_selesai ? 
-                    `${parseInt(event.waktu_selesai.split(':')[0]) - parseInt(event.waktu_mulai.split(':')[0])}h` : 
+                  {event.waktu_mulai && event.waktu_selesai ?
+                    `${parseInt(event.waktu_selesai.split(':')[0]) - parseInt(event.waktu_mulai.split(':')[0])}h` :
                     '8h'
                   }
                 </div>
                 <div className="text-sm text-gray-600">Duration</div>
               </div>
-              
+
               <div className="text-center p-4 bg-gray-50 rounded-xl">
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {event.harga_tiket && event.harga_tiket > 0 ? 'Paid' : 'Free'}
                 </div>
                 <div className="text-sm text-gray-600">Entry</div>
               </div>
-              
+
               <div className="text-center p-4 bg-gray-50 rounded-xl">
                 <div className="text-2xl font-bold text-gray-900 mb-1">✓</div>
                 <div className="text-sm text-gray-600">Certificate</div>
@@ -710,7 +685,7 @@ const EventDetail: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Event Start</div>
                   <div className="text-gray-900 font-medium">
-                    {event.tanggal_mulai && event.waktu_mulai ? 
+                    {event.tanggal_mulai && event.waktu_mulai ?
                       `${new Date(event.tanggal_mulai).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${event.waktu_mulai}` :
                       'To be announced'
                     }
@@ -719,7 +694,7 @@ const EventDetail: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Event End</div>
                   <div className="text-gray-900 font-medium">
-                    {event.tanggal_selesai && event.waktu_selesai ? 
+                    {event.tanggal_selesai && event.waktu_selesai ?
                       `${new Date(event.tanggal_selesai).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${event.waktu_selesai}` :
                       event.waktu_selesai ? `Same day at ${event.waktu_selesai}` :
                       'To be announced'
@@ -764,7 +739,7 @@ const EventDetail: React.FC = () => {
         <div className="border-t border-gray-200 pt-16 mt-8">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-gray-900">Event Menarik Lainnya</h3>
-            <button 
+            <button
               onClick={() => navigate('/events')}
               className="text-blue-600 hover:text-blue-700 font-medium text-sm"
             >
@@ -815,7 +790,7 @@ const EventDetail: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">Tidak ada event lain yang tersedia saat ini.</p>
-              <button 
+              <button
                 onClick={() => navigate('/events')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
@@ -829,7 +804,7 @@ const EventDetail: React.FC = () => {
       <PublicFooter />
 
       {/* Auth Modal */}
-      <AuthModal 
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         eventTitle={event.title || event.judul || 'Event'}
