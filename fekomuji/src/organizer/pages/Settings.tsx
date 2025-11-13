@@ -54,21 +54,14 @@ const Settings: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Profile data received:', data);
         setProfile(data.profile);
         setNotifications(data.notifications || notifications);
       } else {
-        // Mock data for development
-        setProfile({
-          id: '1',
-          name: 'John Organizer',
-          email: 'john@eventorganizer.com',
-          phone: '+62812345678',
-          organization: 'Event Pro Indonesia',
-          bio: 'Professional event organizer with 5+ years experience in managing tech conferences and workshops.',
-          avatar: '/api/placeholder/100/100',
-          role: 'panitia',
-          created_at: '2023-01-15T10:00:00Z'
-        });
+        console.error('Failed to fetch profile:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error details:', errorData);
+        // Don't set mock data - let user see the actual error
       }
     } catch (error) {
       console.error('Error fetching profile:', error);

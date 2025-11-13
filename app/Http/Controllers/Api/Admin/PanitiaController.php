@@ -146,6 +146,11 @@ class PanitiaController extends Controller
      */
     public function approve(Request $request, $id): JsonResponse
     {
+        $request->validate([
+            'plan_type' => 'required|in:trial,premium',
+            'premium_duration' => 'required_if:plan_type,premium|integer|min:1|max:12'
+        ]);
+
         try {
             $panitia = User::with('panitiaProfile')->findOrFail($id);
             
@@ -165,8 +170,8 @@ class PanitiaController extends Controller
 
             DB::beginTransaction();
 
-            // Approve panitia
-            $panitia->panitiaProfile->approve(auth()->id());
+            // Approve panitia with plan type
+            $panitia->panitiaProfile->approve(auth()->id(), $request->plan_type, $request->premium_duration);
 
             // Send notification
             Notification::notifyPanitiaApproved($panitia->id);
@@ -175,7 +180,9 @@ class PanitiaController extends Controller
 
             Log::info('Panitia approved', [
                 'panitia_id' => $panitia->id,
-                'approved_by' => auth()->id()
+                'approved_by' => auth()->id(),
+                'plan_type' => $request->plan_type,
+                'premium_duration' => $request->premium_duration
             ]);
 
             return response()->json([

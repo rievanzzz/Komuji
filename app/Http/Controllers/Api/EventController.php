@@ -28,6 +28,12 @@ class EventController extends Controller
     }
     public function index(Request $request)
     {
+        \Log::info('EventController@index called', [
+            'user_id' => auth()->id(),
+            'request_path' => $request->path(),
+            'is_organizer_path' => $request->is('api/organizer/*'),
+            'has_organizer_param' => $request->has('organizer')
+        ]);
         $query = Event::query()
             ->with('category')
             ->when($request->has('search'), function($q) use ($request) {
@@ -59,9 +65,10 @@ class EventController extends Controller
             }, function($q) {
                 $q->orderBy('terdaftar', 'desc'); // Default to most popular
             })
-            ->when($request->has('organizer') && $request->organizer === 'true', function($q) {
+            ->when($request->has('organizer') || $request->is('api/organizer/*'), function($q) use ($request) {
                 // For organizer view, show only events created by the authenticated user
                 if (auth()->check()) {
+                    \Log::info('Filtering events for organizer: ' . auth()->id());
                     $q->where('created_by', auth()->id());
                 }
             }, function($q) {
@@ -74,7 +81,7 @@ class EventController extends Controller
         // Transform the data to include additional fields for frontend
         $events->getCollection()->transform(function ($event) use ($request) {
             // For organizer view, return full event data
-            if ($request->has('organizer') && $request->organizer === 'true') {
+            if ($request->has('organizer') || $request->is('api/organizer/*')) {
                 return [
                     'id' => $event->id,
                     'kategori_id' => $event->kategori_id,
@@ -119,6 +126,22 @@ class EventController extends Controller
             ];
         });
 
+        \Log::info('EventController@index response', [
+            'events_count' => $events->count(),
+            'total' => $events->total(),
+            'current_page' => $events->currentPage()
+        ]);
+        
+        // Temporary: Return simple response for debugging
+        if ($request->is('api/organizer/*')) {
+            return response()->json([
+                'data' => $events->items(),
+                'current_page' => $events->currentPage(),
+                'total' => $events->total(),
+                'per_page' => $events->perPage()
+            ]);
+        }
+        
         return response()->json($events);
     }
 
@@ -311,11 +334,19 @@ class EventController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error creating event: ' . $e->getMessage());
+            \Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            \Log::error('Request data: ' . json_encode($request->all()));
+            \Log::error('User: ' . (auth()->check() ? auth()->user()->email : 'Not authenticated'));
             \Log::error($e->getTraceAsString());
             
             return response()->json([
-                'message' => 'Gagal membuat event: ' . $e->getMessage(),
-                'error' => config('app.debug') ? $e->getTraceAsString() : null
+                'message' => 'Gagal menyimpan acara',
+                'error' => $e->getMessage(),
+                'debug' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ] : null
             ], 500);
         }
     }

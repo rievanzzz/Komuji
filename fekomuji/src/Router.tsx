@@ -3,6 +3,7 @@ import App from './App';
 import { SignIn, SignUp, Events, Profile, EventDetail } from './pages';
 import SignUpPanitia from './pages/SignUpPanitia';
 import UpgradeToPanitia from './pages/UpgradeToPanitia';
+import ForgotPassword from './pages/ForgotPassword';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Transaksi from './pages/Transaksi';
@@ -19,6 +20,13 @@ import { Dashboard, EventManagementFixed, Participants, Tickets, Finance, Settin
 import ParticipantsNew from './organizer/pages/ParticipantsNew';
 import OrganizerEventDetail from './organizer/pages/EventDetail';
 import { ProtectedOrganizerRoute, ErrorBoundary } from './components';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import PanitiaApproval from './admin/pages/PanitiaApproval';
+import AdminDashboard from './admin/pages/AdminDashboard';
+import PanitiaManagement from './admin/pages/PanitiaManagement';
+import Transactions from './admin/pages/Transactions';
+import Reports from './admin/pages/Reports';
+import AdminSettings from './admin/pages/AdminSettings';
 import TestPage from './TestPage';
 
 const AppRouter = () => {
@@ -35,6 +43,7 @@ const AppRouter = () => {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signup-panitia" element={<SignUpPanitia />} />
           <Route path="/upgrade-to-panitia" element={<UpgradeToPanitia />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/organizer-login" element={<OrganizerLogin />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/:id" element={<EventDetail />} />
@@ -56,6 +65,15 @@ const AppRouter = () => {
           <Route path="/organizer/tickets" element={<ProtectedOrganizerRoute><ErrorBoundary><Tickets /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/finance" element={<ProtectedOrganizerRoute><ErrorBoundary><Finance /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/settings" element={<ProtectedOrganizerRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedOrganizerRoute>} />
+
+          {/* Admin Routes - Protected */}
+          <Route path="/admin" element={<ProtectedAdminRoute><ErrorBoundary><AdminDashboard /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedAdminRoute><ErrorBoundary><AdminDashboard /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/panitia-approval" element={<ProtectedAdminRoute><ErrorBoundary><PanitiaApproval /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/panitia-management" element={<ProtectedAdminRoute><ErrorBoundary><PanitiaManagement /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/transactions" element={<ProtectedAdminRoute><ErrorBoundary><Transactions /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/reports" element={<ProtectedAdminRoute><ErrorBoundary><Reports /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/settings" element={<ProtectedAdminRoute><ErrorBoundary><AdminSettings /></ErrorBoundary></ProtectedAdminRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

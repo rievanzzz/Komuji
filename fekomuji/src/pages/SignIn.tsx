@@ -83,8 +83,27 @@ const SignIn = () => {
         localStorage.removeItem('redirectAfterLogin'); // Clean up
         
         // Role-based redirect
-        if (data.user.role === 'panitia' || data.user.role === 'admin') {
-          navigate('/organizer', { replace: true });
+        if (data.user.role === 'panitia') {
+          // Cek status panitia profile dulu
+          try {
+            const profileResponse = await fetch('http://localhost:8000/api/upgrade/status', {
+              headers: {
+                'Authorization': `Bearer ${data.token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            const profileData = await profileResponse.json();
+            
+            if (profileData.panitia_status === 'approved') {
+              navigate('/organizer', { replace: true });
+            } else {
+              navigate('/profile', { replace: true }); // Redirect ke profile jika belum approved
+            }
+          } catch (error) {
+            navigate('/profile', { replace: true });
+          }
+        } else if (data.user.role === 'admin') {
+          navigate('/admin', { replace: true });
         } else if (redirectUrl) {
           // Redirect to the page user was trying to access
           navigate(redirectUrl, { replace: true });

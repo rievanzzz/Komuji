@@ -29,6 +29,8 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'pendidikan_terakhir',
         'otp',
         'otp_expires_at',
+        'reset_otp',
+        'reset_otp_expires_at',
         'status_akun',
         'verification_token',
         'verification_token_expires_at'
@@ -36,6 +38,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
 
     protected $dates = [
         'otp_expires_at',
+        'reset_otp_expires_at',
         'verification_token_expires_at',
         'email_verified_at'
     ];

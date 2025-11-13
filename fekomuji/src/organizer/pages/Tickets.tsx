@@ -40,7 +40,7 @@ const Tickets: React.FC = () => {
       const token = localStorage.getItem('token');
       
       // Fetch organizer's events first
-      const eventsResponse = await fetch('http://localhost:8000/api/events?organizer=true', {
+      const eventsResponse = await fetch('http://localhost:8000/api/organizer/events', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Event;
+use App\Models\PanitiaProfile;
+use App\Models\Setting;
 
 class CheckPanitiaLimits
 {
@@ -40,15 +42,25 @@ class CheckPanitiaLimits
                 ->where('tanggal_selesai', '>=', now())
                 ->count();
 
+            // Get max events from settings (dynamic from admin settings)
+            $maxEvents = $profile->max_active_events;
+            
+            // Override with admin settings if available
+            if ($profile->plan_type === 'free') {
+                $maxEvents = Setting::where('key', 'free_max_active_events')->value('value') ?? $maxEvents;
+            } elseif ($profile->plan_type === 'premium') {
+                $maxEvents = Setting::where('key', 'premium_max_active_events')->value('value') ?? $maxEvents;
+            }
+            
             // Check limit
-            if ($activeEventsCount >= $profile->max_active_events) {
+            if ($activeEventsCount >= $maxEvents) {
                 $planName = $profile->plan_type === 'free' ? 'Gratis' : ucfirst($profile->plan_type);
                 
                 return response()->json([
                     'status' => 'error',
-                    'message' => "Batas maksimal event aktif untuk paket {$planName} adalah {$profile->max_active_events}. Upgrade ke Premium untuk event unlimited.",
+                    'message' => "Batas maksimal event aktif untuk paket {$planName} adalah {$maxEvents}. Upgrade ke Premium untuk event unlimited.",
                     'current_active_events' => $activeEventsCount,
-                    'max_active_events' => $profile->max_active_events,
+                    'max_active_events' => $maxEvents,
                     'plan_type' => $profile->plan_type,
                     'upgrade_required' => $profile->plan_type !== 'premium'
                 ], 403);

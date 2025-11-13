@@ -57,7 +57,7 @@ const EventManagementFixed: React.FC = () => {
 
       // For organizer, we need to fetch events created by the user
       // Add per_page parameter to get more events and avoid pagination issues
-      const response = await fetch('http://localhost:8000/api/events?organizer=true&per_page=100', {
+      const response = await fetch('http://localhost:8000/api/organizer/events?per_page=100', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

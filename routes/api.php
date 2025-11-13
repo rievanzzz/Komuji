@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Admin\PanitiaController as AdminPanitiaController;
 use App\Http\Controllers\Api\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
+use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\TicketCategoryController;
@@ -27,18 +28,9 @@ use App\Http\Controllers\Api\PanitiaUpgradeController;
 // Include authentication routes
 require __DIR__.'/auth.php';
 
-// Password reset routes
-Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLink']);
-Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset']);
-
-// Add this route for the password reset link
-Route::get('/reset-password/{token}', function ($token) {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Silakan gunakan token ini untuk mereset password',
-        'token' => $token
-    ]);
-})->name('password.reset');
+// Password reset routes - Using OTP system
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public routes
 Route::get('/test', function () {
@@ -52,15 +44,6 @@ Route::get('/registration-options', [AuthController::class, 'getRegistrationOpti
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLink']);
-Route::get('/reset-password/{token}', function ($token) {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Silakan gunakan token ini untuk mereset password',
-        'token' => $token
-    ]);
-})->name('password.reset');
-Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset']);
 
 // Public event routes
 Route::get('/events', [EventController::class, 'index']);
@@ -148,6 +131,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::put('/events/{event}', [EventController::class, 'update'])
             ->middleware('check.creation.time');
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
+        
+        // Organizer specific routes
+        Route::get('/organizer/events', [EventController::class, 'index']);
+        Route::get('/organizer/profile', [UserController::class, 'getOrganizerProfile']);
+        Route::put('/organizer/profile', [UserController::class, 'updateOrganizerProfile']);
 
         // Ticket category management
         Route::post('/events/{event}/ticket-categories', [TicketCategoryController::class, 'store']);
@@ -212,11 +200,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/transactions/export', [AdminTransactionController::class, 'export']);
 
         // Settings management
-        Route::get('/settings', [AdminSettingController::class, 'index']);
-        Route::get('/settings/business', [AdminSettingController::class, 'business']);
-        Route::put('/settings/{key}', [AdminSettingController::class, 'update']);
-        Route::post('/settings/batch', [AdminSettingController::class, 'updateBatch']);
-        Route::post('/settings/reset', [AdminSettingController::class, 'reset']);
+        Route::get('/settings', [AdminController::class, 'getSettings']);
+        Route::put('/settings', [AdminController::class, 'updateSettings']);
+        
+        // Additional admin endpoints
+        Route::get('/panitias-management', [AdminController::class, 'getPanitias']);
+        Route::get('/transactions-admin', [AdminController::class, 'getTransactions']);
+        Route::get('/revenue-stats', [AdminController::class, 'getRevenueStats']);
+        Route::get('/reports', [AdminController::class, 'getReports']);
     });
 
     // Public settings (accessible by all authenticated users)

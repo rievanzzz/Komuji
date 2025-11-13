@@ -41,56 +41,13 @@ const Events: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.events || []);
+        console.log('Events data received:', data);
+        setEvents(data.data || data.events || []);
       } else {
-        // Mock data for development
-        setEvents([
-          {
-            id: '1',
-            judul: 'Tech Conference 2024',
-            deskripsi: 'Annual technology conference featuring the latest innovations',
-            tanggal_mulai: '2024-03-15',
-            tanggal_selesai: '2024-03-15',
-            waktu_mulai: '09:00',
-            waktu_selesai: '17:00',
-            lokasi: 'Jakarta Convention Center',
-            kuota: 500,
-            terdaftar: 342,
-            is_published: true,
-            flyer_path: '/api/placeholder/400/300',
-            created_at: '2024-01-10T08:00:00Z'
-          },
-          {
-            id: '2',
-            judul: 'Workshop Design Thinking',
-            deskripsi: 'Learn design thinking methodology for product development',
-            tanggal_mulai: '2024-02-20',
-            tanggal_selesai: '2024-02-20',
-            waktu_mulai: '10:00',
-            waktu_selesai: '16:00',
-            lokasi: 'Creative Hub Bandung',
-            kuota: 50,
-            terdaftar: 45,
-            is_published: true,
-            flyer_path: '/api/placeholder/400/300',
-            created_at: '2024-01-05T10:30:00Z'
-          },
-          {
-            id: '3',
-            judul: 'Music Festival Summer',
-            deskripsi: 'Summer music festival with local and international artists',
-            tanggal_mulai: '2024-06-01',
-            tanggal_selesai: '2024-06-03',
-            waktu_mulai: '18:00',
-            waktu_selesai: '23:00',
-            lokasi: 'Gelora Bung Karno Stadium',
-            kuota: 10000,
-            terdaftar: 2500,
-            is_published: false,
-            flyer_path: '/api/placeholder/400/300',
-            created_at: '2024-01-01T14:15:00Z'
-          }
-        ]);
+        console.error('Failed to fetch events:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error details:', errorData);
+        setEvents([]); // Set empty array instead of mock data
       }
     } catch (error) {
       console.error('Error fetching events:', error);

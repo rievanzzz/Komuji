@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\Setting;
 
 class PanitiaProfile extends Model
 {
@@ -172,7 +173,7 @@ class PanitiaProfile extends Model
     }
 
     // Methods
-    public function approve($approvedBy = null)
+    public function approve($approvedBy = null, $planType = 'trial', $premiumDuration = 1)
     {
         $this->update([
             'status' => 'approved',
@@ -180,9 +181,19 @@ class PanitiaProfile extends Model
             'approved_by' => $approvedBy
         ]);
         
-        // Start trial if not already started
-        if (!$this->trial_start) {
-            $this->startTrial();
+        // Update user role to panitia
+        $this->user->update([
+            'role' => 'panitia'
+        ]);
+        
+        // Set plan based on admin choice
+        if ($planType === 'premium') {
+            $this->upgradeToPremium($premiumDuration);
+        } else {
+            // Start trial if not already started
+            if (!$this->trial_start) {
+                $this->startTrial();
+            }
         }
     }
 
@@ -196,13 +207,17 @@ class PanitiaProfile extends Model
 
     public function startTrial()
     {
-        $trialDays = Setting::get('trial_duration_days', 60);
+        // Get trial duration from admin settings
+        $trialDays = Setting::where('key', 'trial_duration_days')->value('value') ?? 60;
+        $maxEvents = Setting::where('key', 'premium_max_active_events')->value('value') ?? 999;
         
         $this->update([
             'plan_type' => 'trial',
+            'status' => 'approved',
+            'approved_at' => now(),
             'trial_start' => now(),
             'trial_end' => now()->addDays($trialDays),
-            'max_active_events' => Setting::get('premium_max_active_events', 999)
+            'max_active_events' => $maxEvents // Same as premium during trial
         ]);
     }
 
@@ -218,11 +233,13 @@ class PanitiaProfile extends Model
 
     public function downgradeToFree()
     {
+        $maxEvents = Setting::where('key', 'free_max_active_events')->value('value') ?? 1;
+        
         $this->update([
             'plan_type' => 'free',
             'premium_start' => null,
             'premium_end' => null,
-            'max_active_events' => Setting::get('free_max_active_events', 1)
+            'max_active_events' => $maxEvents
         ]);
     }
 

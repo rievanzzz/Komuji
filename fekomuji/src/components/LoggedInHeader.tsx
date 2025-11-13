@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiBell, FiSettings, FiLogOut, FiSearch, FiClock, FiCreditCard, FiTag } from 'react-icons/fi';
+import { FiUser, FiX, FiMenu, FiBell, FiSettings, FiLogOut, FiSearch, FiClock, FiCreditCard, FiTag, FiStar } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LoggedInHeaderProps {
   className?: string;
@@ -16,6 +17,7 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
   const [isHistoryMenuOpen, setIsHistoryMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,6 +41,17 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
             <Link to="/my-events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">My Events</Link>
             <Link to="/about" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">About</Link>
             <Link to="/contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</Link>
+            
+            {/* CTA Upgrade ke Panitia - hanya untuk user biasa */}
+            {user && user.role === 'peserta' && (
+              <Link 
+                to="/upgrade-to-panitia" 
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm"
+              >
+                <FiStar className="w-4 h-4 mr-2" />
+                Jadi Organizer
+              </Link>
+            )}
             
             {/* Search */}
             <div className="relative">

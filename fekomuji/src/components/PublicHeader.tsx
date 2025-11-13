@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings, FiCalendar, FiCreditCard, FiChevronDown } from 'react-icons/fi';
+import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings, FiCalendar, FiCreditCard, FiChevronDown, FiStar } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 
@@ -44,6 +44,17 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
               <Link to="/events" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Event</Link>
               <Link to="/about" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">About</Link>
               <Link to="/contact" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Contact & FAQ</Link>
+              
+              {/* CTA Jadi Organizer - hanya untuk user yang login dengan role peserta */}
+              {isAuthenticated && user?.role === 'peserta' && (
+                <Link 
+                  to="/upgrade-to-panitia" 
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm text-sm"
+                >
+                  <FiStar className="w-4 h-4" />
+                  Jadi Organizer
+                </Link>
+              )}
             </div>
           </div>
 
@@ -258,6 +269,18 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
               <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
               <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
               <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
+              
+              {/* CTA Jadi Organizer untuk mobile - hanya untuk user yang login dengan role peserta */}
+              {isAuthenticated && user?.role === 'peserta' && (
+                <Link 
+                  to="/upgrade-to-panitia" 
+                  className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm text-sm"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <FiStar className="w-4 h-4" />
+                  Jadi Organizer
+                </Link>
+              )}
               
               {/* Mobile Menu Items */}
               {isAuthenticated ? (

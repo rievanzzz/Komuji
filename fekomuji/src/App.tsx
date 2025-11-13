@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
 import Footer from './components/Footer';
 import PublicHeader from './components/PublicHeader';
+import LoggedInHeader from './components/LoggedInHeader';
 import { AuthModal } from './components';
 import { useAuth } from './contexts/AuthContext';
 
@@ -117,7 +118,7 @@ function App() {
   // Auth modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedEventTitle, setSelectedEventTitle] = useState<string>('');
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
 
   useEffect(() => {

@@ -57,7 +57,7 @@ const ParticipantsNew: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/events?organizer=true&per_page=100', {
+      const response = await fetch('http://localhost:8000/api/organizer/events?per_page=100', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
