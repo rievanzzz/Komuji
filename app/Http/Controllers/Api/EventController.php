@@ -23,7 +23,7 @@ class EventController extends Controller
      */
     protected function isDateAttribute(Model $model, $key)
     {
-        return in_array($key, $model->getDates()) || 
+        return in_array($key, $model->getDates()) ||
                isset($model->getCasts()[$key]) && in_array($model->getCasts()[$key], ['date', 'datetime', 'immutable_date', 'immutable_datetime']);
     }
     public function index(Request $request)
@@ -41,6 +41,15 @@ class EventController extends Controller
                 $q->where('judul', 'like', "%{$search}%")
                   ->orWhere('deskripsi', 'like', "%{$search}%")
                   ->orWhere('lokasi', 'like', "%{$search}%");
+            })
+            ->when($request->filled('category_id'), function($q) use ($request) {
+                $q->where('kategori_id', (int) $request->category_id);
+            })
+            ->when($request->filled('category'), function($q) use ($request) {
+                $cat = $request->category;
+                $q->whereHas('category', function($qq) use ($cat) {
+                    $qq->where('nama_kategori', 'like', "%{$cat}%");
+                });
             })
             ->when($request->has('sort'), function($q) use ($request) {
                 switch ($request->sort) {
@@ -74,6 +83,18 @@ class EventController extends Controller
             }, function($q) {
                 // For public view, only show published events
                 $q->where('is_published', true);
+            })
+            // Public listing should only show events that have NOT started yet
+            ->when(!$request->has('organizer') && !$request->is('api/organizer/*'), function($q) {
+                $today = now()->toDateString();
+                $nowTime = now()->format('H:i:s');
+                $q->where(function($qq) use ($today, $nowTime) {
+                    $qq->where('tanggal_mulai', '>', $today)
+                       ->orWhere(function($qx) use ($today, $nowTime) {
+                           $qx->where('tanggal_mulai', '=', $today)
+                              ->where('waktu_mulai', '>', $nowTime);
+                       });
+                });
             });
 
         $events = $query->paginate($request->get('per_page', 12));
@@ -96,6 +117,8 @@ class EventController extends Controller
                     'lokasi' => $event->lokasi,
                     'flyer_path' => $event->flyer_path,
                     'sertifikat_template_path' => $event->sertifikat_template_path,
+                    'certificate_template_id' => $event->certificate_template_id,
+                    'has_certificate' => (bool) $event->has_certificate,
                     'is_published' => $event->is_published,
                     'approval_type' => $event->approval_type,
                     'kuota' => $event->kuota,
@@ -106,7 +129,7 @@ class EventController extends Controller
                     'full_template_path' => $event->full_template_path,
                 ];
             }
-            
+
             // For public view, return formatted data
             return [
                 'id' => $event->id,
@@ -123,6 +146,7 @@ class EventController extends Controller
                 'start_time' => $event->waktu_mulai,
                 'end_time' => $event->waktu_selesai,
                 'end_date' => $event->tanggal_selesai ? $event->tanggal_selesai->format('M d, Y') : null,
+                'has_certificate' => (bool) $event->has_certificate,
             ];
         });
 
@@ -131,7 +155,7 @@ class EventController extends Controller
             'total' => $events->total(),
             'current_page' => $events->currentPage()
         ]);
-        
+
         // Temporary: Return simple response for debugging
         if ($request->is('api/organizer/*')) {
             return response()->json([
@@ -141,14 +165,14 @@ class EventController extends Controller
                 'per_page' => $events->perPage()
             ]);
         }
-        
+
         return response()->json($events);
     }
 
     private function getPopularityStatus($event)
     {
         $soldPercentage = $event->kuota > 0 ? ($event->terdaftar / $event->kuota) * 100 : 0;
-        
+
         if ($soldPercentage >= 80) {
             return 'trending';
         } elseif ($soldPercentage >= 50) {
@@ -178,19 +202,19 @@ class EventController extends Controller
     public function show(Event $event)
     {
         $user = auth()->user();
-        
+
         // Check if user can view this event
         // Public users can only see published events
         // Organizers can see their own events regardless of publication status
         // Admins can see all events
-        if (!$event->is_published && 
+        if (!$event->is_published &&
             (!$user || ($user->role !== 'admin' && $event->created_by !== $user->id))) {
             return response()->json(['message' => 'Event tidak ditemukan'], 404);
         }
 
         // Load relationships and return full event data for organizers/admins
         $eventData = $event->load(['category', 'registrations.user', 'registrations.attendance']);
-        
+
         // For organizers viewing their own events, return detailed data
         if ($user && ($user->role === 'admin' || $event->created_by === $user->id)) {
             return response()->json([
@@ -208,6 +232,7 @@ class EventController extends Controller
                     'lokasi' => $event->lokasi,
                     'flyer_path' => $event->flyer_path,
                     'sertifikat_template_path' => $event->sertifikat_template_path,
+                    'certificate_template_id' => $event->certificate_template_id,
                     'is_published' => $event->is_published,
                     'approval_type' => $event->approval_type,
                     'kuota' => $event->kuota,
@@ -223,7 +248,7 @@ class EventController extends Controller
                 ]
             ]);
         }
-        
+
         // For public view, return formatted data similar to index
         return response()->json([
             'id' => $event->id,
@@ -283,7 +308,7 @@ class EventController extends Controller
             if (auth()->check()) {
                 $data['created_by'] = auth()->id();
             }
-            
+
             // Handle file uploads
             if ($request->hasFile('flyer')) {
                 $data['flyer_path'] = $request->file('flyer')->store('events/flyers', 'public');
@@ -291,17 +316,51 @@ class EventController extends Controller
                     throw new \Exception('Gagal mengunggah flyer');
                 }
             }
-            
+
+            // Certificate template: allow either selecting a system template or uploading custom background image
             if ($request->hasFile('sertifikat_template')) {
-                $data['sertifikat_template_path'] = $request->file('sertifikat_template')
-                    ->store('events/certificate_templates', 'public');
-                if (!$data['sertifikat_template_path']) {
+                $uploaded = $request->file('sertifikat_template');
+                $storedPath = $uploaded->store('certificates/templates', 'public');
+                if (!$storedPath) {
                     throw new \Exception('Gagal mengunggah template sertifikat');
                 }
+                // Create a custom certificate template from uploaded image/pdf
+                $template = new \App\Models\CertificateTemplate();
+                $template->name = 'Custom Template';
+                $template->type = 'custom';
+                $template->theme = 'custom';
+                $template->background_path = $storedPath; // used by PDF view
+                $template->default_config = [
+                    'page' => ['width' => 1123, 'height' => 794],
+                    'fonts' => [
+                        'title' => ['family' => 'Inter', 'size' => 28, 'weight' => '700'],
+                        'name'  => ['family' => 'Inter', 'size' => 36, 'weight' => '800'],
+                        'meta'  => ['family' => 'Inter', 'size' => 14, 'weight' => '500'],
+                    ],
+                    'fields' => [
+                        'event_title' => ['x' => 80, 'y' => 90, 'align' => 'left'],
+                        'participant_name' => ['x' => 80, 'y' => 250, 'align' => 'left'],
+                        'certificate_number' => ['x' => 80, 'y' => 140, 'align' => 'left'],
+                        'date' => ['x' => 80, 'y' => 310, 'align' => 'left'],
+                        'signature_image' => ['x' => 800, 'y' => 520, 'width' => 200, 'height' => 80],
+                        'signature_name' => ['x' => 800, 'y' => 610, 'align' => 'center'],
+                        'signature_title' => ['x' => 800, 'y' => 640, 'align' => 'center'],
+                    ],
+                ];
+                $template->is_active = true;
+                $template->save();
+                $data['certificate_template_id'] = $template->id;
             }
-            
+
+            if ($request->filled('certificate_template_id')) {
+                $data['certificate_template_id'] = (int) $request->input('certificate_template_id');
+            }
+
+            // Auto flag has_certificate when any certificate template is present
+            $data['has_certificate'] = !empty($data['certificate_template_id'] ?? null) || !empty($data['sertifikat_template_path'] ?? null);
+
             $event = Event::create($data);
-            
+
             // Handle ticket categories if provided
             if ($request->has('ticket_categories')) {
                 $ticketCategories = json_decode($request->input('ticket_categories'), true);
@@ -311,7 +370,7 @@ class EventController extends Controller
                         if (empty($categoryData['nama_kategori']) || !isset($categoryData['harga']) || !isset($categoryData['kuota'])) {
                             continue; // Skip invalid categories
                         }
-                        
+
                         $event->ticketCategories()->create([
                             'nama_kategori' => $categoryData['nama_kategori'],
                             'deskripsi' => $categoryData['deskripsi'] ?? '',
@@ -323,14 +382,14 @@ class EventController extends Controller
                     }
                 }
             }
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'message' => 'Event berhasil dibuat',
                 'data' => $event->load(['category', 'ticketCategories'])
             ], 201);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error creating event: ' . $e->getMessage());
@@ -338,7 +397,7 @@ class EventController extends Controller
             \Log::error('Request data: ' . json_encode($request->all()));
             \Log::error('User: ' . (auth()->check() ? auth()->user()->email : 'Not authenticated'));
             \Log::error($e->getTraceAsString());
-            
+
             return response()->json([
                 'message' => 'Gagal menyimpan acara',
                 'error' => $e->getMessage(),
@@ -363,9 +422,9 @@ class EventController extends Controller
         if (is_null($a) && is_null($b)) {
             return true;
         }
-        
+
         // Handle date comparisons
-        if ($a instanceof \DateTime || $b instanceof \DateTime || 
+        if ($a instanceof \DateTime || $b instanceof \DateTime ||
             in_array($key, ['tanggal_mulai', 'tanggal_selesai', 'waktu_mulai', 'waktu_selesai', 'created_at', 'updated_at'])) {
             try {
                 $dateA = $a instanceof \DateTime ? $a : \Carbon\Carbon::parse($a);
@@ -376,29 +435,29 @@ class EventController extends Controller
                 return (string)$a === (string)$b;
             }
         }
-        
+
         // Handle numeric comparisons
         if (is_numeric($a) && is_numeric($b)) {
             return (float)$a === (float)$b;
         }
-        
+
         // Handle boolean comparisons
         if (is_bool($a) || is_bool($b)) {
             return (bool)$a === (bool)$b;
         }
-        
+
         // Default string comparison
         return (string)$a === (string)$b;
     }
-    
+
     public function update(UpdateEventRequest $request, Event $event)
     {
         try {
             // Check authorization using policy
             $this->authorize('update', $event);
-            
+
             $data = $request->validated();
-            
+
             // Debug log the current data and request data
             \Log::debug('=== UPDATE DEBUG START ===');
             \Log::debug('Current Event ID: ' . $event->id);
@@ -409,14 +468,14 @@ class EventController extends Controller
             \Log::debug('Request headers:', $request->headers->all());
             \Log::debug('Content-Type header:', [$request->header('Content-Type')]);
             \Log::debug('Raw body:', ['content' => $request->getContent()]);
-            
+
             // Jika validated() kosong, ambil payload dari berbagai sumber agar tetap bisa update
             if (empty($data)) {
                 // Ambil daftar kolom yang dapat diisi dari model sebagai allowed keys
                 $modelFillable = method_exists($event, 'getFillable') ? $event->getFillable() : [];
                 $fallbackAllowed = [
                     'judul','deskripsi','tanggal_mulai','tanggal_selesai','waktu_mulai','waktu_selesai',
-                    'lokasi','kuota','kategori_id','harga_tiket','is_published','approval_type','flyer','sertifikat_template'
+                    'lokasi','kuota','kategori_id','harga_tiket','is_published','approval_type','flyer','sertifikat_template','certificate_template_id'
                 ];
                 $allowed = array_values(array_unique(array_filter(array_merge($modelFillable, $fallbackAllowed))));
                 $fromAll = $request->all();
@@ -465,37 +524,57 @@ class EventController extends Controller
                     'final' => $data
                 ]);
             }
-            
+
             // Check if there are any changes
             $hasChanges = false;
             $changes = [];
-            
+
             // Format tanggal dan waktu sesuai dengan format database
             $dateFields = ['tanggal_mulai', 'tanggal_selesai'];
             $timeFields = ['waktu_mulai', 'waktu_selesai'];
-            
+
             foreach ($dateFields as $field) {
                 if (isset($data[$field]) && !empty($data[$field])) {
                     $data[$field] = \Carbon\Carbon::parse($data[$field])->format('Y-m-d');
                 }
             }
-            
+
             foreach ($timeFields as $field) {
                 if (isset($data[$field]) && !empty($data[$field])) {
                     $data[$field] = \Carbon\Carbon::parse($data[$field])->format('H:i:s');
                 }
             }
-            
+
+            // Handle remove_certificate flag: clear any certificate associations
+            if (!empty($data['remove_certificate'])) {
+                if ($event->sertifikat_template_path) {
+                    Storage::disk('public')->delete($event->sertifikat_template_path);
+                }
+                $data['certificate_template_id'] = null;
+                $data['sertifikat_template_path'] = null;
+                // Ensure not saved as column
+                unset($data['remove_certificate']);
+                $hasChanges = true;
+            }
+
+            // If switching to a system template by ID, clear legacy uploaded path
+            if (array_key_exists('certificate_template_id', $data) && !empty($data['certificate_template_id'])) {
+                if ($event->sertifikat_template_path) {
+                    Storage::disk('public')->delete($event->sertifikat_template_path);
+                }
+                $data['sertifikat_template_path'] = null;
+            }
+
             // Check each field for changes
             foreach ($data as $key => $newValue) {
                 // Skip file fields as they're handled separately
                 if ($key === 'flyer' || $key === 'sertifikat_template') {
                     continue;
                 }
-                
+
                 // Get the current value from the model
                 $currentValue = $event->$key;
-                
+
                 // Convert dates to string for comparison
                 if ($currentValue instanceof \DateTime) {
                     if (in_array($key, $dateFields)) {
@@ -504,7 +583,7 @@ class EventController extends Controller
                         $currentValue = $currentValue->format('H:i:s');
                     }
                 }
-                
+
                 // Log the values being compared
                 \Log::debug(sprintf(
                     'Comparing %s: [%s] (%s) vs [%s] (%s)',
@@ -514,14 +593,14 @@ class EventController extends Controller
                     var_export($newValue, true),
                     gettype($newValue)
                 ));
-                
+
                 // Check if values are equal with special handling
                 if ($currentValue == $newValue) {
                     \Log::debug('Values are equal');
                     unset($data[$key]); // Remove unchanged fields
                     continue;
                 }
-                
+
                 // If we get here, the values are different
                 $changes[$key] = [
                     'old' => $currentValue,
@@ -530,12 +609,12 @@ class EventController extends Controller
                 $hasChanges = true;
                 \Log::debug('Values are different - marking as changed');
             }
-            
+
             // Handle file uploads
             if ($request->hasFile('flyer')) {
                 $changes['flyer'] = ['changed' => true];
                 $hasChanges = true;
-                
+
                 // Delete old flyer if exists
                 if ($event->flyer_path) {
                     Storage::disk('public')->delete($event->flyer_path);
@@ -543,25 +622,53 @@ class EventController extends Controller
                 $data['flyer_path'] = $request->file('flyer')->store('events/flyers', 'public');
                 \Log::debug('Uploaded new flyer: ' . $data['flyer_path']);
             }
-            
+
             if ($request->hasFile('sertifikat_template')) {
                 $changes['sertifikat_template'] = ['changed' => true];
                 $hasChanges = true;
-                
-                // Delete old template if exists
+
+                // Delete old legacy path file if exists
                 if ($event->sertifikat_template_path) {
                     Storage::disk('public')->delete($event->sertifikat_template_path);
                 }
-                $data['sertifikat_template_path'] = $request->file('sertifikat_template')
-                    ->store('events/certificate_templates', 'public');
-                \Log::debug('Uploaded new certificate template: ' . $data['sertifikat_template_path']);
+
+                // Store new file
+                $uploaded = $request->file('sertifikat_template');
+                $storedPath = $uploaded->store('certificates/templates', 'public');
+                // Create a custom certificate template from uploaded image/pdf
+                $template = new \App\Models\CertificateTemplate();
+                $template->name = 'Custom Template';
+                $template->type = 'custom';
+                $template->theme = 'custom';
+                $template->background_path = $storedPath;
+                $template->default_config = [
+                    'page' => ['width' => 1123, 'height' => 794],
+                    'fonts' => [
+                        'title' => ['family' => 'Inter', 'size' => 28, 'weight' => '700'],
+                        'name'  => ['family' => 'Inter', 'size' => 36, 'weight' => '800'],
+                        'meta'  => ['family' => 'Inter', 'size' => 14, 'weight' => '500'],
+                    ],
+                    'fields' => [
+                        'event_title' => ['x' => 80, 'y' => 90, 'align' => 'left'],
+                        'participant_name' => ['x' => 80, 'y' => 250, 'align' => 'left'],
+                        'certificate_number' => ['x' => 80, 'y' => 140, 'align' => 'left'],
+                        'date' => ['x' => 80, 'y' => 310, 'align' => 'left'],
+                        'signature_image' => ['x' => 800, 'y' => 520, 'width' => 200, 'height' => 80],
+                        'signature_name' => ['x' => 800, 'y' => 610, 'align' => 'center'],
+                        'signature_title' => ['x' => 800, 'y' => 640, 'align' => 'center'],
+                    ],
+                ];
+                $template->is_active = true;
+                $template->save();
+                $data['certificate_template_id'] = $template->id;
+                \Log::debug('Uploaded new certificate template and created custom template ID: ' . $template->id);
             }
-            
+
             // Log the final changes
             \Log::debug('Detected changes:', $changes);
             \Log::debug('Has changes: ' . ($hasChanges ? 'true' : 'false'));
             \Log::debug('Data to update:', $data);
-            
+
             // If no changes, return early
             if (!$hasChanges && empty($changes)) {
                 \Log::debug('No changes detected, returning early');
@@ -572,10 +679,10 @@ class EventController extends Controller
                     'changes' => []
                 ]);
             }
-            
+
             try {
                 DB::beginTransaction();
-                
+
                 // Update file paths if they were set
                 if ($request->hasFile('flyer')) {
                     // Delete old flyer if exists
@@ -584,35 +691,40 @@ class EventController extends Controller
                     }
                     $data['flyer_path'] = $request->file('flyer')->store('events/flyers', 'public');
                 }
-                
-                if ($request->hasFile('sertifikat_template')) {
-                    // Delete old template if exists
+
+                if ($request->hasFile('sertifikat_template') && empty($data['certificate_template_id'])) {
+                    // Delete old template if exists (legacy path)
                     if ($event->sertifikat_template_path) {
                         Storage::disk('public')->delete($event->sertifikat_template_path);
                     }
                     $data['sertifikat_template_path'] = $request->file('sertifikat_template')
-                        ->store('events/certificate_templates', 'public');
+                        ->store('certificates/templates', 'public');
                 }
-                
+
                 \Log::debug('Updating event with data:', $data);
-                
+
+                // Auto flag has_certificate when any certificate template is present (id or legacy path)
+                $finalTemplateId = $data['certificate_template_id'] ?? $event->certificate_template_id;
+                $finalTemplatePath = $data['sertifikat_template_path'] ?? $event->sertifikat_template_path;
+                $data['has_certificate'] = !empty($finalTemplateId) || !empty($finalTemplatePath);
+
                 // Update the event with the prepared data
                 $event->update($data);
-                
+
                 // Handle ticket categories if provided
                 if ($request->has('ticket_categories')) {
                     $ticketCategories = json_decode($request->input('ticket_categories'), true);
                     if (is_array($ticketCategories)) {
                         // Delete existing ticket categories
                         $event->ticketCategories()->delete();
-                        
+
                         // Create new ticket categories
                         foreach ($ticketCategories as $categoryData) {
                             // Validate required fields
                             if (empty($categoryData['nama_kategori']) || !isset($categoryData['harga']) || !isset($categoryData['kuota'])) {
                                 continue; // Skip invalid categories
                             }
-                            
+
                             $event->ticketCategories()->create([
                                 'nama_kategori' => $categoryData['nama_kategori'],
                                 'deskripsi' => $categoryData['deskripsi'] ?? '',
@@ -624,28 +736,28 @@ class EventController extends Controller
                         }
                     }
                 }
-                
+
                 // Refresh the model to get updated data
                 $event = $event->fresh();
-                
+
                 DB::commit();
                 \Log::debug('Event updated successfully');
                 \Log::debug('Updated event data:', $event->toArray());
-                
+
                 return response()->json([
                     'message' => 'Event berhasil diperbarui',
                     'data' => $event->load(['category', 'ticketCategories']),
                     'success' => true,
                     'changes' => $changes
                 ]);
-                
+
             } catch (\Exception $e) {
                 DB::rollBack();
                 \Log::error('Error updating event: ' . $e->getMessage());
                 \Log::error($e->getTraceAsString());
                 throw $e;
             }
-            
+
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             DB::rollBack();
             return response()->json([
@@ -670,7 +782,7 @@ class EventController extends Controller
         try {
             // Check authorization using policy
             $this->authorize('delete', $event);
-            
+
             // Prevent deletion if there are registrations
             if ($event->registrations()->exists()) {
                 return response()->json([
@@ -678,24 +790,24 @@ class EventController extends Controller
                     'success' => false
                 ], 422);
             }
-            
+
             // Delete associated files
             if ($event->flyer_path) {
                 \Storage::disk('public')->delete($event->flyer_path);
             }
-            
+
             if ($event->sertifikat_template_path) {
                 \Storage::disk('public')->delete($event->sertifikat_template_path);
             }
-            
+
             // Soft delete the event
             $event->delete();
-            
+
             return response()->json([
                 'message' => 'Event berhasil dihapus',
                 'success' => true
             ]);
-            
+
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             return response()->json([
                 'message' => 'Anda tidak memiliki izin untuk menghapus event ini',
@@ -709,7 +821,7 @@ class EventController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Get all registrations for an event.
      */
@@ -717,9 +829,9 @@ class EventController extends Controller
     {
         // Check authorization using policy
         $this->authorize('view', $event);
-        
+
         $user = auth()->user();
-        
+
         $registrations = $event->registrations()
             ->with(['user:id,name,email', 'attendance'])
             ->get()
@@ -731,18 +843,21 @@ class EventController extends Controller
                     'status' => $registration->status,
                     'waktu_daftar' => $registration->created_at,
                     'kehadiran' => $registration->attendance ? [
-                        'status' => $registration->attendance->is_verified ? 'Hadir' : 'Belum Hadir',
-                        'waktu_hadir' => $registration->attendance->waktu_hadir,
+                        'status' => $registration->attendance->status === 'checked_out'
+                            ? 'Selesai'
+                            : ($registration->attendance->status === 'checked_in' ? 'Hadir' : 'Belum Hadir'),
+                        'check_in_time' => $registration->attendance->check_in_time,
+                        'check_out_time' => $registration->attendance->check_out_time,
                         'token' => $registration->attendance->token
                     ] : null
                 ];
             });
-            
+
         return response()->json([
             'data' => $registrations
         ]);
     }
-    
+
     /**
      * Export attendance report for an event.
      */
@@ -754,11 +869,11 @@ class EventController extends Controller
                 'message' => 'Unauthorized. Anda hanya dapat mengekspor laporan event yang Anda buat.'
             ], 403);
         }
-        
+
         $registrations = $event->registrations()
             ->with(['user:id,name,email', 'attendance'])
             ->get();
-            
+
         $headers = [
             'Nama Peserta',
             'Email',
@@ -767,30 +882,34 @@ class EventController extends Controller
             'Waktu Hadir',
             'Token Absensi'
         ];
-        
+
         $data = [];
-        
+
         foreach ($registrations as $registration) {
             $data[] = [
                 $registration->user->name,
                 $registration->user->email,
                 ucfirst($registration->status),
-                $registration->attendance ? ($registration->attendance->is_verified ? 'Hadir' : 'Tidak Hadir') : 'Belum Absen',
-                $registration->attendance ? $registration->attendance->waktu_hadir : '-',
+                $registration->attendance
+                    ? ($registration->attendance->status === 'checked_out'
+                        ? 'Selesai'
+                        : ($registration->attendance->status === 'checked_in' ? 'Hadir' : 'Tidak Hadir'))
+                    : 'Belum Absen',
+                $registration->attendance ? optional($registration->attendance->check_in_time)->format('Y-m-d H:i:s') : '-',
                 $registration->attendance ? $registration->attendance->token : '-',
             ];
         }
-        
+
         $filename = 'laporan_absensi_' . Str::slug($event->judul) . '_' . now()->format('Y-m-d') . '.csv';
-        
+
         return response()->streamDownload(function() use ($headers, $data) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, $headers);
-            
+
             foreach ($data as $row) {
                 fputcsv($handle, $row);
             }
-            
+
             fclose($handle);
         }, $filename, [
             'Content-Type' => 'text/csv',

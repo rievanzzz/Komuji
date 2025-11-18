@@ -35,7 +35,7 @@ interface EventDetailData {
 const OrganizerEventDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ const OrganizerEventDetail: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
@@ -84,7 +84,7 @@ const OrganizerEventDetail: React.FC = () => {
 
   const handleDeleteEvent = async () => {
     if (!confirm('Apakah Anda yakin ingin menghapus acara ini?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:8000/api/events/${id}`, {
@@ -111,13 +111,13 @@ const OrganizerEventDetail: React.FC = () => {
 
   const handleTogglePublish = async () => {
     if (!event) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('_method', 'PUT');
       formData.append('is_published', event.is_published ? '0' : '1');
-      
+
       const response = await fetch(`http://localhost:8000/api/events/${id}`, {
         method: 'POST', // Laravel expects POST with _method: PUT
         headers: {
@@ -128,11 +128,11 @@ const OrganizerEventDetail: React.FC = () => {
       });
 
       console.log('Toggle publish response status:', response.status);
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('Toggle publish result:', result);
-        
+
         setEvent(prev => prev ? { ...prev, is_published: !prev.is_published } : null);
         alert(event.is_published ? 'Event berhasil di-unpublish' : 'Event berhasil dipublikasi');
       } else {
@@ -231,13 +231,13 @@ const OrganizerEventDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleTogglePublish}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    event.is_published 
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                    event.is_published
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       : 'bg-green-100 text-green-700 hover:bg-green-200'
                   }`}
                 >
@@ -297,7 +297,7 @@ const OrganizerEventDetail: React.FC = () => {
                       <p className="font-medium text-gray-900">{formatDate(event.tanggal_mulai)}</p>
                     </div>
                   </div>
-                  
+
                   {event.tanggal_selesai && (
                     <div className="flex items-center gap-3">
                       <FiCalendar className="w-5 h-5 text-blue-600" />
@@ -307,7 +307,7 @@ const OrganizerEventDetail: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="flex items-center gap-3">
                     <FiClock className="w-5 h-5 text-blue-600" />
                     <div>
@@ -317,7 +317,7 @@ const OrganizerEventDetail: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <FiMapPin className="w-5 h-5 text-blue-600" />
                     <div>
@@ -325,7 +325,7 @@ const OrganizerEventDetail: React.FC = () => {
                       <p className="font-medium text-gray-900">{event.lokasi}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <FiDollarSign className="w-5 h-5 text-blue-600" />
                     <div>
@@ -335,7 +335,7 @@ const OrganizerEventDetail: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <FiSettings className="w-5 h-5 text-blue-600" />
                     <div>
@@ -360,7 +360,7 @@ const OrganizerEventDetail: React.FC = () => {
                     </div>
                     <span className="font-semibold text-gray-900">{event.terdaftar || 0}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <FiUsers className="w-4 h-4 text-green-600" />
@@ -368,7 +368,7 @@ const OrganizerEventDetail: React.FC = () => {
                     </div>
                     <span className="font-semibold text-gray-900">{event.kuota}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <FiUsers className="w-4 h-4 text-orange-600" />
@@ -384,7 +384,7 @@ const OrganizerEventDetail: React.FC = () => {
                       <span>{Math.round(((event.terdaftar || 0) / event.kuota) * 100)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(((event.terdaftar || 0) / event.kuota) * 100, 100)}%` }}
                       ></div>
@@ -407,7 +407,40 @@ const OrganizerEventDetail: React.FC = () => {
                       <p className="text-sm text-gray-500">Lihat dan kelola pendaftaran</p>
                     </div>
                   </button>
-                  
+
+                  <button
+                    onClick={() => navigate(`/organizer/events/${event.id}/attendance`)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <FiClock className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">Kelola Absensi</p>
+                      <p className="text-sm text-gray-500">Scan QR atau verifikasi token</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => navigate(`/organizer/events/${event.id}/certificates`)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <FiDownload className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">Terbitkan Sertifikat</p>
+                      <p className="text-sm text-gray-500">Issue per peserta (override nama / tolak)</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => navigate(`/organizer/events/${event.id}/certificates/settings`)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <FiSettings className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">Pengaturan Sertifikat</p>
+                      <p className="text-sm text-gray-500">Pilih template, tanda tangan, dan posisi</p>
+                    </div>
+                  </button>
+
                   <button
                     onClick={() => window.open(`/events/${event.id}`, '_blank')}
                     className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
@@ -418,7 +451,7 @@ const OrganizerEventDetail: React.FC = () => {
                       <p className="text-sm text-gray-500">Lihat tampilan publik</p>
                     </div>
                   </button>
-                  
+
                   <button
                     className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                   >

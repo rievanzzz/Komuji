@@ -25,12 +25,13 @@ class AttendanceFactory extends Factory
         $registration = Registration::factory()
             ->has(\App\Models\User::factory())
             ->create();
-            
+
         return [
             'registration_id' => $registration->id,
             'token' => strtoupper(Str::random(10)),
-            'waktu_hadir' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'is_verified' => $this->faker->boolean(80), // 80% chance of being verified
+            'status' => $this->faker->randomElement(['pending','checked_in','checked_out']),
+            'check_in_time' => $this->faker->optional(0.8)->dateTimeBetween('-1 month', 'now'),
+            'check_out_time' => $this->faker->optional(0.5)->dateTimeBetween('-1 month', 'now'),
         ];
     }
 
@@ -40,8 +41,8 @@ class AttendanceFactory extends Factory
     public function verified(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_verified' => true,
-            'waktu_hadir' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'status' => 'checked_in',
+            'check_in_time' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ]);
     }
 
@@ -51,8 +52,9 @@ class AttendanceFactory extends Factory
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_verified' => false,
-            'waktu_hadir' => null,
+            'status' => 'pending',
+            'check_in_time' => null,
+            'check_out_time' => null,
         ]);
     }
 
@@ -62,8 +64,8 @@ class AttendanceFactory extends Factory
     public function attendedAt($dateTime): static
     {
         return $this->state(fn (array $attributes) => [
-            'waktu_hadir' => $dateTime,
-            'is_verified' => true,
+            'check_in_time' => $dateTime,
+            'status' => 'checked_in',
         ]);
     }
 }

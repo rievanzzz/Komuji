@@ -383,21 +383,91 @@ const TicketBookingPage: React.FC = () => {
       return;
     }
 
+    if (!selectedCategory || !eventData) {
+      setError('Data event tidak lengkap');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Untuk tiket berbayar, buat registrasi dengan status pending
-      await handleRegistration();
+      // Create payment via API
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/payment/event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          event_id: eventData.id,
+          ticket_quantity: 1
+        })
+      });
 
-      // TODO: Integrate dengan payment gateway
-      // Untuk sementara, tampilkan pesan bahwa sistem pembayaran belum tersedia
-      alert('Sistem pembayaran belum tersedia. Registrasi Anda telah disimpan dengan status pending.');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Gagal membuat pembayaran');
+      }
+
+      // Load Midtrans Snap
+      const script = document.createElement('script');
+      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+      script.setAttribute('data-client-key', 'SB-Mid-client-YOUR_CLIENT_KEY'); // Will be from env
+      document.head.appendChild(script);
+
+      script.onload = () => {
+        // @ts-ignore
+        window.snap.pay(result.data.snap_token, {
+          onSuccess: function(result: any) {
+            console.log('Payment success:', result);
+            // Handle successful payment
+            handlePaymentSuccess(result);
+          },
+          onPending: function(result: any) {
+            console.log('Payment pending:', result);
+            alert('Pembayaran sedang diproses. Silakan cek status pembayaran Anda.');
+          },
+          onError: function(result: any) {
+            console.log('Payment error:', result);
+            setError('Pembayaran gagal. Silakan coba lagi.');
+            setLoading(false);
+          },
+          onClose: function() {
+            console.log('Payment popup closed');
+            setLoading(false);
+          }
+        });
+      };
 
     } catch (err) {
       console.error('Payment error:', err);
-      setError('Gagal memproses pembayaran. Silakan coba lagi.');
+      setError(err instanceof Error ? err.message : 'Gagal memproses pembayaran. Silakan coba lagi.');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentResult: any) => {
+    try {
+      // Register participant after successful payment
+      await handleRegistration();
+
+      // Set success step
+      setStep('success');
+      setLoading(false);
+
+      // Store payment result for display
+      setRegistrationResult({
+        ...registrationResult,
+        payment: paymentResult
+      });
+
+    } catch (err) {
+      console.error('Registration after payment error:', err);
+      setError('Pembayaran berhasil, tetapi gagal mendaftarkan peserta. Silakan hubungi admin.');
       setLoading(false);
     }
   };

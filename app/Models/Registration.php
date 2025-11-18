@@ -12,7 +12,8 @@ class Registration extends Model
     protected $fillable = [
         'user_id', 'event_id', 'ticket_category_id', 'status', 'kode_pendaftaran', 'alasan_ditolak',
         'nama_peserta', 'jenis_kelamin', 'tanggal_lahir', 'email_peserta', 'total_harga',
-        'payment_status', 'payment_method', 'invoice_number', 'qr_code', 'payment_expired_at'
+        'payment_status', 'payment_method', 'invoice_number', 'qr_code', 'payment_expired_at',
+        'is_attended'
     ];
 
     public function user()

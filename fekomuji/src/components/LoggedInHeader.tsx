@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiUser, FiX, FiMenu, FiBell, FiSettings, FiLogOut, FiSearch, FiClock, FiCreditCard, FiTag, FiStar } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 
+const logoMiluan = new URL('../assets/img/Miluan Event.png', import.meta.url).href;
+
 interface LoggedInHeaderProps {
   className?: string;
   userName?: string;
@@ -33,7 +35,9 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-blue-600">MILUAN</Link>
+          <Link to="/" className="inline-flex items-center">
+            <img src={logoMiluan} alt="MILUAN" className="h-8 w-auto" />
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
@@ -41,18 +45,18 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
             <Link to="/my-events" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">My Events</Link>
             <Link to="/about" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">About</Link>
             <Link to="/contact" className="font-medium text-gray-900 hover:text-blue-600 transition-colors">Contact & FAQ</Link>
-            
+
             {/* CTA Upgrade ke Panitia - hanya untuk user biasa */}
             {user && user.role === 'peserta' && (
-              <Link 
-                to="/upgrade-to-panitia" 
+              <Link
+                to="/upgrade-to-panitia"
                 className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm"
               >
                 <FiStar className="w-4 h-4 mr-2" />
                 Jadi Organizer
               </Link>
             )}
-            
+
             {/* Search */}
             <div className="relative">
               {isSearchOpen ? (
@@ -81,7 +85,7 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
                 </button>
               )}
             </div>
-            
+
             {/* History Menu (Burger Menu) */}
             <div className="relative">
               <button
@@ -136,7 +140,7 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
 
             {/* User Profile Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               >
@@ -149,7 +153,7 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
                 )}
                 <span className="text-sm font-medium text-gray-700">{userName}</span>
               </button>
-              
+
               {isUserMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
                   <div className="p-4 border-b">
@@ -214,12 +218,12 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
               />
               <FiSearch size={20} className="absolute right-3 top-2.5 text-gray-400" />
             </div>
-            
+
             <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
             <Link to="/my-events" className="block py-2 hover:text-gray-600">My Events</Link>
             <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
             <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
-            
+
             {/* Mobile History */}
             <div className="border-t pt-4">
               <div className="text-sm font-medium text-gray-900 mb-2">Riwayat</div>
@@ -232,11 +236,11 @@ const LoggedInHeader = ({ className = '', userName = 'User', userAvatar }: Logge
                 Tiket
               </Link>
             </div>
-            
+
             <div className="border-t pt-4">
               <Link to="/profile" className="block py-2 hover:text-gray-600">Profile</Link>
               <Link to="/settings" className="block py-2 hover:text-gray-600">Settings</Link>
-              <button 
+              <button
                 onClick={() => {
                   localStorage.removeItem('token');
                   navigate('/events');

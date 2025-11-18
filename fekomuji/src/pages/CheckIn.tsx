@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiCheckCircle, FiXCircle, FiClock, FiUpload, FiCamera } from 'react-icons/fi';
+import { FiCheckCircle, FiXCircle, FiClock, FiUpload } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
@@ -144,32 +144,36 @@ const CheckIn: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Call backend API for check-in
-      const response = await fetch(`http://localhost:8000/api/events/${eventId}/checkin`, {
+      const response = await fetch(`http://localhost:8000/api/validate-attendance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json'
         },
-        body: JSON.stringify(checkInData)
+        body: JSON.stringify({ event_id: parseInt(eventId!), token: tokenValue })
       });
 
+      const raw = await response.text();
+      let payload: any = {};
+      try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = { message: raw }; }
+
       if (response.ok) {
-        const result = await response.json();
         setResult({
           success: true,
-          message: 'Check-in berhasil! Selamat menikmati acara.',
+          message: payload.message || 'Check-in berhasil! Selamat menikmati acara.',
           eventTitle: event?.judul,
           checkInTime: new Date().toLocaleString('id-ID')
         });
 
-        // Show success notification
         alert('🎉 Check-in berhasil! Anda sudah terdaftar hadir di event ini.');
 
       } else {
-        const error = await response.json();
+        const msg = payload?.message || 'Token tidak valid atau sudah digunakan.';
+        const extra = payload?.event_time ? ` (Waktu event: ${payload.event_time.start} - ${payload.event_time.end}, sekarang: ${payload.event_time.now})` : '';
         setResult({
           success: false,
-          message: error.message || 'Token tidak valid atau sudah digunakan.'
+          message: `${msg}${extra}`
         });
       }
 

@@ -10,12 +10,12 @@ class Attendance extends Model
     use HasFactory;
 
     protected $fillable = [
-        'registration_id', 'token', 'waktu_hadir', 'is_verified'
+        'registration_id', 'token', 'status', 'check_in_time', 'check_out_time', 'qr_code_path'
     ];
 
     protected $casts = [
-        'waktu_hadir' => 'datetime',
-        'is_verified' => 'boolean',
+        'check_in_time' => 'datetime',
+        'check_out_time' => 'datetime',
     ];
 
     public function registration()

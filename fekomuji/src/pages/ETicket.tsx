@@ -34,11 +34,17 @@ interface Registration {
     lokasi: string;
     flyer_path?: string;
     image?: string;
+    has_certificate?: boolean;
   };
   ticket_category?: {
     id: number;
     nama_kategori: string;
     harga: number;
+  };
+  attendance?: {
+    token?: string;
+    status?: 'pending' | 'checked_in' | 'checked_out';
+    check_in_time?: string;
   };
 }
 
@@ -76,7 +82,7 @@ const ETicket: React.FC = () => {
         const data = await response.json();
         const registrations = data.data || data || [];
         const foundTransaction = registrations.find((reg: Registration) => reg.id.toString() === id);
-        
+
         if (foundTransaction) {
           setTransaction(foundTransaction);
         } else {
@@ -211,7 +217,7 @@ const ETicket: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
-      
+
       <div className="pt-24 pb-16">
         <div className="max-w-4xl mx-auto px-6 lg:px-8">
           {/* Header Actions - Hide on print */}
@@ -268,13 +274,13 @@ const ETicket: React.FC = () => {
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
                     {transaction.event.judul}
                   </h3>
-                  
+
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center gap-3 text-gray-600">
                       <FiCalendar className="w-4 h-4" />
                       <span>{formatDate(transaction.event.tanggal_mulai)}</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-gray-600">
                       <FiMapPin className="w-4 h-4" />
                       <span>{transaction.event.lokasi}</span>
@@ -299,18 +305,28 @@ const ETicket: React.FC = () => {
                 {/* Right Side - QR Code */}
                 <div>
                   <div className="bg-gray-50 rounded-lg p-6 text-center">
-                    <div className="w-32 h-32 bg-white border-2 border-dashed border-gray-300 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-8 h-8 bg-gray-300 rounded mx-auto mb-2"></div>
-                        <div className="text-xs text-gray-500">QR Code</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Tunjukkan QR code ini saat check-in
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      ID: {transaction.kode_pendaftaran}
-                    </p>
+                    {transaction.event.has_certificate && transaction.attendance?.token ? (
+                      <>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(transaction.attendance.token)}`}
+                          alt="QR Code"
+                          className="w-40 h-40 mx-auto mb-3 rounded-lg border border-gray-200"
+                        />
+                        <div className="text-sm text-gray-600 mb-1">Token Check-in</div>
+                        <div className="text-lg font-mono font-bold text-green-700 tracking-wider">{transaction.attendance.token}</div>
+                        <p className="text-xs text-gray-500 mt-2">Tunjukkan QR ini atau sebutkan token saat check-in</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-32 h-32 bg-white border-2 border-dashed border-gray-300 rounded-lg mx-auto mb-4 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="w-8 h-8 bg-gray-300 rounded mx-auto mb-2"></div>
+                            <div className="text-xs text-gray-500">QR Code</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">Event ini tidak memerlukan sertifikat/absensi</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -324,14 +340,14 @@ const ETicket: React.FC = () => {
                       {transaction.ticket_category?.nama_kategori || 'Regular'}
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="text-sm text-gray-500 mb-1">Harga</div>
                     <div className="font-medium text-gray-900">
                       {formatCurrency(transaction.total_harga)}
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="text-sm text-gray-500 mb-1">Status</div>
                     <div className="inline-flex items-center gap-1 text-green-600 font-medium">

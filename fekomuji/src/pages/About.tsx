@@ -7,36 +7,35 @@ const About = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
-      
+
       {/* Clean Modern Hero Section */}
       <section className="pt-32 pb-20 px-4 bg-white">
         <div className="container mx-auto max-w-4xl text-center">
-          
+
           {/* Main Headline */}
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-8"
           >
-            Master your events with
+            Kelola dan Nikmati
             <br />
-            effortless task management
+            Event Tanpa Hambatan
           </motion.h1>
-          
+
           {/* Description */}
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-lg text-gray-600 leading-relaxed mb-12 max-w-2xl mx-auto"
           >
-            Stay organized, prioritize with ease, and get things done faster. Our all-in-one event 
-            management tool keeps your team aligned and on track.
+            Kami membantu mewujudkan event yang terorganisir sempurna bagi tim penyelenggara, sekaligus memberikan pengalaman yang mudah dan mulus bagi semua peserta. Ini adalah solusi all-in-one untuk manajemen event terbaik.
           </motion.p>
 
           {/* CTA Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -47,15 +46,15 @@ const About = () => {
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
             >
-              Get Started for Free
+              Mulai Jadi Organizer
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="inline-flex items-center px-6 py-4 text-gray-700 font-semibold hover:text-gray-900 transition-colors"
             >
-              See How It Works
+              Mau Bertanya
               <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -63,7 +62,7 @@ const About = () => {
           </motion.div>
 
           {/* Trusted by Event Organizers */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -78,18 +77,18 @@ const About = () => {
                   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
                   'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face'
                 ].map((src, idx) => (
-                  <img 
+                  <img
                     key={idx}
-                    src={src} 
-                    alt={`Organizer ${idx + 1}`} 
+                    src={src}
+                    alt={`Organizer ${idx + 1}`}
                     className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                   />
                 ))}
               </div>
-              
+
               <div className="text-left">
-                <div className="text-sm font-semibold text-gray-900">Trusted by 500+ event organizers</div>
-                <div className="text-sm text-gray-600">in Bogor and surrounding areas</div>
+                <div className="text-sm font-semibold text-gray-900">Dipercsaya Banyak Organizer</div>
+                <div className="text-sm text-gray-600">Di Seluruh Negeri</div>
               </div>
             </div>
 
@@ -101,13 +100,13 @@ const About = () => {
       {/* Our Platform Section */}
       <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-7xl">
-          
+
           {/* Main Grid Layout */}
           <div className="grid grid-cols-12 gap-6 items-start">
-            
+
             {/* Content Grid - Mixed Layout */}
             <div className="col-span-12 grid grid-cols-5 gap-6">
-              
+
               {/* Top Row */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -117,9 +116,9 @@ const About = () => {
                 className="bg-white rounded-2xl p-8 flex items-center"
               >
                 <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
-                  Our
+                  Pilar
                   <br />
-                  Platform
+                  Utama
                 </h2>
               </motion.div>
 
@@ -131,7 +130,7 @@ const About = () => {
                 className="col-span-2 bg-gray-100 rounded-2xl p-8"
               >
                 <div className="flex items-start justify-between mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900">Exclusive Experiences</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Pengalaman Eksklusif</h3>
                   <div className="w-10 h-10 flex items-center justify-center">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -139,7 +138,7 @@ const About = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Curated events and workshops, brought to you in collaboration with top local partners.
+                  Event dan workshop yang dikurasi, bekerja sama dengan mitra lokal ternama.
                 </p>
               </motion.div>
 
@@ -151,7 +150,7 @@ const About = () => {
                 className="col-span-2 bg-gray-100 rounded-2xl p-8"
               >
                 <div className="flex items-start justify-between mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900">Local & Nearby<br />Events</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Event Sekitar<br />Anda</h3>
                   <div className="w-10 h-10 flex items-center justify-center">
                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -159,7 +158,7 @@ const About = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Discover events happening around Bogor, from cultural festivals to music shows, all within your reach.
+                  Temukan event, mulai dari festival budaya hingga pertunjukan musik, semuanya dalam jangkauan Anda.
                 </p>
               </motion.div>
 
@@ -172,7 +171,7 @@ const About = () => {
                 className="col-span-2 bg-gray-100 rounded-2xl p-8"
               >
                 <div className="flex items-start justify-between mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900">Popular<br />Events</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Event<br />Populer</h3>
                   <div className="w-10 h-10 flex items-center justify-center">
                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -180,7 +179,7 @@ const About = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Featuring the most attended and talked-about events each month in Bogor.
+                  Menampilkan event yang paling banyak dihadiri dan dibicarakan setiap bulan.
                 </p>
               </motion.div>
 
@@ -192,7 +191,7 @@ const About = () => {
                 className="col-span-2 bg-gray-100 rounded-2xl p-8"
               >
                 <div className="flex items-start justify-between mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900">Diverse<br />Experiences</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Beragam<br />Pengalaman</h3>
                   <div className="w-10 h-10 flex items-center justify-center">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -200,7 +199,7 @@ const About = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  From workshops, concerts, to community gatherings—something for everyone.
+                  ari workshop, konser, hingga pertemuan komunitas—selalu ada sesuatu untuk semua orang.
                 </p>
               </motion.div>
 
@@ -227,10 +226,10 @@ const About = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="relative z-10 h-full flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-bold mb-2">View Tickets</h3>
+                    <h3 className="text-lg font-bold mb-2">Ikut Event</h3>
                   </div>
                   <div className="flex justify-end">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,32 +247,32 @@ const About = () => {
       {/* Testimonials Section */}
       <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-6xl">
-          
+
           {/* Section Header */}
           <div className="text-center mb-16">
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
               className="text-sm text-gray-500 mb-4"
             >
-              Testimonials & Reviews
+              Testimoni Dan Review
             </motion.p>
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.1 }}
               className="text-4xl md:text-5xl font-bold text-gray-900"
             >
-              Trusted by Event Organizers
+              Dipercaya Oleh Organizer
             </motion.h2>
           </div>
 
           {/* Testimonial Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            
+
             {/* Card 1 - Light Blue */}
             <motion.div
               initial={{ opacity: 0, y: 20, rotate: -2 }}
@@ -291,13 +290,13 @@ const About = () => {
                 ))}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                "MILUAN made organizing our music festival incredibly smooth. The platform handled everything from ticket sales to attendee management perfectly."
+                "SanaSini membuat event musik kami berjalan sangat mulus. Platform ini menangani semuanya, mulai dari penjualan tiket hingga manajemen kehadiran peserta dengan sempurna"
               </p>
               <div className="text-sm font-semibold text-gray-800">
                 Sarah M.
               </div>
               <div className="text-xs text-gray-600">
-                Festival Organizer
+                Enthufest UI Organizer
               </div>
             </motion.div>
 
@@ -318,13 +317,13 @@ const About = () => {
                 ))}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                "Best event platform in Bogor! Our workshop series got amazing attendance thanks to MILUAN's reach and easy booking system."
+                "Platform event terbaik! Seri workshop kami mendapatkan kehadiran yang luar biasa berkat sistem pendaftaran dan e-ticket yang mudah dan cepat dari SanaSini."
               </p>
               <div className="text-sm font-semibold text-gray-800">
                 Budi R.
               </div>
               <div className="text-xs text-gray-600">
-                Workshop Coordinator
+                Workshop Organizer Bogor
               </div>
             </motion.div>
 
@@ -345,13 +344,13 @@ const About = () => {
                 ))}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                "Professional service and great support team. MILUAN helped us scale our community events from 50 to 500+ attendees."
+                "Layanan profesional dan tim support yang hebat. SanaSini membantu kami meningkatkan skala komunitas event kami dari 50 ke 500+ peserta tanpa hambatan."
               </p>
               <div className="text-sm font-semibold text-gray-800">
                 Rina S.
               </div>
               <div className="text-xs text-gray-600">
-                Community Manager
+                Ketua Komunitas Basket Sempur
               </div>
             </motion.div>
 
@@ -372,13 +371,13 @@ const About = () => {
                 ))}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                "Reliable platform with excellent analytics. We can track our event performance and understand our audience better than ever."
+                "Platform handal dengan fitur analitik yang luar biasa. Kami bisa melacak performa event dan memahami audiens kami lebih baik dari sebelumnya"
               </p>
               <div className="text-sm font-semibold text-gray-800">
                 Ahmad F.
               </div>
               <div className="text-xs text-gray-600">
-                Cultural Event Producer
+                Producer Event Sukaraja
               </div>
             </motion.div>
 

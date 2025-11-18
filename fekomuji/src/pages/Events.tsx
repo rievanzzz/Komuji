@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation as useRouterLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMapPin, FiChevronLeft, FiChevronRight, FiHeart, FiMusic, FiBriefcase, FiCoffee, FiFilter, FiTag, FiBarChart, FiCalendar } from 'react-icons/fi';
+import { FiMapPin, FiChevronLeft, FiChevronRight, FiFilter, FiTag, FiBarChart, FiCalendar, FiMusic, FiBriefcase, FiCoffee, FiGrid, FiCode, FiBookOpen, FiActivity } from 'react-icons/fi';
 import { MdSports, MdTheaterComedy, MdFamilyRestroom, MdPalette } from 'react-icons/md';
-import { HiOutlineSparkles } from 'react-icons/hi';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
 import { AuthModal } from '../components';
@@ -123,6 +122,12 @@ const Events: React.FC = () => {
   const [noEventsMessage, setNoEventsMessage] = useState('');
   const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date());
   const [hoveredDate, setHoveredDate] = useState<number | null>(null);
+  const [dbCategories, setDbCategories] = useState<Array<{ id: number; name: string }>>([]);
+  const [categoryFilter, setCategoryFilter] = useState<{ id?: number; name?: string }>({});
+  const categoryStripRef = useRef<HTMLDivElement>(null);
+  const [catIndex, setCatIndex] = useState(0);
+  const categoriesPerView = 5;
+  const visibleCats = dbCategories.slice(catIndex, catIndex + categoriesPerView);
 
   // State for events from database
   const [events, setEvents] = useState<EventData[]>([]);
@@ -137,6 +142,48 @@ const Events: React.FC = () => {
 
   // No transform needed - use data directly like homepage
 
+  const iconForCategory = (name: string) => {
+    const n = (name || '').toLowerCase();
+    // Bootcamp / Education / Training
+    if (n.includes('bootcamp') || n.includes('academy') || n.includes('class') || n.includes('kelas') || n.includes('training') || n.includes('pelatihan') || n.includes('pendidikan') || n.includes('education') || n.includes('school') || n.includes('sekolah') || n.includes('kampus')) {
+      return <FiBookOpen className="text-blue-600 text-lg" />;
+    }
+    // Expo / Pameran / Fair
+    if (n.includes('expo') || n.includes('pameran') || n.includes('fair') || n.includes('bazaar')) {
+      return <FiGrid className="text-blue-600 text-lg" />;
+    }
+    // Hackathon / Coding
+    if (n.includes('hackathon') || n.includes('coding') || n.includes('developer') || n.includes('programmer') || n.includes('code')) {
+      return <FiCode className="text-blue-600 text-lg" />;
+    }
+    // Health
+    if (n.includes('kesehatan') || n.includes('health') || n.includes('medical') || n.includes('medis')) {
+      return <FiActivity className="text-blue-600 text-lg" />;
+    }
+    if (n.includes('musik') || n.includes('music') || n.includes('konser') || n.includes('concert')) {
+      return <FiMusic className="text-blue-600 text-lg" />;
+    }
+    if (n.includes('olahraga') || n.includes('sport')) {
+      return <MdSports className="text-blue-600 text-xl" />;
+    }
+    if (n.includes('teater') || n.includes('theater') || n.includes('drama') || n.includes('komedi') || n.includes('comedy')) {
+      return <MdTheaterComedy className="text-blue-600 text-xl" />;
+    }
+    if (n.includes('seni') || n.includes('budaya') || n.includes('culture') || n.includes('art')) {
+      return <MdPalette className="text-blue-600 text-xl" />;
+    }
+    if (n.includes('makan') || n.includes('minum') || n.includes('food') || n.includes('drink')) {
+      return <FiCoffee className="text-blue-600 text-lg" />;
+    }
+    if (n.includes('bisnis') || n.includes('business')) {
+      return <FiBriefcase className="text-blue-600 text-lg" />;
+    }
+    if (n.includes('keluarga') || n.includes('family')) {
+      return <MdFamilyRestroom className="text-blue-600 text-xl" />;
+    }
+    return <FiTag className="text-blue-600 text-lg" />;
+  };
+
   // Fetch events from database with search support
   useEffect(() => {
     const fetchEvents = async () => {
@@ -146,8 +193,14 @@ const Events: React.FC = () => {
 
         // Build API URL with search and pagination
         let apiUrl = 'http://localhost:8000/api/events?sort=terdekat&per_page=50';
-        if (searchTerm && searchTerm.trim().length > 0) {
-          apiUrl += `&search=${encodeURIComponent(searchTerm.trim())}`;
+        const trimmed = (searchTerm || '').trim();
+        if (trimmed.length > 0) {
+          apiUrl += `&search=${encodeURIComponent(trimmed)}`;
+        }
+        if (categoryFilter.id) {
+          apiUrl += `&category_id=${categoryFilter.id}`;
+        } else if (categoryFilter.name && categoryFilter.name.trim().length > 0) {
+          apiUrl += `&category=${encodeURIComponent(categoryFilter.name.trim())}`;
         }
 
         const response = await fetch(apiUrl);
@@ -179,13 +232,30 @@ const Events: React.FC = () => {
     };
 
     fetchEvents();
-  }, [searchTerm]); // Re-fetch when search term changes
+  }, [searchTerm, categoryFilter]); // Re-fetch when search term or category filter changes
 
-  // Sync search term with URL query param `q`
+  // Load categories (public)
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/categories');
+        const data = await res.json().catch(() => ({ data: [] }));
+        setDbCategories((data.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+      } catch (e) {
+        console.error('Failed to load categories', e);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  // Sync search term and category filter with URL params
   useEffect(() => {
     const params = new URLSearchParams(routerLocation.search);
     const q = params.get('q') || '';
+    const cid = params.get('category_id');
+    const cname = params.get('category') || '';
     setSearchTerm(q);
+    setCategoryFilter({ id: cid ? Number(cid) : undefined, name: cname || undefined });
   }, [routerLocation.search]);
 
   // Calendar helper functions
@@ -475,13 +545,13 @@ const Events: React.FC = () => {
 
   const nextCategories = () => {
     setCurrentCategoryIndex((prev) =>
-      prev + categoriesPerPage >= categories.length ? 0 : prev + categoriesPerPage
+      prev + categoriesPerPage >= dbCategories.length ? 0 : prev + categoriesPerPage
     );
   };
 
   const prevCategories = () => {
     setCurrentCategoryIndex((prev) =>
-      prev - categoriesPerPage < 0 ? Math.max(0, categories.length - categoriesPerPage) : prev - categoriesPerPage
+      prev - categoriesPerPage < 0 ? Math.max(0, dbCategories.length - categoriesPerPage) : prev - categoriesPerPage
     );
   };
 
@@ -497,7 +567,7 @@ const Events: React.FC = () => {
     );
   };
 
-  const visibleCategories = categories.slice(currentCategoryIndex, currentCategoryIndex + categoriesPerPage);
+  const visibleCategories = dbCategories.slice(currentCategoryIndex, currentCategoryIndex + categoriesPerPage);
   const visibleOrganizers = organizers.slice(currentOrganizerIndex, currentOrganizerIndex + organizersPerPage);
 
   return (
@@ -511,7 +581,7 @@ const Events: React.FC = () => {
       {!isSearching && (
       <section className="bg-white pb-12">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="relative max-w-7xl mx-auto">
+          <div className="relative">
             <div className="relative h-80 md:h-96 lg:h-[26rem] rounded-3xl overflow-hidden shadow-2xl">
               {/* Blue Left Section with Diagonal Cut */}
               <div className="absolute inset-0">
@@ -598,11 +668,7 @@ const Events: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Like Count */}
-                <div className="absolute top-8 right-8 flex items-center space-x-2 bg-black/40 backdrop-blur-md rounded-full px-5 py-2 border border-white/20">
-                  <FiHeart className="text-white text-lg" />
-                  <span className="text-white font-bold">3.7K</span>
-                </div>
+
               </div>
             </div>
           </div>
@@ -612,6 +678,60 @@ const Events: React.FC = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 md:px-6 py-12">
+        {/* Category Strip - below banner */}
+        {!isSearching && dbCategories.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Kategori</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCatIndex(prev => Math.max(0, prev - categoriesPerView))}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-40"
+                  aria-label="Sebelumnya"
+                  disabled={catIndex === 0}
+                >
+                  <FiChevronLeft className="text-gray-600" />
+                </button>
+                <button
+                  onClick={() => setCatIndex(prev => Math.min(Math.max(0, dbCategories.length - categoriesPerView), prev + categoriesPerView))}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-40"
+                  aria-label="Berikutnya"
+                  disabled={catIndex + categoriesPerView >= dbCategories.length}
+                >
+                  <FiChevronRight className="text-gray-600" />
+                </button>
+              </div>
+            </div>
+            <div
+              className="flex justify-center gap-8"
+              onWheel={(e) => {
+                const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                if (Math.abs(delta) < 4) return;
+                e.preventDefault();
+                if (delta > 0) {
+                  setCatIndex((prev) => Math.min(Math.max(0, dbCategories.length - categoriesPerView), prev + 1));
+                } else {
+                  setCatIndex((prev) => Math.max(0, prev - 1));
+                }
+              }}
+            >
+              {visibleCats.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/events?category_id=${c.id}`)}
+                  className="flex flex-col items-center w-24 group"
+                  title={c.name}
+                  aria-label={c.name}
+                >
+                  <span className={`w-16 h-16 rounded-full bg-white border ${categoryFilter.id === c.id ? 'ring-2 ring-blue-500 border-blue-300' : 'border-gray-200'} shadow-sm flex items-center justify-center group-hover:border-blue-400 group-hover:shadow-md transition-all`}>
+                    {iconForCategory(c.name)}
+                  </span>
+                  <span className="mt-2 text-sm text-gray-700 w-full text-center truncate" title={c.name}>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Browse Events Header */}
         <div className="mb-8">
@@ -658,7 +778,7 @@ const Events: React.FC = () => {
                             : 'text-gray-700 hover:bg-gray-50'
                         }`}
                       >
-                        <FiHeart className="mr-2 text-sm" />
+                        <FiBarChart className="mr-2 text-sm" />
                         Most Popular
                       </button>
 
@@ -923,14 +1043,17 @@ const Events: React.FC = () => {
                           target.src = '/images/default-event.svg';
                         }}
                       />
+                      {(((event.ticketsSold ?? (event as any).terdaftar ?? 0) as number) >= ((event.totalQuota ?? (event as any).kuota ?? 0) as number)) && (
+                        <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">
+                          Kehabisan tiket
+                        </span>
+                      )}
                       {event.category && (
                         <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm text-gray-700 border border-gray-200">
                           {event.category}
                         </span>
                       )}
-                      <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                        <FiHeart className="text-gray-600" />
-                      </button>
+                      {/* Removed favorite button */}
                     </div>
                     <div className="p-4">
                       <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
@@ -1013,9 +1136,9 @@ const Events: React.FC = () => {
                 Retry
               </button>
             </div>
-          ) : events.length === 0 ? (
+          ) : eventsToDisplay.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No events found</p>
+              <p className="text-gray-600">Tidak ada event untuk kategori/filters ini saat ini.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1054,9 +1177,12 @@ const Events: React.FC = () => {
                       target.parentElement?.appendChild(placeholder);
                     }}
                   />
-                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <FiHeart className="text-gray-600" />
-                  </button>
+                  {(((event.ticketsSold ?? (event as any).terdaftar ?? 0) as number) >= ((event.totalQuota ?? (event as any).kuota ?? 0) as number)) && (
+                    <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">
+                      Kehabisan tiket
+                    </span>
+                  )}
+                  {/* Removed favorite button */}
                 </div>
                 <div className="p-4">
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
@@ -1090,47 +1216,7 @@ const Events: React.FC = () => {
         </div>
         )}
 
-        {/* Promotional Banner */}
-        {!isSearching && (
-        <div className="mb-12">
-          <div className="bg-black rounded-2xl p-6 md:p-8 flex items-center justify-between overflow-hidden relative">
-            {/* Dotted Pattern Background */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="w-full h-full" style={{
-                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-                backgroundSize: '20px 20px'
-              }}></div>
-            </div>
-
-            {/* Content */}
-            <div className="flex items-center space-x-6 relative z-10">
-              {/* MILUAN Logo/Icon */}
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">M</span>
-                </div>
-              </div>
-
-              {/* Text Content */}
-              <div>
-                <h3 className="text-white text-lg md:text-xl font-semibold mb-1">
-                  Connect your MILUAN account and sync your favorite events
-                </h3>
-                <p className="text-gray-300 text-sm md:text-base">
-                  Discover events from organizers you actually follow
-                </p>
-              </div>
-            </div>
-
-            {/* CTA Button */}
-            <div className="flex-shrink-0 relative z-10">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg hover:shadow-xl">
-                Connect MILUAN
-              </button>
-            </div>
-          </div>
-        </div>
-        )}
+        {/* Promotional Banner removed per request */}
 
         {/* Latest Events */}
         {!isSearching && (
@@ -1208,9 +1294,7 @@ const Events: React.FC = () => {
                       target.parentElement?.appendChild(placeholder);
                     }}
                   />
-                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <FiHeart className="text-gray-600" />
-                  </button>
+                  {/* Removed favorite button */}
                 </div>
                 <div className="p-4">
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
@@ -1320,9 +1404,7 @@ const Events: React.FC = () => {
                       target.parentElement?.appendChild(placeholder);
                     }}
                   />
-                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                    <FiHeart className="text-gray-600" />
-                  </button>
+                  {/* Removed favorite button */}
                 </div>
                 <div className="p-4">
                   <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
@@ -1356,122 +1438,7 @@ const Events: React.FC = () => {
         </div>
         )}
 
-        {/* Categories */}
-        {!isSearching && (
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Select by Kategori</h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">
-                {Math.floor(currentCategoryIndex / categoriesPerPage) + 1} of {Math.ceil(categories.length / categoriesPerPage)}
-              </span>
-              <button
-                onClick={prevCategories}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                disabled={currentCategoryIndex === 0}
-              >
-                <FiChevronLeft className={currentCategoryIndex === 0 ? 'text-gray-300' : 'text-gray-600'} />
-              </button>
-              <button
-                onClick={nextCategories}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                disabled={currentCategoryIndex + categoriesPerPage >= categories.length}
-              >
-                <FiChevronRight className={currentCategoryIndex + categoriesPerPage >= categories.length ? 'text-gray-300' : 'text-gray-600'} />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {visibleCategories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
-                transition={{
-                  duration: 0.6,
-                  delay: index * 0.1,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-                className="bg-black rounded-2xl p-6 text-white cursor-pointer relative overflow-hidden h-32 group transform transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl"
-              >
-                {/* Subtle Dotted Pattern */}
-                <div className="absolute inset-0 opacity-5">
-                  <div className="w-full h-full" style={{
-                    backgroundImage: 'radial-gradient(circle, white 0.5px, transparent 0.5px)',
-                    backgroundSize: '24px 24px'
-                  }}></div>
-                </div>
-
-                {/* Plugin-based Icons */}
-                <div className="absolute bottom-4 right-4 w-12 h-12 opacity-70 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                  {category.name === 'Sports' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#E5F0FA] to-[#D1E8FC] rounded-xl flex items-center justify-center shadow-lg">
-                      <MdSports className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Concerts' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#D1E8FC] to-[#BDE0FE] rounded-xl flex items-center justify-center shadow-lg">
-                      <FiMusic className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Theater' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#BDE0FE] to-[#A2D2FF] rounded-xl flex items-center justify-center shadow-lg">
-                      <MdTheaterComedy className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Comedy' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#E5F0FA] to-[#D1E8FC] rounded-xl flex items-center justify-center shadow-lg">
-                      <HiOutlineSparkles className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Arts & Culture' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#D1E8FC] to-[#BDE0FE] rounded-xl flex items-center justify-center shadow-lg">
-                      <MdPalette className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Food & Drink' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#BDE0FE] to-[#A2D2FF] rounded-xl flex items-center justify-center shadow-lg">
-                      <FiCoffee className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Business' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#E5F0FA] to-[#D1E8FC] rounded-xl flex items-center justify-center shadow-lg">
-                      <FiBriefcase className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                  {category.name === 'Family' && (
-                    <div className="w-full h-full bg-gradient-to-br from-[#D1E8FC] to-[#BDE0FE] rounded-xl flex items-center justify-center shadow-lg">
-                      <MdFamilyRestroom className="text-[#8FC9FF] text-2xl" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="relative z-10 h-full flex flex-col justify-end">
-                  <h4 className="text-lg font-medium">{category.name}</h4>
-                </div>
-
-                {/* Hover Tooltip */}
-                <div className="absolute inset-x-0 bottom-full mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50">
-                  <div className="bg-white text-black rounded-xl p-4 shadow-xl border border-gray-100">
-                    <h5 className="font-medium text-sm mb-3 text-gray-800">{category.name}</h5>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {category.subcategories?.slice(0, 4).map((sub, idx) => (
-                        <div key={idx} className="text-gray-500 flex items-center">
-                          <div className="w-1 h-1 bg-[#A2D2FF] rounded-full mr-2"></div>
-                          {sub}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-        )}
+        {/* Categories grid removed per request */}
 
         {/* Top Organizers */}
         {!isSearching && (
@@ -1526,10 +1493,7 @@ const Events: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
 
-                    {/* Minimalist Heart */}
-                    <button className="absolute top-5 right-5 w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-200 group/heart">
-                      <FiHeart className="text-white text-sm group-hover/heart:scale-110 transition-transform duration-200" />
-                    </button>
+                    {/* Removed favorite button */}
 
                     {/* Clean Name Overlay */}
                     <div className="absolute bottom-5 left-5 right-5">

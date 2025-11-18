@@ -242,7 +242,7 @@ function App() {
               transition={{ duration: 1.2, ease: "easeOut" }}
               className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 tracking-tight leading-tight max-w-5xl"
             >
-              A place to display your<br />masterpiece.
+              Kategori Event Tanpa Batas.<br />Di SanaSini
             </motion.h1>
           </div>
 
@@ -437,7 +437,7 @@ function App() {
           {/* Description Text Below Cards */}
           <div className="text-center mb-16 mt-8" style={{ opacity: elementsVisible ? 1 : 0, transition: 'opacity 0.8s ease-out' }}>
             <p className="text-gray-900 font-medium text-lg max-w-2xl mx-auto" style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>
-              Artists can display their masterpieces, and buyers can discover and purchase works that resonate with them.
+              Peserta dapat menjelajahi ribuan event yang terstruktur berdasarkan kategori, memastikan pengalaman pencarian yang mudah dan pendaftaran yang mulus
             </p>
           </div>
 
@@ -453,13 +453,13 @@ function App() {
               whileTap={{ scale: 0.95 }}
               className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-3 rounded-full font-medium transition-colors shadow-lg"
             >
-              Join for $99/mo
+              Ikut Event
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors underline"
             >
-              Read more
+              Tentang
             </motion.button>
           </motion.div>
         </main>
@@ -478,8 +478,8 @@ function App() {
               className="lg:col-span-1"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-                Why Choose <br />
-                Miluan?
+                Kenapa Pilih <br />
+                SanaSini?
               </h2>
             </motion.div>
 
@@ -519,7 +519,7 @@ function App() {
                   </svg>
                 </div>
                 <h3 className="text-base font-bold text-gray-900 mb-3">
-                  Easy Registration
+                  Registrasi Mudah
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Daftar event dalam hitungan detik dengan proses yang mudah dan cepat
@@ -571,7 +571,7 @@ function App() {
                   </svg>
                 </div>
                 <h3 className="text-base font-bold text-gray-900 mb-3">
-                  Best Event Guide
+                  Alur Mudah
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Panduan lengkap dan rekomendasi event terbaik dari para ahli
@@ -624,7 +624,7 @@ function App() {
                   </svg>
                 </div>
                 <h3 className="text-base font-bold text-gray-900 mb-3">
-                  Safe & Supervised
+                  Aman & Terjaga
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Keamanan terjamin dengan pengawasan ketat dan sistem terpercaya
@@ -1469,7 +1469,7 @@ function App() {
       <Footer />
 
       {/* Auth Modal */}
-      <AuthModal 
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         eventTitle={selectedEventTitle}

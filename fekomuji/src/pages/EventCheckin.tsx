@@ -33,13 +33,19 @@ interface Registration {
   attendance_status: 'not_attended' | 'attended';
   check_in_time?: string;
   attendance_number?: string;
+  attendance?: {
+    token?: string;
+    status?: 'pending' | 'checked_in' | 'checked_out';
+    check_in_time?: string;
+    check_out_time?: string;
+  };
 }
 
 const EventCheckin: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  
+
   const [event, setEvent] = useState<EventData | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,8 +84,8 @@ const EventCheckin: React.FC = () => {
         setEvent(eventData.data);
       }
 
-      // Fetch user registration for this event
-      const registrationResponse = await fetch(`http://localhost:8000/api/events/${eventId}/my-registration`, {
+      // Fetch all registrations, then pick the one for this event
+      const registrationResponse = await fetch(`http://localhost:8000/api/my-registrations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -88,7 +94,27 @@ const EventCheckin: React.FC = () => {
 
       if (registrationResponse.ok) {
         const registrationData = await registrationResponse.json();
-        setRegistration(registrationData.data);
+        const regs = registrationData.data || registrationData || [];
+        const reg = (regs as any[]).find(r => r.event_id?.toString() === String(eventId));
+        if (reg) {
+          const mapped: Registration = {
+            id: reg.id,
+            user_id: reg.user_id,
+            event_id: reg.event_id,
+            nama_peserta: reg.nama_peserta,
+            email_peserta: reg.email_peserta,
+            kode_pendaftaran: reg.kode_pendaftaran,
+            status: reg.status,
+            payment_status: reg.payment_status,
+            token: reg.attendance?.token || '',
+            attendance_status: (reg.attendance && (reg.attendance.status === 'checked_in' || reg.attendance.status === 'checked_out')) ? 'attended' : 'not_attended',
+            check_in_time: reg.attendance?.check_in_time,
+            attendance_number: undefined,
+            attendance: reg.attendance,
+          };
+          setRegistration(mapped);
+          if (mapped.token) setCheckinToken(mapped.token);
+        }
       }
 
     } catch (error) {
@@ -114,14 +140,15 @@ const EventCheckin: React.FC = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`http://localhost:8000/api/events/${eventId}/checkin`, {
+      const response = await fetch(`http://localhost:8000/api/validate-attendance`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          token: checkinToken.trim()
+          token: checkinToken.trim(),
+          event_id: Number(eventId)
         })
       });
 
@@ -130,10 +157,9 @@ const EventCheckin: React.FC = () => {
       if (response.ok) {
         setCheckinResult({
           success: true,
-          message: 'Check-in berhasil!',
-          attendanceNumber: data.attendance_number
+          message: data.message || 'Check-in berhasil!'
         });
-        
+
         // Refresh registration data
         await fetchEventAndRegistration();
       } else {
@@ -165,13 +191,13 @@ const EventCheckin: React.FC = () => {
     const now = new Date();
     const eventStart = new Date(event.tanggal_mulai);
     const eventEnd = new Date(event.tanggal_selesai || event.tanggal_mulai);
-    
+
     // Set time
     if (event.waktu_mulai) {
       const [hours, minutes] = event.waktu_mulai.split(':');
       eventStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     }
-    
+
     if (event.waktu_selesai) {
       const [hours, minutes] = event.waktu_selesai.split(':');
       eventEnd.setHours(parseInt(hours), parseInt(minutes), 0, 0);
@@ -241,7 +267,7 @@ const EventCheckin: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       <div className="pt-24 pb-16">
         <div className="max-w-4xl mx-auto px-6">
           {/* Event Header */}
@@ -254,10 +280,10 @@ const EventCheckin: React.FC = () => {
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
                 {event.judul.charAt(0)}
               </div>
-              
+
               <div className="flex-1">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.judul}</h1>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <FiCalendar className="w-4 h-4" />
@@ -269,12 +295,12 @@ const EventCheckin: React.FC = () => {
                       })}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <FiClock className="w-4 h-4" />
                     <span>{event.waktu_mulai} - {event.waktu_selesai} WIB</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <FiMapPin className="w-4 h-4" />
                     <span>{event.lokasi}</span>
@@ -292,18 +318,18 @@ const EventCheckin: React.FC = () => {
             className="bg-white rounded-lg border border-gray-200 p-6 mb-8"
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Informasi Pendaftaran</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="text-sm text-gray-500 mb-1">Nama Peserta</div>
                 <div className="font-medium text-gray-900">{registration.nama_peserta}</div>
               </div>
-              
+
               <div>
                 <div className="text-sm text-gray-500 mb-1">Kode Pendaftaran</div>
                 <div className="font-mono text-blue-600">{registration.kode_pendaftaran}</div>
               </div>
-              
+
               <div>
                 <div className="text-sm text-gray-500 mb-1">Status Kehadiran</div>
                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
@@ -324,7 +350,7 @@ const EventCheckin: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               {registration.attendance_number && (
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Nomor Absen</div>
@@ -410,8 +436,8 @@ const EventCheckin: React.FC = () => {
 
                   {checkinResult && (
                     <div className={`p-4 rounded-lg ${
-                      checkinResult.success 
-                        ? 'bg-green-50 border border-green-200' 
+                      checkinResult.success
+                        ? 'bg-green-50 border border-green-200'
                         : 'bg-red-50 border border-red-200'
                     }`}>
                       <div className={`flex items-center gap-2 ${
@@ -424,7 +450,7 @@ const EventCheckin: React.FC = () => {
                         )}
                         <span className="font-medium">{checkinResult.message}</span>
                       </div>
-                      
+
                       {checkinResult.attendanceNumber && (
                         <div className="mt-2 text-green-700">
                           <strong>Nomor Absen Anda: #{checkinResult.attendanceNumber}</strong>
@@ -447,7 +473,7 @@ const EventCheckin: React.FC = () => {
             >
               <h3 className="text-lg font-medium text-yellow-800 mb-2">Informasi Sertifikat</h3>
               <p className="text-yellow-700">
-                Event ini menyediakan sertifikat keikutsertaan. Sertifikat akan tersedia untuk diunduh 
+                Event ini menyediakan sertifikat keikutsertaan. Sertifikat akan tersedia untuk diunduh
                 setelah Anda melakukan check-in dan event selesai.
               </p>
             </motion.div>

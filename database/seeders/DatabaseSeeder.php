@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,  // Categories must come first due to foreign key constraints
             UserSeeder::class,
             PanitiaKeduaSeeder::class,  // Add second organizer
+            CertificateTemplateSeeder::class,
             EventSeeder::class,
             RegistrationSeeder::class,
         ]);

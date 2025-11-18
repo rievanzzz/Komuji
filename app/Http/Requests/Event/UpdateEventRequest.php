@@ -14,8 +14,8 @@ class UpdateEventRequest extends FormRequest
     public function authorize(): bool
     {
         $event = $this->route('event');
-        return Auth::check() && 
-               in_array(Auth::user()->role, ['admin', 'panitia']) && 
+        return Auth::check() &&
+               in_array(Auth::user()->role, ['admin', 'panitia']) &&
                ($event->created_by == Auth::id() || Auth::user()->role == 'admin');
     }
 
@@ -28,13 +28,13 @@ class UpdateEventRequest extends FormRequest
     {
         $event = $this->route('event');
         $threeDaysFromNow = now()->addDays(3)->format('Y-m-d');
-        
+
         $rules = [
             'judul' => 'sometimes|required|string|max:255',
             'deskripsi' => 'sometimes|required|string',
             'tanggal_mulai' => [
-                'sometimes', 
-                'required', 
+                'sometimes',
+                'required',
                 'date',
                 // Only apply H-3 rule if the date is actually being changed
                 function ($attribute, $value, $fail) use ($event, $threeDaysFromNow) {
@@ -61,9 +61,11 @@ class UpdateEventRequest extends FormRequest
             'sertifikat_template' => [
                 'nullable',
                 'file',
-                'mimes:pdf,doc,docx',
+                'mimes:jpeg,png,jpg,webp,pdf',
                 'max:5120' // 5MB
-            ]
+            ],
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id',
+            'remove_certificate' => 'sometimes|boolean'
         ];
 
         return $rules;

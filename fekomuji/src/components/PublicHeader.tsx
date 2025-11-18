@@ -4,6 +4,8 @@ import { FiUser, FiX, FiMenu, FiSearch, FiClock, FiLock, FiLogOut, FiSettings, F
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 
+const logoMiluan = new URL('../assets/img/Miluan Event.png', import.meta.url).href;
+
 interface PublicHeaderProps {
   className?: string;
 }
@@ -39,16 +41,18 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
         <div className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-100 shadow-sm px-3 md:px-4 lg:px-5 py-2">
           {/* Left: Logo and links */}
           <div className="flex items-center gap-4 lg:gap-6">
-            <Link to="/" className="text-2xl font-bold text-blue-600">MILUAN</Link>
+            <Link to="/" className="inline-flex items-center">
+              <img src={logoMiluan} alt="MILUAN" className="h-8 w-auto" />
+            </Link>
             <div className="hidden md:flex items-center gap-4 lg:gap-6">
               <Link to="/events" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Event</Link>
               <Link to="/about" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">About</Link>
               <Link to="/contact" className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">Contact & FAQ</Link>
-              
+
               {/* CTA Jadi Organizer - hanya untuk user yang login dengan role peserta */}
               {isAuthenticated && user?.role === 'peserta' && (
-                <Link 
-                  to="/upgrade-to-panitia" 
+                <Link
+                  to="/upgrade-to-panitia"
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm text-sm"
                 >
                   <FiStar className="w-4 h-4" />
@@ -144,10 +148,10 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                 )}
               </div>
             )}
-            
+
             {/* Notifications */}
             {isAuthenticated && <NotificationDropdown />}
-            
+
             {/* User Menu */}
             <div className="relative group">
               {isAuthenticated ? (
@@ -265,15 +269,15 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                   <FiSearch size={16} />
                 </button>
               </div>
-              
+
               <Link to="/events" className="block py-2 hover:text-gray-600">Event</Link>
               <Link to="/about" className="block py-2 hover:text-gray-600">About</Link>
               <Link to="/contact" className="block py-2 hover:text-gray-600">Contact & FAQ</Link>
-              
+
               {/* CTA Jadi Organizer untuk mobile - hanya untuk user yang login dengan role peserta */}
               {isAuthenticated && user?.role === 'peserta' && (
-                <Link 
-                  to="/upgrade-to-panitia" 
+                <Link
+                  to="/upgrade-to-panitia"
                   className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm text-sm"
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -281,7 +285,7 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                   Jadi Organizer
                 </Link>
               )}
-              
+
               {/* Mobile Menu Items */}
               {isAuthenticated ? (
                 <>
@@ -317,7 +321,7 @@ const PublicHeader = ({ className = '' }: PublicHeaderProps) => {
                     <FiLock size={12} className="ml-2" />
                     <span className="text-xs ml-1">(Login required)</span>
                   </div>
-                  
+
                   <div className="flex space-x-4 pt-2 border-t">
                     <Link
                       to="/signin"

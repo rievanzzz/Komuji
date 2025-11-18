@@ -43,7 +43,7 @@ class RegistrationController extends Controller
                 'errors' => $e->errors(),
                 'request_data' => $request->all()
             ]);
-            
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Data tidak valid',
@@ -121,7 +121,7 @@ class RegistrationController extends Controller
 
             // Determine payment status
             $paymentStatus = $ticketCategory->harga == 0 ? 'free' : 'pending';
-            
+
             // Tentukan status berdasarkan tipe approval event dan payment
             $registrationStatus = ($event->approval_type === 'auto' && $paymentStatus === 'free') ? 'approved' : 'pending';
 
@@ -156,11 +156,17 @@ class RegistrationController extends Controller
                 'payment_expired_at' => $paymentStatus !== 'free' ? now()->addMinutes(30) : null
             ]);
 
-            // Create attendance token
-            $attendance = $registration->attendance()->create([
-                'token' => Str::random(32),
-                'is_verified' => false,
-            ]);
+            // Create attendance token only for certificate-enabled events
+            $attendance = null;
+            if ($event->has_certificate) {
+                // Generate 10-digit numeric token
+                $token = '';
+                for ($i = 0; $i < 10; $i++) { $token .= random_int(0, 9); }
+                $attendance = $registration->attendance()->create([
+                    'token' => $token,
+                    'status' => 'pending',
+                ]);
+            }
 
             // Update counters if approved and free
             if ($registrationStatus === 'approved' && $paymentStatus === 'free') {
@@ -174,7 +180,7 @@ class RegistrationController extends Controller
                 'status' => 'success',
                 'data' => [
                     'registration' => $registration->load(['event', 'ticketCategory']),
-                    'attendance_token' => $attendance->token,
+                    'attendance_token' => $attendance?->token,
                     'qr_code' => $qr_code,
                     'invoice_number' => $invoice_number
                 ]
@@ -602,28 +608,50 @@ class RegistrationController extends Controller
         $event = Event::findOrFail($request->event_id);
         $now = now();
 
-        // Cek waktu event
-        $eventStart = Carbon::parse($event->tanggal_mulai . ' ' . $event->waktu_mulai);
-        $eventEnd = Carbon::parse($event->tanggal_selesai . ' ' . $event->waktu_selesai);
+        // Cek waktu event (lebih robust)
+        try {
+            $startDate = $event->tanggal_mulai ? Carbon::parse($event->tanggal_mulai)->format('Y-m-d') : now()->format('Y-m-d');
+            $endDate = $event->tanggal_selesai ? Carbon::parse($event->tanggal_selesai)->format('Y-m-d') : $startDate;
 
-        if (!$now->between($eventStart, $eventEnd)) {
-            return response()->json([
-                'message' => 'Absensi hanya bisa dilakukan pada saat event berlangsung',
-                'event_time' => [
-                    'start' => $eventStart->format('Y-m-d H:i:s'),
-                    'end' => $eventEnd->format('Y-m-d H:i:s'),
-                    'now' => $now->format('Y-m-d H:i:s')
-                ]
-            ], 400);
+            $startTime = $event->waktu_mulai ? Carbon::parse($event->waktu_mulai)->format('H:i:s') : '00:00:00';
+            $endTime = $event->waktu_selesai ? Carbon::parse($event->waktu_selesai)->format('H:i:s') : '23:59:59';
+
+            $eventStart = Carbon::parse($startDate . ' ' . $startTime);
+            $eventEnd = Carbon::parse($endDate . ' ' . $endTime);
+
+            if (!$now->between($eventStart, $eventEnd)) {
+                return response()->json([
+                    'message' => 'Absensi hanya bisa dilakukan pada saat event berlangsung',
+                    'event_time' => [
+                        'start' => $eventStart->format('Y-m-d H:i:s'),
+                        'end' => $eventEnd->format('Y-m-d H:i:s'),
+                        'now' => $now->format('Y-m-d H:i:s')
+                    ]
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse event time for validateAttendance: ' . $e->getMessage());
         }
 
-        // Cari registrasi yang sesuai
-        $registration = Registration::whereHas('attendance', function($q) use ($request) {
-                $q->where('token', $request->token);
+        // Normalisasi token
+        $token = trim((string) $request->token);
+
+        // Cari registrasi yang sesuai (utama: milik user saat ini)
+        $registration = Registration::whereHas('attendance', function($q) use ($token) {
+                $q->where('token', $token);
             })
             ->where('event_id', $request->event_id)
             ->where('user_id', auth()->id())
             ->first();
+
+        // Jika tidak ditemukan, fallback: cari berdasarkan token + event (tanpa cek user)
+        if (!$registration) {
+            $registration = Registration::whereHas('attendance', function($q) use ($token) {
+                    $q->where('token', $token);
+                })
+                ->where('event_id', $request->event_id)
+                ->first();
+        }
 
         if (!$registration) {
             return response()->json([
@@ -632,19 +660,19 @@ class RegistrationController extends Controller
         }
 
         // Cek apakah sudah absen
-        if ($registration->attendance->is_verified) {
+        if (in_array($registration->attendance->status, ['checked_in', 'checked_out'])) {
             return response()->json([
                 'message' => 'Anda sudah melakukan absensi sebelumnya',
-                'attended_at' => $registration->attendance->waktu_hadir
+                'attended_at' => optional($registration->attendance->check_in_time)?->format('Y-m-d H:i:s')
             ], 400);
         }
 
         DB::beginTransaction();
         try {
-            // Update kehadiran
+            // Update kehadiran (check-in)
             $registration->attendance()->update([
-                'is_verified' => true,
-                'waktu_hadir' => $now
+                'status' => 'checked_in',
+                'check_in_time' => $now,
             ]);
 
             // Tandai registrasi sebagai hadir
@@ -665,7 +693,7 @@ class RegistrationController extends Controller
 
             return response()->json([
                 'message' => 'Gagal melakukan absensi',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -744,7 +772,7 @@ class RegistrationController extends Controller
         try {
             // For now, just return success - implement actual email sending later
             Log::info('E-ticket email request', $request->all());
-            
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'E-ticket berhasil dikirim ke email'

@@ -24,12 +24,12 @@ class StoreEventRequest extends FormRequest
     public function rules(): array
     {
         $threeDaysFromNow = now()->addDays(3)->format('Y-m-d');
-        
+
         return [
             'judul' => 'required|string|max:255',
             'deskripsi' => 'required|string',
             'tanggal_mulai' => [
-                'required', 
+                'required',
                 'date',
                 'after_or_equal:' . $threeDaysFromNow
             ],
@@ -51,9 +51,10 @@ class StoreEventRequest extends FormRequest
             'sertifikat_template' => [
                 'nullable',
                 'file',
-                'mimes:pdf,doc,docx',
+                'mimes:jpeg,png,jpg,webp,pdf',
                 'max:5120' // 5MB
-            ]
+            ],
+            'certificate_template_id' => 'nullable|exists:certificate_templates,id'
         ];
     }
 

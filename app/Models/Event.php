@@ -15,13 +15,17 @@ class Event extends Model
     protected $fillable = [
         'judul', 'deskripsi', 'tanggal_mulai', 'tanggal_selesai',
         'waktu_mulai', 'waktu_selesai', 'lokasi', 'flyer_path',
-        'sertifikat_template_path', 'is_published', 'kuota', 'terdaftar',
+        'sertifikat_template_path', 'has_certificate', 'is_published', 'kuota', 'terdaftar',
         'kategori_id', 'harga_tiket', 'sertifikat_path', 'status',
-        'created_by', 'approval_type'
+        'created_by', 'approval_type',
+        // certificates config
+        'certificate_template_id', 'manual_issue', 'allow_certificate_reject',
+        'certificate_signature_name', 'certificate_signature_title', 'certificate_signature_image_path',
+        'certificate_date', 'certificate_layout_config'
     ];
-    
+
     protected $appends = ['full_flyer_path', 'full_template_path'];
-    
+
     /**
      * Get the URL to the event's flyer image.
      */
@@ -29,7 +33,7 @@ class Event extends Model
     {
         return $this->flyer_path ? asset('storage/' . $this->flyer_path) : null;
     }
-    
+
     /**
      * Get the URL to the event's certificate template.
      */
@@ -37,7 +41,7 @@ class Event extends Model
     {
         return $this->sertifikat_template_path ? asset('storage/' . $this->sertifikat_template_path) : null;
     }
-    
+
     /**
      * The attributes that should be cast.
      *
@@ -48,9 +52,13 @@ class Event extends Model
         'tanggal_selesai' => 'date',
         'waktu_mulai' => 'datetime',
         'is_published' => 'boolean',
+        'has_certificate' => 'boolean',
         'approval_type' => 'string',
         'waktu_selesai' => 'datetime',
-        'is_published' => 'boolean',
+        'manual_issue' => 'boolean',
+        'allow_certificate_reject' => 'boolean',
+        'certificate_date' => 'date',
+        'certificate_layout_config' => 'array',
     ];
 
     /**
@@ -71,7 +79,7 @@ class Event extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
-    
+
     /**
      * Get the registrations for the event.
      */
@@ -79,7 +87,7 @@ class Event extends Model
     {
         return $this->hasMany(Registration::class);
     }
-    
+
     /**
      * Scope a query to only include events created by the given user.
      */
@@ -102,7 +110,7 @@ class Event extends Model
             'user_id'
         )->where('registrations.status', 'approved');
     }
-    
+
     /**
      * Get all attendances for the event.
      */
@@ -120,13 +128,21 @@ class Event extends Model
     }
 
     /**
+     * Certificate template relation
+     */
+    public function certificateTemplate(): BelongsTo
+    {
+        return $this->belongsTo(CertificateTemplate::class, 'certificate_template_id');
+    }
+
+    /**
      * Get all ticket categories for the event.
      */
     public function ticketCategories(): HasMany
     {
         return $this->hasMany(TicketCategory::class);
     }
-    
+
     /**
      * Get all users registered for this event
      */
@@ -136,10 +152,10 @@ class Event extends Model
             ->withPivot('status', 'kode_pendaftaran')
             ->withTimestamps();
     }
-    
+
     /**
      * Get validation rules for event creation/update
-     * 
+     *
      * @param int|null $eventId
      * @return array
      */
@@ -172,26 +188,26 @@ class Event extends Model
             'status' => 'in:draft,published,canceled,completed',
         ];
     }
-    
+
     /**
      * Check if registration is open for this event
-     * 
+     *
      * @return bool
      */
     public function isRegistrationOpen(): bool
     {
         $now = now();
         $eventStart = \Carbon\Carbon::parse($this->tanggal_mulai->format('Y-m-d') . ' ' . $this->waktu_mulai);
-        
-        return $this->is_published && 
+
+        return $this->is_published &&
                $this->status === 'published' &&
                $now->lt($eventStart) && // Before event starts
                $this->terdaftar < $this->kuota; // Not full
     }
-    
+
     /**
      * Check if attendance can be taken for this event
-     * 
+     *
      * @return bool
      */
     public function isAttendanceOpen(): bool
@@ -199,7 +215,7 @@ class Event extends Model
         $now = now();
         $eventDate = $this->tanggal_mulai->format('Y-m-d');
         $today = $now->format('Y-m-d');
-        
+
         // Attendance can be taken on the event day
         return $eventDate === $today;
     }

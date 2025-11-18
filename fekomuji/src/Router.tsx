@@ -4,7 +4,9 @@ import { SignIn, SignUp, Events, Profile, EventDetail } from './pages';
 import SignUpPanitia from './pages/SignUpPanitia';
 import UpgradeToPanitia from './pages/UpgradeToPanitia';
 import ForgotPassword from './pages/ForgotPassword';
+import PremiumUpgrade from './pages/PremiumUpgrade';
 import About from './pages/About';
+import WithdrawalManagement from './admin/pages/WithdrawalManagement';
 import Contact from './pages/Contact';
 import Transaksi from './pages/Transaksi';
 import TransactionDetail from './pages/TransactionDetail';
@@ -15,7 +17,10 @@ import DebugRegistration from './pages/DebugRegistration';
 import OrganizerLogin from './pages/OrganizerLogin';
 import TicketBookingPage from './pages/TicketBooking';
 import { AuthProvider } from './contexts/AuthContext';
-import { Dashboard, EventManagementFixed, Participants, Tickets, Finance, Settings } from './organizer/pages';
+import EventAttendance from './pages/EventAttendance';
+import { Dashboard, EventManagementFixed, Tickets, Finance, Settings } from './organizer/pages';
+import CertificateSettings from './organizer/pages/CertificateSettings';
+import CertificateIssuance from './organizer/pages/CertificateIssuance';
 
 import ParticipantsNew from './organizer/pages/ParticipantsNew';
 import OrganizerEventDetail from './organizer/pages/EventDetail';
@@ -60,11 +65,15 @@ const AppRouter = () => {
           <Route path="/organizer" element={<ProtectedOrganizerRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events" element={<ProtectedOrganizerRoute><ErrorBoundary><EventManagementFixed /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events/:id" element={<ProtectedOrganizerRoute><ErrorBoundary><OrganizerEventDetail /></ErrorBoundary></ProtectedOrganizerRoute>} />
+          <Route path="/organizer/events/:eventId/attendance" element={<ProtectedOrganizerRoute><ErrorBoundary><EventAttendance /></ErrorBoundary></ProtectedOrganizerRoute>} />
+          <Route path="/organizer/events/:eventId/certificates/settings" element={<ProtectedOrganizerRoute><ErrorBoundary><CertificateSettings /></ErrorBoundary></ProtectedOrganizerRoute>} />
+          <Route path="/organizer/events/:eventId/certificates" element={<ProtectedOrganizerRoute><ErrorBoundary><CertificateIssuance /></ErrorBoundary></ProtectedOrganizerRoute>} />
 
           <Route path="/organizer/participants" element={<ProtectedOrganizerRoute><ErrorBoundary><ParticipantsNew /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/tickets" element={<ProtectedOrganizerRoute><ErrorBoundary><Tickets /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/finance" element={<ProtectedOrganizerRoute><ErrorBoundary><Finance /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/settings" element={<ProtectedOrganizerRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedOrganizerRoute>} />
+          <Route path="/organizer/premium" element={<ProtectedOrganizerRoute><ErrorBoundary><PremiumUpgrade /></ErrorBoundary></ProtectedOrganizerRoute>} />
 
           {/* Admin Routes - Protected */}
           <Route path="/admin" element={<ProtectedAdminRoute><ErrorBoundary><AdminDashboard /></ErrorBoundary></ProtectedAdminRoute>} />
@@ -74,6 +83,7 @@ const AppRouter = () => {
           <Route path="/admin/transactions" element={<ProtectedAdminRoute><ErrorBoundary><Transactions /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/reports" element={<ProtectedAdminRoute><ErrorBoundary><Reports /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/settings" element={<ProtectedAdminRoute><ErrorBoundary><AdminSettings /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/withdrawals" element={<ProtectedAdminRoute><ErrorBoundary><WithdrawalManagement /></ErrorBoundary></ProtectedAdminRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -5,8 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
 import PublicFooter from '../components/PublicFooter';
-import { generateToken, generateQRData } from '../utils/tokenGenerator';
-import { generateQRCode } from '../utils/qrGenerator';
+
 
 interface EventRegistration {
   id: number;
@@ -41,6 +40,7 @@ interface EventRegistration {
     lokasi: string;
     flyer_path?: string;
     image?: string;
+    has_certificate?: boolean;
   };
   ticket_category?: {
     id: number;
@@ -50,8 +50,10 @@ interface EventRegistration {
   attendance?: {
     id: number;
     registration_id: number;
-    waktu_hadir?: string;
-    is_verified: boolean;
+    status?: 'pending' | 'checked_in' | 'checked_out';
+    check_in_time?: string;
+    check_out_time?: string;
+    token?: string;
   };
   certificate?: {
     id: number;
@@ -101,31 +103,15 @@ const EventHistory: React.FC = () => {
     };
   }, [showTicketModal]);
 
-  // Generate token and QR code for ticket
+  // Prepare QR using backend attendance token (stable)
   const generateTicketData = async (registration: EventRegistration) => {
     try {
-      // Generate token if not exists
-      const token = registration.token || generateToken();
-
-      // Generate QR data
-      const qrData = generateQRData(token, registration.event_id, registration.user_id);
-
-      // Generate QR code image
-      const qrImage = await generateQRCode(qrData, 200);
-
-      setQrCodeImage(qrImage);
-
-      // Update registration with token (in real app, this would be saved to backend)
-      const updatedRegistration = {
-        ...registration,
-        token,
-        qr_data: qrImage
-      };
-
-      setSelectedTicket(updatedRegistration);
-
+      const token = registration.attendance?.token || '';
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(token)}`;
+      setQrCodeImage(qrUrl);
+      setSelectedTicket(registration);
     } catch (error) {
-      console.error('Error generating ticket data:', error);
+      console.error('Error preparing QR:', error);
       setQrCodeImage('');
     }
   };
@@ -208,7 +194,7 @@ const EventHistory: React.FC = () => {
     try {
       // Handle various date formats
       let date: Date;
-      
+
       // If it's a timestamp with many zeros, clean it up
       if (dateString && dateString.includes('00000000')) {
         // Extract the main date part before the excessive zeros
@@ -217,13 +203,13 @@ const EventHistory: React.FC = () => {
       } else {
         date = new Date(dateString);
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid date:', dateString);
         return 'Tanggal tidak valid';
       }
-      
+
       return date.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
@@ -279,9 +265,9 @@ const EventHistory: React.FC = () => {
       : eventStatus === 'finished';
 
     // Filter by certificate availability
-    const matchesCertificate = certificateFilter === 'all' || 
-      (certificateFilter === 'with_certificate' && reg.certificate) ||
-      (certificateFilter === 'without_certificate' && !reg.certificate);
+    const matchesCertificate = certificateFilter === 'all' ||
+      (certificateFilter === 'with_certificate' && !!reg.event?.has_certificate) ||
+      (certificateFilter === 'without_certificate' && !reg.event?.has_certificate);
 
     return matchesSearch && matchesTab && matchesCertificate;
   });
@@ -444,8 +430,8 @@ const EventHistory: React.FC = () => {
                   value={certificateFilter}
                   onChange={(e) => setCertificateFilter(e.target.value as any)}
                   className={`appearance-none bg-white border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[180px] ${
-                    certificateFilter !== 'all' 
-                      ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' 
+                    certificateFilter !== 'all'
+                      ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium'
                       : 'border-gray-200 text-gray-700'
                   }`}
                 >
@@ -573,19 +559,22 @@ const EventHistory: React.FC = () => {
                           Lihat E-Tiket
                         </button>
 
-                        {/* Download Certificate Button */}
+                        {/* Download Certificate / Labels */}
                         {(() => {
-                          const eventStatus = getEventStatus(registration.event);
-                          const hasAttended = registration.attendance?.is_verified || registration.attendance?.waktu_hadir;
-                          const eventFinished = eventStatus === 'finished';
-                          const canDownloadCertificate = registration.certificate && hasAttended && eventFinished;
-                          
+                          const isCertEvent = !!registration.event?.has_certificate;
+                          const hasAttended = (
+                            registration.attendance?.status === 'checked_in' ||
+                            registration.attendance?.status === 'checked_out' ||
+                            !!registration.attendance?.check_in_time
+                          );
+                          const canDownloadCertificate = !!registration.certificate?.file_path;
+
                           if (canDownloadCertificate) {
                             return (
                               <button
                                 onClick={() => {
                                   const link = document.createElement('a');
-                                  link.href = `http://localhost:8000${registration.certificate!.file_path}`;
+                                  link.href = `http://localhost:8000/storage/${registration.certificate!.file_path}`;
                                   link.download = `sertifikat-${registration.certificate!.nomor_sertifikat}.pdf`;
                                   link.click();
                                 }}
@@ -595,21 +584,26 @@ const EventHistory: React.FC = () => {
                                 Download Sertifikat
                               </button>
                             );
-                          } else if (registration.certificate && !hasAttended) {
+                          }
+
+                          if (isCertEvent && !hasAttended) {
                             return (
                               <div className="px-4 py-2 bg-gray-50 text-gray-500 rounded-lg text-sm font-medium border border-gray-100 flex items-center gap-2">
                                 <FiAward className="w-4 h-4" />
                                 Sertifikat (Perlu Absen)
                               </div>
                             );
-                          } else if (registration.certificate && hasAttended && !eventFinished) {
+                          }
+
+                          if (isCertEvent && hasAttended && !canDownloadCertificate) {
                             return (
                               <div className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium border border-blue-100 flex items-center gap-2">
                                 <FiAward className="w-4 h-4" />
-                                Sertifikat (Tunggu Event Selesai)
+                                Sertifikat (Menunggu Penerbitan)
                               </div>
                             );
                           }
+
                           return null;
                         })()}
 
@@ -759,7 +753,7 @@ const EventHistory: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Token Check-in</div>
                   <div className="text-lg font-bold text-green-600 font-mono tracking-wider">
-                    {selectedTicket.token || 'Generating...'}
+                    {selectedTicket.attendance?.token || 'Tidak tersedia'}
                   </div>
                 </div>
 

@@ -18,7 +18,7 @@ class SettingController extends Controller
     {
         try {
             $settings = Setting::orderBy('group')->orderBy('key')->get();
-            
+
             $groupedSettings = $settings->groupBy('group')->map(function ($group) {
                 return $group->map(function ($setting) {
                     return [
@@ -52,7 +52,7 @@ class SettingController extends Controller
     {
         try {
             $businessSettings = Setting::getGroup('business');
-            
+
             return response()->json([
                 'status' => 'success',
                 'data' => $businessSettings
@@ -78,7 +78,7 @@ class SettingController extends Controller
 
         try {
             $setting = Setting::where('key', $key)->first();
-            
+
             if (!$setting) {
                 return response()->json([
                     'status' => 'error',
@@ -162,10 +162,10 @@ class SettingController extends Controller
 
         try {
             $updatedSettings = [];
-            
+
             foreach ($request->settings as $settingData) {
                 $setting = Setting::where('key', $settingData['key'])->first();
-                
+
                 if (!$setting) {
                     continue;
                 }
@@ -269,7 +269,7 @@ class SettingController extends Controller
     {
         try {
             $publicSettings = Setting::getPublic();
-            
+
             return response()->json([
                 'status' => 'success',
                 'data' => $publicSettings

@@ -7,7 +7,8 @@ import {
   FiLogOut,
   FiUserCheck,
   FiDollarSign,
-  FiBarChart
+  FiBarChart,
+  FiCreditCard
 } from 'react-icons/fi';
 
 interface SidebarItem {
@@ -21,6 +22,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Persetujuan Panitia', path: '/admin/panitia-approval', icon: FiUserCheck },
   { name: 'Kelola Panitia', path: '/admin/panitia-management', icon: FiUsers },
   { name: 'Transaksi & Keuangan', path: '/admin/transactions', icon: FiDollarSign },
+  { name: 'Withdrawal Management', path: '/admin/withdrawals', icon: FiCreditCard },
   { name: 'Laporan & Analitik', path: '/admin/reports', icon: FiBarChart },
   { name: 'Pengaturan Sistem', path: '/admin/settings', icon: FiSettings },
 ];

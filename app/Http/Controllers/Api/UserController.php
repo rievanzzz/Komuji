@@ -245,4 +245,100 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get organizer earnings and transaction history
+     */
+    public function getOrganizerEarnings(Request $request)
+    {
+        $user = auth()->user();
+        
+        if (!$user->isPanitia()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Hanya panitia yang dapat mengakses fitur ini.'
+            ], 403);
+        }
+
+        try {
+            $panitiaProfile = \App\Models\PanitiaProfile::where('user_id', $user->id)->first();
+            
+            if (!$panitiaProfile) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Profile panitia tidak ditemukan'
+                ], 404);
+            }
+
+            // Get transaction history for this organizer
+            $transactions = \App\Models\Transaction::with(['event', 'user'])
+                ->where('type', 'event_registration')
+                ->whereHas('event', function($query) use ($user) {
+                    $query->where('created_by', $user->id);
+                })
+                ->where('status', 'paid')
+                ->orderBy('paid_at', 'desc')
+                ->limit(20)
+                ->get()
+                ->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'order_id' => $transaction->order_id,
+                        'event_title' => $transaction->event->judul ?? 'Unknown Event',
+                        'participant_name' => $transaction->user->name ?? 'Unknown User',
+                        'gross_amount' => $transaction->gross_amount,
+                        'platform_fee' => $transaction->platform_fee,
+                        'net_amount' => $transaction->net_amount,
+                        'payment_method' => $transaction->payment_method,
+                        'paid_at' => $transaction->paid_at?->format('d M Y H:i')
+                    ];
+                });
+
+            // Calculate earnings summary
+            $totalEarnings = \App\Models\Transaction::where('type', 'event_registration')
+                ->whereHas('event', function($query) use ($user) {
+                    $query->where('created_by', $user->id);
+                })
+                ->where('status', 'paid')
+                ->sum('net_amount');
+
+            $monthlyEarnings = \App\Models\Transaction::where('type', 'event_registration')
+                ->whereHas('event', function($query) use ($user) {
+                    $query->where('created_by', $user->id);
+                })
+                ->where('status', 'paid')
+                ->whereMonth('paid_at', now()->month)
+                ->whereYear('paid_at', now()->year)
+                ->sum('net_amount');
+
+            $totalTransactions = \App\Models\Transaction::where('type', 'event_registration')
+                ->whereHas('event', function($query) use ($user) {
+                    $query->where('created_by', $user->id);
+                })
+                ->where('status', 'paid')
+                ->count();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'profile' => [
+                        'current_balance' => $panitiaProfile->saldo ?? 0,
+                        'total_earnings' => $totalEarnings,
+                        'monthly_earnings' => $monthlyEarnings,
+                        'total_transactions' => $totalTransactions,
+                        'is_premium' => $panitiaProfile->isPremium(),
+                        'premium_expires_at' => $panitiaProfile->premium_expires_at
+                    ],
+                    'recent_transactions' => $transactions
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data earnings',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

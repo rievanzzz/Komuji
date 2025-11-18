@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2, FiPlus, FiMinus, FiTag, FiMusic, FiBriefcase, FiCoffee, FiHeart, FiChevronDown } from 'react-icons/fi';
-import { MdSports, MdTheaterComedy, MdFamilyRestroom, MdPalette } from 'react-icons/md';
+import { FiX, FiCalendar, FiMapPin, FiUsers, FiClock, FiImage, FiUpload, FiFile, FiTrash2, FiPlus, FiMinus, FiTag, FiBriefcase, FiCoffee, FiChevronDown } from 'react-icons/fi';
+import { MdFamilyRestroom } from 'react-icons/md';
 
 interface TicketCategory {
   id?: number;
@@ -9,6 +9,13 @@ interface TicketCategory {
   harga: number;
   kuota: number;
   is_active: boolean;
+}
+
+interface CertificateTemplateItem {
+  id: number;
+  name: string;
+  theme?: string;
+  background_path?: string | null;
 }
 
 interface Event {
@@ -25,6 +32,7 @@ interface Event {
   lokasi: string;
   flyer_path?: string;
   sertifikat_template_path?: string;
+  certificate_template_id?: number;
   is_published?: boolean;
   approval_type?: 'auto' | 'manual';
   kuota: number;
@@ -71,7 +79,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   const flyerInputRef = useRef<HTMLInputElement>(null);
   const certificateInputRef = useRef<HTMLInputElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  
+  // Certificate template selection
+  const [certificateMode, setCertificateMode] = useState<'none'|'system'|'custom'>('none');
+  const [systemTemplates, setSystemTemplates] = useState<CertificateTemplateItem[]>([]);
+  const [selectedSystemTemplateId, setSelectedSystemTemplateId] = useState<number | ''>('');
+  const [dbCategories, setDbCategories] = useState<Array<{ id: number; name: string }>>([]);
+
   // Ticket categories state
   const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([
     {
@@ -82,11 +95,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       is_active: true
     }
   ]);
-  
+
   // Check if certain fields should be read-only
   const hasRegistrations = editingEvent && (editingEvent.terdaftar || 0) > 0;
   const isPublished = editingEvent && editingEvent.is_published;
-  
+
   // Ticket category management functions
   const addTicketCategory = () => {
     setTicketCategories([...ticketCategories, {
@@ -119,7 +132,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.ok) {
         const categories = await response.json();
         if (categories.length > 0) {
@@ -134,24 +147,24 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   // Helper function to check if a field should be disabled
   const isFieldDisabled = (fieldName: string) => {
     if (!editingEvent) return false;
-    
+
     // Fields that cannot be changed if there are registrations
     const restrictedWithRegistrations = ['tanggal_mulai', 'tanggal_selesai', 'waktu_mulai', 'waktu_selesai'];
-    
+
     // Fields that cannot be changed if event is published
     const restrictedWhenPublished = ['approval_type'];
-    
+
     if (hasRegistrations && restrictedWithRegistrations.includes(fieldName)) {
       return true;
     }
-    
+
     if (isPublished && restrictedWhenPublished.includes(fieldName)) {
       return true;
     }
-    
+
     return false;
   };
-  
+
   // Helper function to get disabled field message
   const getDisabledMessage = (fieldName: string) => {
     if (hasRegistrations && ['tanggal_mulai', 'tanggal_selesai', 'waktu_mulai', 'waktu_selesai'].includes(fieldName)) {
@@ -196,19 +209,35 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         sertifikat_template_path: editingEvent.sertifikat_template_path || '',
         kategori_id: editingEvent.kategori_id || 1
       });
-      
+
       // Check if event is single day
       setIsSingleDay(editingEvent.tanggal_mulai === editingEvent.tanggal_selesai);
-      
+
       // Check if event is open-ended (waktu_selesai is 23:59 or empty)
       setIsOpenEnded(!editingEvent.waktu_selesai || editingEvent.waktu_selesai === '23:59:00' || editingEvent.waktu_selesai === '23:59');
-      
+
       // Load existing ticket categories if available
       if (editingEvent.ticket_categories && editingEvent.ticket_categories.length > 0) {
         setTicketCategories(editingEvent.ticket_categories);
       } else {
         // Fetch ticket categories from API
         fetchTicketCategories(editingEvent.id!);
+      }
+
+      // Prefill certificate mode for editing
+      if (editingEvent.certificate_template_id) {
+        setCertificateMode('system');
+        setSelectedSystemTemplateId(editingEvent.certificate_template_id);
+        setCertificateFile(null);
+        setCertificatePreview('');
+      } else if (editingEvent.sertifikat_template_path) {
+        setCertificateMode('custom');
+        setSelectedSystemTemplateId('');
+      } else {
+        setCertificateMode('none');
+        setSelectedSystemTemplateId('');
+        setCertificateFile(null);
+        setCertificatePreview('');
       }
     } else {
       setFormData({
@@ -227,7 +256,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         flyer_path: '',
         sertifikat_template_path: ''
       });
-      
+
       // Reset ticket categories for new event
       setTicketCategories([
         {
@@ -238,18 +267,71 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
           is_active: true
         }
       ]);
-      
+
       setFlyerFile(null);
       setCertificateFile(null);
       setFlyerPreview('');
       setCertificatePreview('');
-      
+
       // Reset states for new event
       setIsSingleDay(false);
       setIsOpenEnded(false);
+      setCertificateMode('none');
+      setSelectedSystemTemplateId('');
     }
     setErrors({});
   }, [editingEvent, isOpen]);
+
+  // Clear selections when switching certificate mode
+  useEffect(() => {
+    if (certificateMode === 'system') {
+      // Clear custom file
+      setCertificateFile(null);
+      setCertificatePreview('');
+      if (certificateInputRef.current) certificateInputRef.current.value = '';
+    } else if (certificateMode === 'custom') {
+      // Clear selected system template
+      setSelectedSystemTemplateId('');
+    } else if (certificateMode === 'none') {
+      setSelectedSystemTemplateId('');
+      setCertificateFile(null);
+      setCertificatePreview('');
+      if (certificateInputRef.current) certificateInputRef.current.value = '';
+    }
+  }, [certificateMode]);
+
+  // Load system certificate templates when modal opens
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:8000/api/organizer/certificate-templates', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSystemTemplates(data.data || []);
+        }
+      } catch (e) {
+        console.error('Load templates error', e);
+      }
+    };
+    const loadCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setDbCategories((data.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+        }
+      } catch (e) {
+        console.error('Load categories error', e);
+      }
+    };
+    if (isOpen) {
+      loadTemplates();
+      loadCategories();
+    }
+  }, [isOpen]);
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -271,12 +353,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    
+
     // Auto-set tanggal_selesai when tanggal_mulai changes and isSingleDay is true
     if (name === 'tanggal_mulai' && isSingleDay) {
       setFormData(prev => ({
@@ -285,7 +367,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         tanggal_selesai: value
       }));
     }
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -321,7 +403,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       kategori_id: categoryId
     }));
     setCategoryDropdownOpen(false);
-    
+
     // Clear error when category is selected
     if (errors.kategori_id) {
       setErrors(prev => ({
@@ -349,27 +431,17 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
 
   const timeOptions = generateTimeOptions();
 
-  // Event categories data
-  const eventCategories = [
-    { id: 1, name: 'Sports', icon: MdSports },
-    { id: 2, name: 'Concerts', icon: FiMusic },
-    { id: 3, name: 'Theater', icon: MdTheaterComedy },
-    { id: 4, name: 'Comedy', icon: FiHeart },
-    { id: 5, name: 'Arts & Culture', icon: MdPalette },
-    { id: 6, name: 'Food & Drink', icon: FiCoffee },
-    { id: 7, name: 'Business', icon: FiBriefcase },
-    { id: 8, name: 'Family', icon: MdFamilyRestroom }
-  ];
+  // Categories now loaded from DB via /api/categories
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'flyer' | 'certificate') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    const validTypes = type === 'flyer' 
+    const validTypes = type === 'flyer'
       ? ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
       : ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
-    
+
     if (!validTypes.includes(file.type)) {
       setErrors(prev => ({
         ...prev,
@@ -477,27 +549,27 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const url = editingEvent 
+      const url = editingEvent
         ? `http://localhost:8000/api/events/${editingEvent.id}`
         : 'http://localhost:8000/api/events';
-      
+
       let method = editingEvent ? 'PUT' : 'POST';
 
       // Create FormData for file uploads
       const eventFormData = new FormData();
-      
+
       // For edit, add _method: PUT for Laravel
       if (editingEvent) {
         eventFormData.append('_method', 'PUT');
         method = 'POST'; // Laravel expects POST with _method: PUT
       }
-      
+
       // Add basic event data
       eventFormData.append('judul', formData.judul);
       eventFormData.append('deskripsi', formData.deskripsi);
@@ -510,7 +582,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         if (!time) return '';
         return time.length > 5 ? time.substring(0, 5) : time;
       };
-      
+
       eventFormData.append('waktu_mulai', formatTime(formData.waktu_mulai));
       eventFormData.append('waktu_selesai', formatTime(formData.waktu_selesai));
       eventFormData.append('lokasi', formData.lokasi);
@@ -520,19 +592,26 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       eventFormData.append('harga_tiket', (formData.harga_tiket || 0).toString());
       eventFormData.append('is_published', formData.is_published ? '1' : '0');
       eventFormData.append('approval_type', formData.approval_type || 'auto');
-      
+      // Certificate preference
+      if (certificateMode === 'system' && selectedSystemTemplateId) {
+        eventFormData.append('certificate_template_id', String(selectedSystemTemplateId));
+      }
+
       // Add kategori_id
       eventFormData.append('kategori_id', (formData.kategori_id || editingEvent?.kategori_id || 1).toString());
-      
+
       // Add ticket categories as JSON
       eventFormData.append('ticket_categories', JSON.stringify(ticketCategories));
-      
+
       // Add files if selected
       if (flyerFile) {
         eventFormData.append('flyer', flyerFile);
       }
-      if (certificateFile) {
+      if (certificateMode === 'custom' && certificateFile) {
         eventFormData.append('sertifikat_template', certificateFile);
+      }
+      if (certificateMode === 'none') {
+        eventFormData.append('remove_certificate', '1');
       }
 
       console.log('Sending request to:', url);
@@ -542,7 +621,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
       for (let [key, value] of eventFormData.entries()) {
         console.log(`${key}:`, value);
       }
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -552,7 +631,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         },
         body: eventFormData
       });
-      
+
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);
 
@@ -560,13 +639,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         const savedEvent = await response.json();
         console.log('Event saved successfully:', savedEvent);
         console.log('Saved event data:', savedEvent.data);
-        
+
         // Show success message
         alert(editingEvent ? 'Acara berhasil diperbarui!' : 'Acara berhasil dibuat!');
-        
+
         // Call onSave callback with the actual event data
         onSave(savedEvent.data || savedEvent);
-        
+
         // Close modal
         onClose();
       } else {
@@ -574,7 +653,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
         console.error('Save failed:', errorData);
         console.error('Response status:', response.status);
         console.error('Response statusText:', response.statusText);
-        
+
         // Show detailed error message
         if (errorData.errors) {
           const errorMessages = Object.values(errorData.errors).flat().join(', ');
@@ -666,7 +745,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 <FiTag className="w-4 h-4 text-blue-600" />
                 Kategori Event *
               </label>
-              
+
               {/* Custom Dropdown */}
               <div className="relative" ref={categoryDropdownRef}>
                 <button
@@ -677,13 +756,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {formData.kategori_id ? (
+                    {formData.kategori_id && dbCategories.find(c => c.id === formData.kategori_id) ? (
                       <>
-                        {React.createElement(eventCategories.find(cat => cat.id === formData.kategori_id)?.icon || FiTag, {
-                          className: "w-5 h-5 text-blue-600"
-                        })}
+                        <FiTag className="w-5 h-5 text-blue-600" />
                         <span className="text-gray-900">
-                          {eventCategories.find(cat => cat.id === formData.kategori_id)?.name}
+                          {dbCategories.find(c => c.id === formData.kategori_id)?.name}
                         </span>
                       </>
                     ) : (
@@ -698,23 +775,21 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 {/* Dropdown Options */}
                 {categoryDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto">
-                    {eventCategories.map((category) => (
+                    {dbCategories.map((category) => (
                       <button
                         key={category.id}
                         type="button"
                         onClick={() => handleCategorySelect(category.id)}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl"
                       >
-                        {React.createElement(category.icon, {
-                          className: "w-5 h-5 text-blue-600"
-                        })}
+                        <FiTag className="w-5 h-5 text-blue-600" />
                         <span className="text-gray-900">{category.name}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              
+
               {errors.kategori_id && <p className="text-red-500 text-sm mt-2 flex items-center gap-1"><span className="w-1 h-1 bg-red-500 rounded-full"></span>{errors.kategori_id}</p>}
             </div>
           </div>
@@ -732,10 +807,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             </div>
 
             <div className="space-y-4">
-              <div 
+              <div
                 className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
-                  isSingleDay 
-                    ? 'border-green-500 bg-green-50' 
+                  isSingleDay
+                    ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
                 onClick={() => handleSingleDayChange(true)}
@@ -753,10 +828,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 </div>
               </div>
 
-              <div 
+              <div
                 className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
-                  !isSingleDay 
-                    ? 'border-green-500 bg-green-50' 
+                  !isSingleDay
+                    ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
                 onClick={() => handleSingleDayChange(false)}
@@ -870,13 +945,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 <label className="block text-sm font-semibold text-gray-800 mb-4">
                   Waktu Selesai {!isOpenEnded && '*'}
                 </label>
-                
+
                 {/* Time Mode Selection */}
                 <div className="space-y-4 mb-5">
-                  <div 
+                  <div
                     className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
-                      !isOpenEnded 
-                        ? 'border-blue-500 bg-blue-50' 
+                      !isOpenEnded
+                        ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                     onClick={() => handleOpenEndedChange(false)}
@@ -894,10 +969,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                     </div>
                   </div>
 
-                  <div 
+                  <div
                     className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
-                      isOpenEnded 
-                        ? 'border-blue-500 bg-blue-50' 
+                      isOpenEnded
+                        ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                     onClick={() => handleOpenEndedChange(true)}
@@ -1022,7 +1097,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                 Tambah Kategori
               </button>
             </div>
-            
+
             <div className="space-y-4">
               {ticketCategories.map((category, index) => (
                 <div key={index} className="border-2 border-gray-200 rounded-xl p-6 bg-gray-50">
@@ -1038,7 +1113,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1052,7 +1127,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                         placeholder="Contoh: Regular, VIP, Early Bird"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Harga (Rp) *
@@ -1066,7 +1141,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                         placeholder="0 untuk gratis"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Kuota *
@@ -1080,7 +1155,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                         placeholder="Jumlah tiket tersedia"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Status
@@ -1095,7 +1170,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                       </select>
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Deskripsi
@@ -1138,7 +1213,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
               <FiImage className="w-5 h-5 text-blue-600" />
               Media & Dokumen
             </h3>
-            
+
             {/* Flyer Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -1147,9 +1222,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
               <div className="space-y-3">
                 {flyerPreview ? (
                   <div className="relative inline-block">
-                    <img 
-                      src={flyerPreview} 
-                      alt="Flyer preview" 
+                    <img
+                      src={flyerPreview}
+                      alt="Flyer preview"
                       className="w-32 h-40 object-cover rounded-lg border border-gray-200 shadow-sm"
                     />
                     <button
@@ -1161,7 +1236,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
                     </button>
                   </div>
                 ) : (
-                  <div 
+                  <div
                     onClick={() => flyerInputRef.current?.click()}
                     className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
                   >
@@ -1184,61 +1259,91 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
               </div>
             </div>
 
-            {/* Certificate Template Upload */}
+            {/* Certificate Template Choice */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Template Sertifikat (Opsional)
+                Sertifikat Event (Opsional)
               </label>
-              <div className="space-y-3">
-                {certificateFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    {certificatePreview ? (
-                      <img 
-                        src={certificatePreview} 
-                        alt="Certificate preview" 
-                        className="w-16 h-12 object-cover rounded border border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
-                        <FiFile className="w-6 h-6 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{certificateFile.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(certificateFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile('certificate')}
-                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div 
-                    onClick={() => certificateInputRef.current?.click()}
-                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
-                  >
-                    <FiFile className="w-8 h-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 text-center">
-                      <span className="font-medium text-blue-600">Klik untuk upload</span>
-                      <br />atau drag & drop file
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP, PDF (Max 5MB)</p>
-                  </div>
-                )}
-                <input
-                  ref={certificateInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                  onChange={(e) => handleFileChange(e, 'certificate')}
-                  className="hidden"
-                />
-                {errors.certificate && <p className="text-red-500 text-sm">{errors.certificate}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <button type="button" onClick={() => setCertificateMode('none')} className={`rounded-lg border p-3 text-sm ${certificateMode==='none'?'border-blue-500 bg-blue-50 text-blue-700':'border-gray-200 hover:border-gray-300'}`}>Tidak Pakai Sertifikat</button>
+                <button type="button" onClick={() => setCertificateMode('system')} className={`rounded-lg border p-3 text-sm ${certificateMode==='system'?'border-blue-500 bg-blue-50 text-blue-700':'border-gray-200 hover:border-gray-300'}`}>Template Sistem</button>
+                <button type="button" onClick={() => setCertificateMode('custom')} className={`rounded-lg border p-3 text-sm ${certificateMode==='custom'?'border-blue-500 bg-blue-50 text-blue-700':'border-gray-200 hover:border-gray-300'}`}>Upload Template Sendiri</button>
               </div>
+
+              {/* System template picker */}
+              {certificateMode === 'system' && (
+                <div className="space-y-3">
+                  <select
+                    className="w-full border rounded-lg px-3 py-2"
+                    value={selectedSystemTemplateId}
+                    onChange={(e)=> setSelectedSystemTemplateId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">Pilih Template Sistem</option>
+                    {systemTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  {selectedSystemTemplateId && (
+                    <div className="mt-2 p-3 border rounded-lg bg-gray-50">
+                      {(() => {
+                        const tpl = systemTemplates.find(x=> x.id === selectedSystemTemplateId);
+                        const url = tpl?.background_path ? `http://localhost:8000/storage/${tpl.background_path}` : `http://localhost:8000/cert_templates/${tpl?.theme || 'minimal-modern'}.svg`;
+                        return <img src={url} alt="preview" className="w-full max-h-64 object-contain rounded"/>;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Custom template upload */}
+              {certificateMode === 'custom' && (
+                <div className="space-y-3">
+                  {certificateFile ? (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      {certificatePreview ? (
+                        <img src={certificatePreview} alt="Certificate preview" className="w-16 h-12 object-cover rounded border border-gray-200" />
+                      ) : (
+                        <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
+                          <FiFile className="w-6 h-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{certificateFile.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(certificateFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile('certificate')}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => certificateInputRef.current?.click()}
+                      className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
+                    >
+                      <FiFile className="w-8 h-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 text-center">
+                        <span className="font-medium text-blue-600">Klik untuk upload</span>
+                        <br/>atau drag & drop file
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP (disarankan untuk preview) / PDF (Max 5MB)</p>
+                    </div>
+                  )}
+                  <input
+                    ref={certificateInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                    onChange={(e) => handleFileChange(e, 'certificate')}
+                    className="hidden"
+                  />
+                  {errors.certificate && <p className="text-red-500 text-sm">{errors.certificate}</p>}
+                </div>
+              )}
             </div>
           </div>
 

@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteEvent = async (eventId: number) => {
     if (!confirm('Apakah Anda yakin ingin menghapus acara ini?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:8000/api/events/${eventId}`, {
@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
+
       // Fetch events for organizer
       const eventsResponse = await fetch('http://localhost:8000/api/organizer/events', {
         headers: {
@@ -174,7 +174,7 @@ const Dashboard: React.FC = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       // Fetch pending registrations for organizer
       const registrationsResponse = await fetch('http://localhost:8000/api/my-events/pending-registrations', {
         headers: {
@@ -186,23 +186,23 @@ const Dashboard: React.FC = () => {
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
         const registrationsData = registrationsResponse.ok ? await registrationsResponse.json() : { data: [] };
-        
+
         // Calculate stats from real data
         const events = Array.isArray(eventsData.data) ? eventsData.data : Array.isArray(eventsData) ? eventsData : [];
         const registrations = Array.isArray(registrationsData.data) ? registrationsData.data : Array.isArray(registrationsData) ? registrationsData : [];
-        
+
         const totalParticipants = events.reduce((sum: number, event: any) => sum + (event.terdaftar || 0), 0);
         const activeEvents = events.filter((event: any) => event.is_published === true).length;
-        
+
         // Calculate total revenue from actual event prices
         const totalRevenue = events.reduce((sum: number, event: any) => {
           return sum + ((event.terdaftar || 0) * (event.harga_tiket || 0));
         }, 0);
-        
+
         const publishedEvents = events.filter((e: any) => e.is_published).length;
         const draftEvents = events.length - publishedEvents;
         const avgParticipants = events.length > 0 ? Math.round(totalParticipants / events.length) : 0;
-        
+
         // Create popular events (sorted by registration rate)
         const popularEvents = events
           .map((event: any) => ({
@@ -301,12 +301,12 @@ const Dashboard: React.FC = () => {
             lokasi: "Lab Komputer"
           }
         ];
-        
+
         const mockTotalParticipants = mockEvents.reduce((sum, event) => sum + (event.terdaftar || 0), 0);
         const mockTotalRevenue = mockEvents.reduce((sum, event) => sum + ((event.terdaftar || 0) * (event.harga_tiket || 0)), 0);
         const mockPublishedEvents = mockEvents.filter(event => event.is_published).length;
         const mockDraftEvents = mockEvents.length - mockPublishedEvents;
-        
+
         // Mock popular events
         const mockPopularEvents = mockEvents
           .map(event => ({
@@ -507,7 +507,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-600 w-8">{data.month}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${data.percentage}%` }}
                     ></div>
@@ -544,7 +544,7 @@ const Dashboard: React.FC = () => {
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full transition-all duration-500 ${
                           index === 0 ? 'bg-gradient-to-r from-green-400 to-green-500' :
                           index === 1 ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
@@ -638,7 +638,7 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-blue-600">{stats.publishedEvents}</div>
                 <div className="text-xs text-blue-600">Event aktif</div>
               </div>
-              
+
               <div className="bg-gray-50 p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <FiEdit className="w-4 h-4 text-gray-600" />
@@ -647,7 +647,7 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-600">{stats.draftEvents}</div>
                 <div className="text-xs text-gray-600">Belum publish</div>
               </div>
-              
+
               <div className="bg-yellow-50 p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <FiAlertCircle className="w-4 h-4 text-yellow-600" />
@@ -656,7 +656,7 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-yellow-600">{stats.pendingApprovals}</div>
                 <div className="text-xs text-yellow-600">Perlu approval</div>
               </div>
-              
+
               <div className="bg-green-50 p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <FiTarget className="w-4 h-4 text-green-600" />
@@ -749,7 +749,7 @@ const Dashboard: React.FC = () => {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Kelola Acara</h3>
-            <button 
+            <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
             >
@@ -782,8 +782,8 @@ const Dashboard: React.FC = () => {
                           {formatDate(event.tanggal_mulai)}
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          event.is_published 
-                            ? 'bg-green-100 text-green-700' 
+                          event.is_published
+                            ? 'bg-green-100 text-green-700'
                             : 'bg-gray-100 text-gray-500'
                         }`}>
                           {event.is_published ? 'Aktif' : 'Draft'}
@@ -791,21 +791,21 @@ const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => handleViewEvent(event.id)}
                         className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Lihat Detail"
                       >
                         <FiEye className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleEditEvent(event)}
                         className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Edit Acara"
                       >
                         <FiEdit className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteEvent(event.id)}
                         className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                         title="Hapus Acara"
@@ -847,8 +847,8 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      registration.status === 'approved' 
-                        ? 'bg-gray-100 text-gray-700' 
+                      registration.status === 'approved'
+                        ? 'bg-gray-100 text-gray-700'
                         : 'bg-gray-50 text-gray-500'
                     }`}>
                       {registration.status === 'approved' ? 'Disetujui' : 'Pending'}

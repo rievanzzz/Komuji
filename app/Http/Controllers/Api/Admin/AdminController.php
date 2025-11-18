@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\PanitiaProfile;
+use App\Models\Transaction;
+use App\Models\Commission;
+use App\Models\BankAccount;
+use App\Models\Withdrawal;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -280,6 +284,250 @@ class AdminController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal menyimpan pengaturan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get commission and revenue dashboard
+     */
+    public function getRevenueDashboard(): JsonResponse
+    {
+        try {
+            // Total platform revenue (commission)
+            $totalRevenue = Commission::where('type', 'platform_fee')
+                ->where('status', 'paid')
+                ->sum('amount');
+
+            // Revenue this month
+            $monthlyRevenue = Commission::where('type', 'platform_fee')
+                ->where('status', 'paid')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('amount');
+
+            // Total transactions
+            $totalTransactions = Transaction::where('status', 'paid')->count();
+
+            // Transactions this month
+            $monthlyTransactions = Transaction::where('status', 'paid')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count();
+
+            // Recent transactions with commission details
+            $recentTransactions = Transaction::with(['user', 'event'])
+                ->where('status', 'paid')
+                ->orderBy('paid_at', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'order_id' => $transaction->order_id,
+                        'user_name' => $transaction->user->name ?? 'Unknown',
+                        'event_title' => $transaction->event->judul ?? 'Premium Upgrade',
+                        'type' => $transaction->type,
+                        'gross_amount' => $transaction->gross_amount,
+                        'platform_fee' => $transaction->platform_fee,
+                        'net_amount' => $transaction->net_amount,
+                        'payment_method' => $transaction->payment_method,
+                        'paid_at' => $transaction->paid_at?->format('d M Y H:i'),
+                        'status' => $transaction->status
+                    ];
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'summary' => [
+                        'total_revenue' => $totalRevenue,
+                        'monthly_revenue' => $monthlyRevenue,
+                        'total_transactions' => $totalTransactions,
+                        'monthly_transactions' => $monthlyTransactions,
+                        'average_commission' => $totalTransactions > 0 ? $totalRevenue / $totalTransactions : 0
+                    ],
+                    'recent_transactions' => $recentTransactions
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data revenue',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get pending withdrawals for admin approval
+     */
+    public function getPendingWithdrawals(): JsonResponse
+    {
+        try {
+            $withdrawals = Withdrawal::with(['user', 'bankAccount'])
+                ->where('status', 'pending')
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->map(function ($withdrawal) {
+                    return [
+                        'id' => $withdrawal->id,
+                        'withdrawal_code' => $withdrawal->withdrawal_code,
+                        'user_name' => $withdrawal->user->name,
+                        'user_email' => $withdrawal->user->email,
+                        'amount' => $withdrawal->formatted_amount,
+                        'admin_fee' => 'Rp ' . number_format($withdrawal->admin_fee),
+                        'net_amount' => $withdrawal->formatted_net_amount,
+                        'bank_account' => [
+                            'bank_name' => $withdrawal->bankAccount->bank_name,
+                            'account_number' => $withdrawal->bankAccount->account_number,
+                            'account_holder_name' => $withdrawal->bankAccount->account_holder_name
+                        ],
+                        'notes' => $withdrawal->notes,
+                        'requested_at' => $withdrawal->requested_at->format('d M Y H:i'),
+                        'status' => $withdrawal->status
+                    ];
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $withdrawals
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data withdrawal',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve withdrawal request
+     */
+    public function approveWithdrawal(Request $request, $withdrawalId): JsonResponse
+    {
+        $request->validate([
+            'admin_notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            $withdrawal = Withdrawal::findOrFail($withdrawalId);
+            
+            if ($withdrawal->status !== 'pending') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Withdrawal sudah diproses sebelumnya'
+                ], 400);
+            }
+
+            $withdrawal->approve(auth()->id(), $request->admin_notes);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Withdrawal berhasil disetujui'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menyetujui withdrawal',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject withdrawal request
+     */
+    public function rejectWithdrawal(Request $request, $withdrawalId): JsonResponse
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+
+        try {
+            $withdrawal = Withdrawal::findOrFail($withdrawalId);
+            
+            if ($withdrawal->status !== 'pending') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Withdrawal sudah diproses sebelumnya'
+                ], 400);
+            }
+
+            $withdrawal->reject(auth()->id(), $request->reason);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Withdrawal berhasil ditolak'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menolak withdrawal',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all withdrawals with filters
+     */
+    public function getAllWithdrawals(Request $request): JsonResponse
+    {
+        try {
+            $status = $request->get('status', 'all');
+            $startDate = $request->get('start_date');
+            $endDate = $request->get('end_date');
+
+            $query = Withdrawal::with(['user', 'bankAccount', 'approvedBy']);
+
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $withdrawals = $query->orderBy('created_at', 'desc')
+                ->paginate($request->get('per_page', 20));
+
+            $withdrawals->getCollection()->transform(function ($withdrawal) {
+                return [
+                    'id' => $withdrawal->id,
+                    'withdrawal_code' => $withdrawal->withdrawal_code,
+                    'user_name' => $withdrawal->user->name,
+                    'amount' => $withdrawal->formatted_amount,
+                    'net_amount' => $withdrawal->formatted_net_amount,
+                    'status' => $withdrawal->status,
+                    'status_badge' => $withdrawal->status_badge,
+                    'bank_account' => [
+                        'bank_name' => $withdrawal->bankAccount->bank_name,
+                        'account_number' => $withdrawal->bankAccount->masked_account_number,
+                        'account_holder_name' => $withdrawal->bankAccount->account_holder_name
+                    ],
+                    'approved_by' => $withdrawal->approvedBy?->name,
+                    'requested_at' => $withdrawal->requested_at->format('d M Y H:i'),
+                    'approved_at' => $withdrawal->approved_at?->format('d M Y H:i'),
+                    'completed_at' => $withdrawal->completed_at?->format('d M Y H:i')
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $withdrawals
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data withdrawal',
                 'error' => $e->getMessage()
             ], 500);
         }

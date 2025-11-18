@@ -163,7 +163,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
             ->whereHas('registration', function($query) use ($eventId) {
                 $query->where('event_id', $eventId);
             })
-            ->where('is_verified', true)
+            ->whereIn('status', ['checked_in','checked_out'])
             ->exists();
     }
 
@@ -260,7 +260,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     public function canCreateEvent()
     {
         if (!$this->isPanitia()) return false;
-        
+
         $profile = $this->panitiaProfile;
         return $profile && $profile->can_create_event;
     }
@@ -268,7 +268,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     public function getActivePlan()
     {
         if (!$this->isPanitia()) return null;
-        
+
         $profile = $this->panitiaProfile;
         if (!$profile) return null;
 
@@ -288,7 +288,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     public function getSaldoAttribute()
     {
         if (!$this->isPanitia()) return 0;
-        
+
         $profile = $this->panitiaProfile;
         return $profile ? $profile->saldo : 0;
     }
