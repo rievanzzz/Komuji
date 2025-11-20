@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiSearch, FiX, FiLogIn, FiChevronDown, FiDownload, FiAward } from 'react-icons/fi';
+import { FiCalendar, FiSearch, FiX, FiLogIn, FiChevronDown, FiDownload, FiAward, FiUser, FiMapPin, FiCheck } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
@@ -74,6 +74,8 @@ const EventHistory: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<EventRegistration | null>(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState<string>('');
+  const [qrLoading, setQrLoading] = useState<boolean>(false);
+  const [imageLoadStates, setImageLoadStates] = useState<{[key: number]: boolean}>({});
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -103,16 +105,31 @@ const EventHistory: React.FC = () => {
     };
   }, [showTicketModal]);
 
-  // Prepare QR using backend attendance token (stable)
+  // Prepare QR using backend QR or generate from token
   const generateTicketData = async (registration: EventRegistration) => {
+    setQrLoading(true);
     try {
-      const token = registration.attendance?.token || '';
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(token)}`;
+      // Use backend-generated QR if available, otherwise use external service with token
+      let qrUrl = registration.qr_code;
+
+      if (!qrUrl) {
+        const token = registration.attendance?.token || registration.kode_pendaftaran;
+        qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(token)}`;
+      }
+
+      // Add a small delay to show loading
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       setQrCodeImage(qrUrl);
       setSelectedTicket(registration);
     } catch (error) {
       console.error('Error preparing QR:', error);
-      setQrCodeImage('');
+      // Always provide fallback
+      const fallbackToken = registration.attendance?.token || registration.kode_pendaftaran;
+      setQrCodeImage(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(fallbackToken)}`);
+      setSelectedTicket(registration);
+    } finally {
+      setQrLoading(false);
     }
   };
 
@@ -166,14 +183,18 @@ const EventHistory: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string | undefined) => {
+  const getStatusBadgeClass = (status: string | undefined) => {
     switch (status) {
-      case 'paid': return 'text-green-600';
-      case 'approved': return 'text-green-600';
-      case 'pending': return 'text-yellow-600';
-      case 'failed': return 'text-red-600';
-      case 'rejected': return 'text-red-600';
-      default: return 'text-green-600'; // Default to success for free tickets
+      case 'paid':
+      case 'approved':
+        return 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200';
+      case 'pending':
+        return 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200';
+      case 'failed':
+      case 'rejected':
+        return 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200';
+      default:
+        return 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200';
     }
   };
 
@@ -346,10 +367,45 @@ const EventHistory: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <PublicHeader />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Memuat riwayat event...</p>
+        <div className="pt-24 pb-16">
+          <div className="max-w-6xl mx-auto px-6">
+            {/* Skeleton Header */}
+            <div className="mb-8">
+              <div className="h-9 bg-gray-200 rounded-lg w-64 mb-3 animate-pulse"></div>
+              <div className="h-5 bg-gray-200 rounded-lg w-96 animate-pulse"></div>
+            </div>
+
+            {/* Skeleton Tabs */}
+            <div className="flex gap-4 mb-6">
+              <div className="h-10 bg-gray-200 rounded-xl w-40 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded-xl w-40 animate-pulse"></div>
+            </div>
+
+            {/* Skeleton Search */}
+            <div className="mb-8">
+              <div className="h-12 bg-gray-200 rounded-xl w-full animate-pulse"></div>
+            </div>
+
+            {/* Skeleton Cards */}
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-xl border-2 border-gray-100 p-6">
+                  <div className="flex items-center gap-4">
+                    {/* Skeleton Image */}
+                    <div className="w-24 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+
+                    {/* Skeleton Content */}
+                    <div className="flex-1 space-y-3">
+                      <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                    </div>
+
+                    {/* Skeleton Button */}
+                    <div className="h-10 w-32 bg-gray-200 rounded-xl animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <PublicFooter />
@@ -367,9 +423,9 @@ const EventHistory: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-8"
           >
-            <h1 className="text-2xl font-bold text-gray-900">Tiket</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Tiket Event Saya</h1>
             <p className="text-gray-600">Kelola tiket dan riwayat event Anda</p>
           </motion.div>
 
@@ -429,10 +485,10 @@ const EventHistory: React.FC = () => {
                 <select
                   value={certificateFilter}
                   onChange={(e) => setCertificateFilter(e.target.value as any)}
-                  className={`appearance-none bg-white border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[180px] ${
+                  className={`appearance-none bg-white border-2 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-w-[200px] ${
                     certificateFilter !== 'all'
-                      ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-200 text-gray-700'
+                      ? 'border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium shadow-sm'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <option value="all">Semua Event</option>
@@ -469,16 +525,25 @@ const EventHistory: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 3) }}
-                  className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-sm transition-all duration-200"
+                  className="bg-white rounded-xl border-2 border-gray-100 p-6 hover:shadow-md hover:border-gray-200 transition-all duration-300"
                 >
                   {/* Registration Code */}
-                  <div className="text-xs text-gray-400 mb-3 font-mono">
-                    {registration.kode_pendaftaran}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xs text-gray-400 font-mono bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                      {registration.kode_pendaftaran}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-4">
-                    {/* Event Image */}
-                    <div className="w-24 h-16 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
+                    {/* Event Image - Fixed Loading */}
+                    <div className="w-24 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                      {!imageLoadStates[registration.id] && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse flex items-center justify-center">
+                          <span className="text-gray-400 text-2xl font-bold">
+                            {registration.event.judul?.charAt(0) || 'E'}
+                          </span>
+                        </div>
+                      )}
                       {(registration.event.image || registration.event.flyer_path) ? (
                         <img
                           src={
@@ -487,14 +552,21 @@ const EventHistory: React.FC = () => {
                             '/images/default-event.jpg'
                           }
                           alt={registration.event.judul}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover transition-opacity duration-300 ${
+                            imageLoadStates[registration.id] ? 'opacity-100' : 'opacity-0'
+                          }`}
+                          onLoad={() => {
+                            setImageLoadStates(prev => ({...prev, [registration.id]: true}));
+                          }}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NyA0OEw5MyA1NEw4NyA2MEw4MSA1NEw4NyA0OFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                            setImageLoadStates(prev => ({...prev, [registration.id]: true}));
                           }}
+                          loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
                           {registration.event.judul?.charAt(0) || 'E'}
                         </div>
                       )}
@@ -506,9 +578,9 @@ const EventHistory: React.FC = () => {
                         {registration.event.judul}
                       </h3>
 
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`inline-flex items-center gap-1.5 text-sm font-medium ${getStatusColor(registration.payment_status)}`}>
-                          <div className="w-2 h-2 rounded-full bg-current"></div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${getStatusBadgeClass(registration.payment_status)}`}>
+                          <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
                           {getStatusText(registration.payment_status)}
                         </div>
 
@@ -554,7 +626,7 @@ const EventHistory: React.FC = () => {
                             setShowTicketModal(true);
                             await generateTicketData(registration);
                           }}
-                          className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-100"
+                          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm"
                         >
                           Lihat E-Tiket
                         </button>
@@ -578,7 +650,7 @@ const EventHistory: React.FC = () => {
                                   link.download = `sertifikat-${registration.certificate!.nomor_sertifikat}.pdf`;
                                   link.click();
                                 }}
-                                className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded-lg text-sm font-medium hover:bg-yellow-100 transition-colors border border-yellow-100 flex items-center gap-2"
+                                className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl text-sm font-semibold hover:from-green-100 hover:to-emerald-100 transition-all border-2 border-green-200 flex items-center gap-2 shadow-sm"
                               >
                                 <FiDownload className="w-4 h-4" />
                                 Download Sertifikat
@@ -619,7 +691,7 @@ const EventHistory: React.FC = () => {
                             return (
                               <button
                                 onClick={() => navigate(`/events/${registration.event_id}/checkin`)}
-                                className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors border border-green-100 flex items-center gap-2"
+                                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl text-sm font-semibold hover:from-green-700 hover:to-emerald-700 transition-all flex items-center gap-2 shadow-sm"
                               >
                                 <FiLogIn className="w-4 h-4" />
                                 Check-in
@@ -677,93 +749,123 @@ const EventHistory: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl mx-auto my-auto"
+            className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl mx-4"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">E-Ticket</h3>
+            {/* Header - Clean */}
+            <div className="bg-blue-600 text-white p-4 flex justify-between items-start">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold mb-1">E-Tiket</h3>
+                <p className="text-sm text-blue-100">Tiket Digital Anda</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-100 mb-1">Ticket ID</p>
+                <p className="text-sm font-bold">{selectedTicket.kode_pendaftaran}</p>
+              </div>
               <button
                 onClick={() => setShowTicketModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-white hover:text-blue-100 p-1 ml-2"
               >
                 <FiX className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6">
-              {/* QR Code Section */}
-              <div className="text-center mb-6">
-                <div className="w-32 h-32 mx-auto rounded-lg overflow-hidden mb-3 border border-gray-200">
-                  {qrCodeImage ? (
-                    <img
-                      src={qrCodeImage}
-                      alt="QR Code"
-                      className="w-full h-full object-cover"
-                    />
+              {/* Event Title */}
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">{selectedTicket.event.judul}</h2>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <FiCalendar size={14} />
+                  <span>{selectedTicket.event.tanggal_mulai ? formatDate(selectedTicket.event.tanggal_mulai) : 'N/A'}</span>
+                  <span className="text-gray-400">•</span>
+                  <FiMapPin size={14} />
+                  <span>{selectedTicket.event.lokasi}</span>
+                </div>
+              </div>
+
+              {/* Informasi Peserta */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="text-xs font-semibold text-gray-700 mb-3">Informasi Peserta</h4>
+                <div className="flex items-start gap-3 mb-3">
+                  <FiUser className="text-gray-500 mt-0.5" size={16} />
+                  <div>
+                    <p className="text-sm text-gray-900 font-medium">{selectedTicket.nama_peserta || 'N/A'}</p>
+                    <p className="text-xs text-gray-600">{selectedTicket.email_peserta || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Details Grid - Clean 3 Column */}
+              <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-200">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Kategori Tiket</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedTicket.ticket_category?.nama_kategori || 'regular'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Harga</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(selectedTicket.total_harga || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                    <FiCheck size={12} /> Valid
+                  </span>
+                </div>
+              </div>
+
+              {/* QR Code & Token - Side by Side */}
+              <div className="flex gap-4 mb-6 pb-6 border-b border-gray-200">
+                {/* QR Code */}
+                <div className="flex-shrink-0">
+                  {qrLoading ? (
+                    <div className="w-24 h-24 bg-gray-100 border-2 border-gray-200 rounded-lg animate-pulse flex items-center justify-center">
+                      <div className="text-xs text-gray-400 text-center">Loading<br/>QR...</div>
+                    </div>
                   ) : (
-                    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                      <div className="text-white text-xs font-medium">QR CODE</div>
+                    <div className="w-24 h-24 bg-white border-2 border-gray-200 rounded-lg p-2">
+                      <img
+                        src={qrCodeImage || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedTicket.attendance?.token || selectedTicket.kode_pendaftaran)}`}
+                        alt="QR Code"
+                        className="w-full h-full object-contain"
+                        loading="eager"
+                      />
                     </div>
                   )}
+                  <p className="text-xs text-center text-gray-500 mt-2">QR Code</p>
                 </div>
-                <p className="text-sm text-gray-600">Scan QR code untuk absensi</p>
-              </div>
 
-              {/* Event Section */}
-              <div className="mb-6">
-                <div className="text-sm text-gray-500 mb-2">Event</div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                    {selectedTicket.event.judul?.charAt(0) || 'E'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 text-sm truncate">{selectedTicket.event.judul}</div>
-                    <div className="text-xs text-gray-600 truncate">{selectedTicket.event.lokasi}</div>
-                  </div>
+                {/* Token */}
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 mb-2">Token Check-in</p>
+                  <p className="text-2xl font-bold text-gray-900 font-mono tracking-wider mb-2">
+                    {selectedTicket.attendance?.token || '- - - -'}
+                  </p>
+                  <p className="text-xs text-gray-500">Tunjukkan QR code atau ID tiket saat check-in</p>
                 </div>
               </div>
 
-              {/* Details Grid */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-gray-500 mb-1">Tanggal</div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {selectedTicket.event.tanggal_mulai ? formatDate(selectedTicket.event.tanggal_mulai) : 'N/A'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500 mb-1">Waktu</div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {selectedTicket.event.waktu_mulai || '00:00'} - {selectedTicket.event.waktu_selesai || '00:00'}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Lokasi</div>
-                  <div className="text-sm font-medium text-gray-900">{selectedTicket.event.lokasi}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Kode Tiket</div>
-                  <div className="text-sm font-bold text-blue-600">{selectedTicket.kode_pendaftaran}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Token Check-in</div>
-                  <div className="text-lg font-bold text-green-600 font-mono tracking-wider">
-                    {selectedTicket.attendance?.token || 'Tidak tersedia'}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Status Pembayaran</div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Unknown</span>
-                  </div>
-                </div>
+              {/* Petunjuk Check-in */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-blue-900 mb-2">Petunjuk Check-in</h4>
+                <ul className="space-y-1 text-xs text-blue-800">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Tunjukkan QR code atau ID tiket saat check-in</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Datang 15-30 menit sebelum acara dimulai</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Bawa identitas diri yang valid</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Simpan e-tiket ini hingga acara selesai</span>
+                  </li>
+                </ul>
               </div>
 
               {/* Action Buttons */}

@@ -7,16 +7,16 @@ interface SystemSettings {
   commission_rate: number;
   min_commission: number;
   max_commission: number;
-  
+
   // Plan Settings
   trial_duration_days: number;
   free_max_active_events: number;
   premium_max_active_events: number;
-  
+
   // Auto Approval
   auto_approve_panitia: boolean;
   auto_approve_events: boolean;
-  
+
   // Email Settings
   smtp_host: string;
   smtp_port: number;
@@ -24,18 +24,20 @@ interface SystemSettings {
   smtp_password: string;
   from_email: string;
   from_name: string;
-  
+
   // Platform Settings
   platform_name: string;
   platform_description: string;
   support_email: string;
   support_phone: string;
-  
+
   // Security Settings
   session_timeout: number;
   max_login_attempts: number;
   password_min_length: number;
   require_email_verification: boolean;
+  // Platform owner
+  platform_owner_user_id?: number;
 }
 
 const AdminSettings: React.FC = () => {
@@ -63,10 +65,30 @@ const AdminSettings: React.FC = () => {
     password_min_length: 8,
     require_email_verification: true
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('commission');
+  const [platformBank, setPlatformBank] = useState<any>({
+    bank_code: 'BCA',
+    bank_name: '',
+    account_number: '',
+    account_holder_name: '',
+    is_verified: true,
+  });
+
+  const bankOptions = [
+    { code: 'BCA', name: 'Bank Central Asia' },
+    { code: 'BNI', name: 'Bank Negara Indonesia' },
+    { code: 'BRI', name: 'Bank Rakyat Indonesia' },
+    { code: 'MANDIRI', name: 'Bank Mandiri' },
+    { code: 'CIMB', name: 'CIMB Niaga' },
+    { code: 'DANAMON', name: 'Bank Danamon' },
+    { code: 'PERMATA', name: 'Bank Permata' },
+    { code: 'MAYBANK', name: 'Maybank Indonesia' },
+    { code: 'OCBC', name: 'OCBC NISP' },
+    { code: 'PANIN', name: 'Panin Bank' },
+  ];
 
   useEffect(() => {
     fetchSettings();
@@ -85,7 +107,27 @@ const AdminSettings: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setSettings(data.settings);
+        setSettings(prev => ({ ...prev, ...data.settings }));
+      }
+
+      // Fetch platform bank account
+      const bankRes = await fetch('http://localhost:8000/api/admin/platform-bank-account', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (bankRes.ok) {
+        const bank = await bankRes.json();
+        if (bank?.data) {
+          setPlatformBank({
+            bank_code: '',
+            bank_name: bank.data.bank_name,
+            account_number: bank.data.account_number,
+            account_holder_name: bank.data.account_holder_name,
+            is_verified: bank.data.is_verified,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -107,11 +149,21 @@ const AdminSettings: React.FC = () => {
         body: JSON.stringify(settings)
       });
 
-      if (response.ok) {
-        alert('Pengaturan berhasil disimpan!');
-      } else {
-        alert('Gagal menyimpan pengaturan!');
-      }
+      let ok = response.ok;
+
+      // Save platform bank account
+      const bankSave = await fetch('http://localhost:8000/api/admin/platform-bank-account', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(platformBank)
+      });
+
+      ok = ok && bankSave.ok;
+
+      alert(ok ? 'Pengaturan berhasil disimpan!' : 'Sebagian pengaturan gagal disimpan');
     } catch (error) {
       console.error('Error saving settings:', error);
       alert('Gagal menyimpan pengaturan!');
@@ -240,6 +292,61 @@ const AdminSettings: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Platform Owner and Bank Account */}
+                  <div className="pt-4 border-t">
+                    <h4 className="text-md font-semibold text-gray-900 mb-3">Rekening Utama Platform (Admin)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Platform Owner User ID</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={settings.platform_owner_user_id || 1}
+                          onChange={(e) => updateSetting('platform_owner_user_id', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">ID user admin yang menerima dana di Xendit</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Bank</label>
+                        <select
+                          value={platformBank.bank_code || ''}
+                          onChange={(e) => setPlatformBank({ ...platformBank, bank_code: e.target.value, bank_name: '' })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Pilih Bank</option>
+                          {bankOptions.map(b => (
+                            <option key={b.code} value={b.code}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">No. Rekening</label>
+                        <input
+                          type="text"
+                          value={platformBank.account_number}
+                          onChange={(e) => setPlatformBank({ ...platformBank, account_number: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="1234567890"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Atas Nama</label>
+                        <input
+                          type="text"
+                          value={platformBank.account_holder_name}
+                          onChange={(e) => setPlatformBank({ ...platformBank, account_holder_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nama Pemilik Rekening"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Dana real dari Xendit tetap mengalir ke merchant (secret key) admin. Data rekening ini dipakai untuk tampilan dan proses pencairan internal.</p>
+                  </div>
                 </div>
               )}
 
@@ -287,7 +394,7 @@ const AdminSettings: React.FC = () => {
                         <p className="text-xs text-gray-500 mt-1">999 = unlimited</p>
                       </div>
                     </div>
-                    
+
                     <div className="mt-6 space-y-4">
                       <div className="flex items-center">
                         <input
@@ -497,7 +604,7 @@ const AdminSettings: React.FC = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <div className="mt-6">
                       <div className="flex items-center">
                         <input

@@ -30,7 +30,7 @@ const OrganizerTopbar: React.FC<OrganizerTopbarProps> = ({ title = 'Dashboard' }
         {/* Left side - Title and Search */}
         <div className="flex items-center gap-6">
           <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          
+
           {/* Search Bar */}
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />

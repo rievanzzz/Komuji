@@ -88,7 +88,7 @@ const Transaksi: React.FC = () => {
         const data = await response.json();
         console.log('API Response:', data);
         console.log('Registrations count:', (data.data || data || []).length);
-        
+
         // Log each registration for debugging
         (data.data || data || []).forEach((reg: Registration, index: number) => {
           console.log(`Registration ${index + 1}:`, {
@@ -100,7 +100,7 @@ const Transaksi: React.FC = () => {
             created_at: reg.created_at
           });
         });
-        
+
         setRegistrations(data.data || data || []);
       } else if (response.status === 401) {
         localStorage.removeItem('token');
@@ -124,38 +124,23 @@ const Transaksi: React.FC = () => {
       payment_status: registration.payment_status,
       status: registration.status
     });
-    
+
     // For free tickets (total_harga = 0), automatically consider as paid/success
     if (registration.total_harga === 0) {
       console.log('Free ticket detected, returning paid status');
       return 'paid'; // Free tickets are automatically successful
     }
-    
+
     // For paid tickets, prioritize payment_status, but fallback to status if needed
     let effectiveStatus = registration.payment_status || registration.status || 'pending';
-    
+
     // Handle various success status variations
     if (['approved', 'success', 'completed'].includes(effectiveStatus)) {
       effectiveStatus = 'paid';
     }
-    
+
     console.log('Final effective status:', effectiveStatus);
     return effectiveStatus;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'text-green-600';
-      case 'pending': return 'text-yellow-600';
-      case 'failed': return 'text-red-600';
-      case 'approved': return 'text-green-600'; // For free tickets
-      case 'success': return 'text-green-600'; // Alternative success status
-      case 'completed': return 'text-green-600'; // Alternative completed status
-      case 'free': return 'text-green-600'; // For free status
-      case null: return 'text-green-600'; // For free tickets that might be null
-      case '': return 'text-green-600'; // For free tickets that might be empty
-      default: return 'text-green-600'; // Default to green for any unknown status
-    }
   };
 
   const getStatusText = (status: string) => {
@@ -170,7 +155,7 @@ const Transaksi: React.FC = () => {
       case 'free': return 'Payment Success'; // For free status
       case null: return 'Payment Success'; // For free tickets that might be null
       case '': return 'Payment Success'; // For free tickets that might be empty
-      default: 
+      default:
         console.log('Unknown status:', status);
         return 'Payment Success'; // Default to success for any unknown status
     }
@@ -190,7 +175,7 @@ const Transaksi: React.FC = () => {
     try {
       // Handle various date formats
       let date: Date;
-      
+
       // If it's a timestamp with many zeros, clean it up
       if (dateString && dateString.includes('00000000')) {
         // Extract the main date part before the excessive zeros
@@ -199,13 +184,13 @@ const Transaksi: React.FC = () => {
       } else {
         date = new Date(dateString);
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid date:', dateString);
         return 'Tanggal tidak valid';
       }
-      
+
       return date.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
@@ -220,7 +205,7 @@ const Transaksi: React.FC = () => {
   const formatTime = (dateString: string) => {
     try {
       let date: Date;
-      
+
       // Handle various date formats
       if (dateString && dateString.includes('00000000')) {
         const cleanDateString = dateString.split('00000000')[0];
@@ -228,11 +213,11 @@ const Transaksi: React.FC = () => {
       } else {
         date = new Date(dateString);
       }
-      
+
       if (isNaN(date.getTime())) {
         return '00:00';
       }
-      
+
       return date.toLocaleTimeString('id-ID', {
         hour: '2-digit',
         minute: '2-digit'
@@ -245,7 +230,7 @@ const Transaksi: React.FC = () => {
 
   const filteredRegistrations = registrations.filter(reg => {
     const effectiveStatus = getEffectiveStatus(reg);
-    
+
     // Debug logging for filter
     console.log('Filtering registration:', {
       id: reg.id,
@@ -256,7 +241,7 @@ const Transaksi: React.FC = () => {
       total_harga: reg.total_harga,
       currentFilter: filter
     });
-    
+
     // Filter logic based on effective status
     let matchesFilter = false;
     if (filter === 'all') {
@@ -264,12 +249,12 @@ const Transaksi: React.FC = () => {
     } else if (filter === 'paid') {
       // Include all successful payment statuses - be more inclusive
       const successStatuses = ['paid', 'approved', 'success', 'completed'];
-      matchesFilter = successStatuses.includes(effectiveStatus) || 
+      matchesFilter = successStatuses.includes(effectiveStatus) ||
                      successStatuses.includes(reg.payment_status) ||
                      successStatuses.includes(reg.status) ||
                      reg.total_harga === 0 || // Free tickets
                      effectiveStatus === 'paid'; // Direct check
-      
+
       console.log('Paid filter check:', {
         effectiveStatusMatch: successStatuses.includes(effectiveStatus),
         paymentStatusMatch: successStatuses.includes(reg.payment_status),
@@ -282,13 +267,13 @@ const Transaksi: React.FC = () => {
     } else if (filter === 'failed') {
       matchesFilter = effectiveStatus === 'failed' || reg.payment_status === 'failed';
     }
-    
+
     const matchesSearch = reg.event.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reg.kode_pendaftaran.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const result = matchesFilter && matchesSearch;
     console.log('Filter result:', { matchesFilter, matchesSearch, result });
-    
+
     return result;
   });
 
@@ -346,15 +331,15 @@ const Transaksi: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       <div className="pt-24 pb-16">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Transaksi</h1>
-            <p className="text-gray-600 mt-1">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Riwayat Transaksi</h1>
+            <p className="text-gray-600">
               {filteredRegistrations.length} dari {registrations.length} transaksi
-              {filter !== 'all' && ` (filter: ${filter === 'paid' ? 'Payment Success' : filter === 'pending' ? 'Pending' : 'Failed'})`}
+              {filter !== 'all' && ` • Filter: ${filter === 'paid' ? 'Payment Success' : filter === 'pending' ? 'Pending' : 'Failed'}`}
             </p>
           </div>
 
@@ -377,10 +362,10 @@ const Transaksi: React.FC = () => {
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as any)}
-                className={`appearance-none bg-white border rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-200 min-w-[160px] ${
-                  filter !== 'all' 
-                    ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' 
-                    : 'border-gray-200 text-gray-700'
+                className={`appearance-none bg-white border-2 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-w-[180px] ${
+                  filter !== 'all'
+                    ? 'border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium shadow-sm'
+                    : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <option value="all">All Transaction</option>
@@ -413,11 +398,13 @@ const Transaksi: React.FC = () => {
               {filteredRegistrations.map((registration) => (
                 <div
                   key={registration.id}
-                  className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-sm transition-all duration-200"
+                  className="bg-white rounded-xl border-2 border-gray-100 p-6 hover:shadow-md hover:border-gray-200 transition-all duration-300"
                 >
                   {/* Invoice Number */}
-                  <div className="text-xs text-gray-400 mb-3 font-mono">
-                    invoice-yp-{registration.invoice_number || registration.kode_pendaftaran}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xs text-gray-400 font-mono bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                      INV-{registration.invoice_number || registration.kode_pendaftaran}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-4">
@@ -425,7 +412,7 @@ const Transaksi: React.FC = () => {
                     <div className="w-24 h-16 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
                       <img
                         src={
-                          registration.event.image || 
+                          registration.event.image ||
                           (registration.event.flyer_path ? `http://localhost:8000/storage/${registration.event.flyer_path}` : null) ||
                           '/images/default-event.jpg'
                         }
@@ -443,9 +430,15 @@ const Transaksi: React.FC = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {registration.event.judul}
                       </h3>
-                      
-                      <div className={`inline-flex items-center gap-1.5 text-sm font-medium mb-2 ${getStatusColor(getEffectiveStatus(registration))}`}>
-                        <div className="w-2 h-2 rounded-full bg-current"></div>
+
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold mb-3 ${
+                        getEffectiveStatus(registration) === 'paid' || getEffectiveStatus(registration) === 'approved'
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200'
+                          : getEffectiveStatus(registration) === 'pending'
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
+                          : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200'
+                      }`}>
+                        <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
                         {getStatusText(getEffectiveStatus(registration))}
                       </div>
 
@@ -465,10 +458,10 @@ const Transaksi: React.FC = () => {
                           {formatCurrency(registration.total_harga)}
                         </div>
                       </div>
-                      
-                      <button 
+
+                      <button
                         onClick={() => navigate(`/transaksi/${registration.id}`)}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-100"
+                        className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm"
                       >
                         Lihat Detail
                       </button>

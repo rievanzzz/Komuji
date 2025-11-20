@@ -81,12 +81,14 @@ class Commission extends Model
     public static function createPlatformFee($transactionId, $baseAmount, $percentage = null)
     {
         // Get platform fee percentage from settings or use default
-        $feePercentage = $percentage ?? Setting::get('platform_fee_percentage', 10.0);
+        $feePercentage = $percentage ?? Setting::get('platform_fee_percentage', Setting::get('commission_rate', 10.0));
         $feeAmount = ($baseAmount * $feePercentage) / 100;
+        // Platform fee belongs to admin/platform owner
+        $ownerId = Setting::get('platform_owner_user_id', 1);
 
         return self::create([
             'transaction_id' => $transactionId,
-            'organizer_id' => null, // Platform fee goes to admin
+            'organizer_id' => $ownerId,
             'type' => 'platform_fee',
             'percentage' => $feePercentage,
             'amount' => $feeAmount,
@@ -120,7 +122,7 @@ class Commission extends Model
             'paid' => ['text' => 'Dibayar', 'color' => 'green'],
             'hold' => ['text' => 'Ditahan', 'color' => 'red']
         ];
-        
+
         return $badges[$this->status] ?? ['text' => 'Unknown', 'color' => 'gray'];
     }
 
@@ -130,7 +132,7 @@ class Commission extends Model
             'event_commission' => ['text' => 'Komisi Event', 'color' => 'blue'],
             'platform_fee' => ['text' => 'Biaya Platform', 'color' => 'purple']
         ];
-        
+
         return $badges[$this->type] ?? ['text' => 'Unknown', 'color' => 'gray'];
     }
 }

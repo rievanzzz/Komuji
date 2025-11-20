@@ -37,7 +37,7 @@ class AdminController extends Controller
 
             $panitias = $query->get()->map(function($user) {
                 $profile = $user->panitiaProfile;
-                
+
                 // Calculate total events and revenue (mock for now)
                 $totalEvents = Event::where('created_by', $user->id)->count();
                 $totalRevenue = Event::where('created_by', $user->id)
@@ -68,6 +68,97 @@ class AdminController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal mengambil data panitia',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get platform (admin) primary bank account
+     */
+    public function getPlatformBankAccount(): JsonResponse
+    {
+        try {
+            $ownerId = Setting::get('platform_owner_user_id', 1);
+            $account = BankAccount::where('user_id', $ownerId)
+                ->orderBy('is_primary', 'desc')
+                ->first();
+
+            if (!$account) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => null
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'id' => $account->id,
+                    'bank_name' => $account->bank_name,
+                    'account_number' => $account->account_number,
+                    'masked_account_number' => $account->masked_account_number,
+                    'account_holder_name' => $account->account_holder_name,
+                    'is_verified' => $account->is_verified,
+                    'is_primary' => $account->is_primary
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil rekening utama platform',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update platform (admin) primary bank account
+     */
+    public function updatePlatformBankAccount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'bank_code' => 'nullable|string',
+            'bank_name' => 'nullable|string',
+            'account_number' => 'required|string|min:6|max:30',
+            'account_holder_name' => 'required|string|max:255',
+            'is_verified' => 'nullable|boolean'
+        ]);
+
+        try {
+            $ownerId = Setting::get('platform_owner_user_id', 1);
+
+            // Resolve bank name
+            $bankName = $request->bank_name;
+            if (!$bankName && $request->bank_code) {
+                $bankName = BankAccount::getBankList()[$request->bank_code] ?? $request->bank_code;
+            }
+            if (!$bankName) { $bankName = 'Bank Tidak Diketahui'; }
+
+            // Upsert account
+            $account = BankAccount::updateOrCreate(
+                ['user_id' => $ownerId, 'is_primary' => true],
+                [
+                    'bank_name' => $bankName,
+                    'account_number' => $request->account_number,
+                    'account_holder_name' => $request->account_holder_name,
+                    'is_verified' => $request->boolean('is_verified', true),
+                    'notes' => 'Platform primary account'
+                ]
+            );
+
+            // Ensure this is the only primary
+            BankAccount::where('user_id', $ownerId)->where('id', '!=', $account->id)->update(['is_primary' => false]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Rekening utama platform berhasil disimpan',
+                'data' => $account
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menyimpan rekening utama platform',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -133,7 +224,7 @@ class AdminController extends Controller
     {
         try {
             $days = $request->get('days', 30);
-            
+
             // Mock revenue stats for now
             $stats = [
                 'total_revenue' => 15750000,
@@ -165,7 +256,7 @@ class AdminController extends Controller
             $totalEvents = Event::count();
             $totalUsers = User::count();
             $totalOrganizers = User::where('role', 'panitia')->count();
-            
+
             // Mock data for comprehensive reports
             $reportData = [
                 'total_events' => $totalEvents,
@@ -226,7 +317,7 @@ class AdminController extends Controller
         try {
             // Get all settings from database
             $settings = Setting::pluck('value', 'key')->toArray();
-            
+
             // Default settings if not found in database
             $defaultSettings = [
                 'commission_rate' => 5,
@@ -274,6 +365,9 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
+            // Clear settings cache to reflect new values immediately
+            Setting::clearCache();
 
             return response()->json([
                 'status' => 'success',
@@ -416,7 +510,7 @@ class AdminController extends Controller
 
         try {
             $withdrawal = Withdrawal::findOrFail($withdrawalId);
-            
+
             if ($withdrawal->status !== 'pending') {
                 return response()->json([
                     'status' => 'error',
@@ -451,7 +545,7 @@ class AdminController extends Controller
 
         try {
             $withdrawal = Withdrawal::findOrFail($withdrawalId);
-            
+
             if ($withdrawal->status !== 'pending') {
                 return response()->json([
                     'status' => 'error',

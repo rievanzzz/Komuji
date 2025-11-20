@@ -216,6 +216,27 @@ class RegistrationController extends Controller
     }
 
     /**
+     * Get single registration details
+     */
+    public function show(Registration $registration)
+    {
+        // Check if user owns this registration
+        if ($registration->user_id !== auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $registration->load(['event', 'ticketCategory', 'attendance', 'certificate']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $registration
+        ]);
+    }
+
+    /**
      * Approve a pending registration
      *
      * @param Registration $registration

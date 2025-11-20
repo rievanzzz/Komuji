@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiHeart } from 'react-icons/fi';
 import Footer from './components/Footer';
 import PublicHeader from './components/PublicHeader';
-import LoggedInHeader from './components/LoggedInHeader';
-import { AuthModal } from './components';
-import { useAuth } from './contexts/AuthContext';
 
 // Card data with dynamic color system
 interface CardData {
@@ -106,6 +104,7 @@ const BubbleChat = ({ cardData, cardLeft }: { cardData: CardData, cardLeft: stri
 };
 
 function App() {
+  const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [cardsLoaded, setCardsLoaded] = useState(false);
   const [cardsRisen, setCardsRisen] = useState(false);
@@ -115,10 +114,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auth modal state
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [selectedEventTitle, setSelectedEventTitle] = useState<string>('');
-  const { user, isAuthenticated } = useAuth();
+  // Auth modal removed
 
 
   useEffect(() => {
@@ -213,13 +209,7 @@ function App() {
 
   // Handle event card click
   const handleEventClick = (event: EventData) => {
-    if (!isAuthenticated) {
-      setSelectedEventTitle(event.title);
-      setShowAuthModal(true);
-      return;
-    }
-    // TODO: Navigate to event detail page or registration
-    console.log('Navigate to event:', event.title);
+    navigate(`/events/${event.id}`);
   };
 
 
@@ -670,7 +660,7 @@ function App() {
               viewport={{ once: true }}
               className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
             >
-              Trending Events near Unknown Location
+              Trending Event Menantimu
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -679,7 +669,7 @@ function App() {
               viewport={{ once: true }}
               className="text-gray-600 max-w-2xl mx-auto"
             >
-              Discover the most popular events happening around you
+              Cari event popular yang sedang berlangsung
             </motion.p>
           </div>
 
@@ -929,7 +919,7 @@ function App() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-gray-900 font-semibold text-sm">Browse & Select Events</h3>
+                  <h3 className="text-gray-900 font-semibold text-sm">Cari & Pilih Event</h3>
                 </div>
               </div>
             </motion.div>
@@ -981,7 +971,7 @@ function App() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-gray-900 font-semibold text-sm">Complete Registration</h3>
+                  <h3 className="text-gray-900 font-semibold text-sm">Selesaikan Registrasi</h3>
                 </div>
               </div>
             </motion.div>
@@ -1039,7 +1029,7 @@ function App() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-gray-900 font-semibold text-sm">Secure Payment</h3>
+                  <h3 className="text-gray-900 font-semibold text-sm">Pembayaran Aman</h3>
                 </div>
               </div>
             </motion.div>
@@ -1097,7 +1087,7 @@ function App() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-gray-900 font-semibold text-sm">Attend Event</h3>
+                  <h3 className="text-gray-900 font-semibold text-sm">Datang ke Event</h3>
                 </div>
               </div>
             </motion.div>
@@ -1160,12 +1150,11 @@ function App() {
               viewport={{ once: true }}
             >
               <h3 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Your "Swiss knife" for <br />
-                joining any event
+                Ikuti Event Dengan <br />
+                Mudah &Cepat
               </h3>
               <p className="text-gray-500 text-xl leading-relaxed max-w-xl">
-                Using AI, Komuji makes joining multiple events easy. With 80+ event categories,
-                realistic event previews, progress tracking, secure payments, and more.
+                Dengan SanaSini kamu bisa ikuti event sesuai dengan keinginanmu dengan mudah, aman dan cepat serta memudahkanmu menemukan event yang dicari cari
               </p>
             </motion.div>
           </div>
@@ -1177,9 +1166,9 @@ function App() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <p className="text-sm font-medium text-blue-600 mb-4 tracking-wider uppercase">OUR PARTNERS</p>
+            <p className="text-sm font-medium text-blue-600 mb-4 tracking-wider uppercase">PATNER KAMI</p>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              We work with the best partners
+              Kita Bekerja Dengan Partner Terbaik
             </h2>
           </div>
 
@@ -1313,9 +1302,9 @@ function App() {
             viewport={{ once: true }}
             className="text-center mb-8"
           >
-            <p className="text-lg text-gray-600 mb-2">New apps</p>
+            <p className="text-lg text-gray-600 mb-2">Segera Hadir</p>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-12">
-              Even more power inside.
+              SanaSini Mobile Apps
             </h2>
           </motion.div>
 
@@ -1425,7 +1414,7 @@ function App() {
                         whileTap={{ scale: 0.95 }}
                         className="bg-blue-600 text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-blue-700 transition-colors z-20"
                       >
-                        Download Here
+                        Akan Datang
                       </motion.button>
                     </div>
                   </div>
@@ -1435,7 +1424,7 @@ function App() {
               {/* Text Above Overlay */}
               <div className="absolute -bottom-12 -left-32 -right-32 h-1/2 bg-white flex items-start justify-center pt-8">
                 <p className="text-gray-700 text-center w-full leading-relaxed text-2xl font-medium">
-                  Apps on iOS help you do all the things you're passionate about. They elevate your everyday experiences.
+                  SanaSini Mobile Apps akan memudahkan kamu untuk mengikuti event dengan mudah di smartphone, Kami Segera Hadir Untuk Anda
                 </p>
               </div>
             </motion.div>
@@ -1467,13 +1456,6 @@ function App() {
 
       {/* Footer */}
       <Footer />
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        eventTitle={selectedEventTitle}
-      />
 
     </div>
   );

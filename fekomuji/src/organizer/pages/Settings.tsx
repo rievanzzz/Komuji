@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiLock, FiBell, FiCreditCard, FiShield, FiSave, FiEdit2 } from 'react-icons/fi';
+import { FiUser, FiLock, FiSave, FiEdit2, FiCamera } from 'react-icons/fi';
 import OrganizerLayout from '../components/OrganizerLayout';
 
 interface UserProfile {
@@ -118,12 +118,13 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Hanya tampilkan tab yang ada backend API-nya
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: FiUser },
-    { id: 'security', label: 'Security', icon: FiLock },
-    { id: 'notifications', label: 'Notifications', icon: FiBell },
-    { id: 'billing', label: 'Billing', icon: FiCreditCard },
-    { id: 'privacy', label: 'Privacy', icon: FiShield }
+    { id: 'profile', label: 'Profile', icon: FiUser, hasAPI: true },
+    { id: 'security', label: 'Security', icon: FiLock, hasAPI: false },
+    // { id: 'notifications', label: 'Notifications', icon: FiBell, hasAPI: false }, // Disabled - no backend
+    // { id: 'billing', label: 'Billing', icon: FiCreditCard, hasAPI: false }, // Disabled - no backend
+    // { id: 'privacy', label: 'Privacy', icon: FiShield, hasAPI: false } // Disabled - no backend
   ];
 
   if (loading) {
@@ -165,9 +166,10 @@ const Settings: React.FC = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                     activeTab === tab.id
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'text-white border-2'
+                      : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent'
                   }`}
+                  style={activeTab === tab.id ? { background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' } : {}}
                 >
                   <Icon size={20} />
                   {tab.label}
@@ -186,10 +188,11 @@ const Settings: React.FC = () => {
                 <button
                   onClick={() => handleSaveProfile(profile)}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 text-white px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50 hover:opacity-90 shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' }}
                 >
                   <FiSave size={16} />
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
 
@@ -206,65 +209,70 @@ const Settings: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
-                      <FiEdit2 size={16} />
-                      Change Avatar
+                    <button className="flex items-center gap-2 font-medium hover:opacity-70 transition-colors" style={{ color: '#004aad' }}>
+                      <FiCamera size={16} />
+                      Ubah Avatar
                     </button>
-                    <p className="text-sm text-gray-600 mt-1">JPG, PNG or GIF. Max size 2MB.</p>
+                    <p className="text-sm text-gray-600 mt-1">JPG, PNG atau GIF. Maks 2MB.</p>
                   </div>
                 </div>
 
                 {/* Form Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">Nama Lengkap</label>
                     <input
                       type="text"
                       value={profile.name}
                       onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                      style={{ borderColor: '#004aad40' }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">Email</label>
                     <input
                       type="email"
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                      style={{ borderColor: '#004aad40' }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">Nomor Telepon</label>
                     <input
                       type="tel"
                       value={profile.phone}
                       onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                      style={{ borderColor: '#004aad40' }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">Organisasi</label>
                     <input
                       type="text"
                       value={profile.organization}
                       onChange={(e) => setProfile({ ...profile, organization: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                      style={{ borderColor: '#004aad40' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Bio</label>
                   <textarea
                     value={profile.bio}
                     onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Tell us about yourself and your experience..."
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                    style={{ borderColor: '#004aad40' }}
+                    placeholder="Ceritakan tentang diri Anda..."
                   />
                 </div>
               </div>
@@ -273,151 +281,17 @@ const Settings: React.FC = () => {
 
           {activeTab === 'security' && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Security Settings</h2>
-              
-              <div className="space-y-6">
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                      Update Password
-                    </button>
-                  </div>
-                </div>
+              <h2 className="text-xl font-semibold mb-6" style={{ color: '#004aad' }}>Keamanan Akun</h2>
 
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
-                  <p className="text-gray-600 mb-4">Add an extra layer of security to your account.</p>
-                  <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                    Enable 2FA
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'notifications' && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
-                <button
-                  onClick={handleSaveNotifications}
-                  disabled={saving}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  <FiSave size={16} />
-                  {saving ? 'Saving...' : 'Save Preferences'}
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {Object.entries(notifications).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {key === 'email_notifications' && 'Receive notifications via email'}
-                        {key === 'sms_notifications' && 'Receive notifications via SMS'}
-                        {key === 'push_notifications' && 'Receive push notifications in browser'}
-                        {key === 'marketing_emails' && 'Receive marketing and promotional emails'}
-                        {key === 'event_reminders' && 'Get reminders about your upcoming events'}
-                        {key === 'payment_notifications' && 'Get notified about payment transactions'}
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={value}
-                        onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'billing' && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Billing & Subscription</h2>
-              
-              <div className="space-y-6">
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Current Plan</h3>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-blue-900">Professional Plan</h4>
-                        <p className="text-blue-700">Unlimited events, advanced analytics</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-blue-900">$29/month</p>
-                        <p className="text-sm text-blue-700">Billed monthly</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h3>
-                  <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-                    <div className="w-12 h-8 bg-blue-600 rounded flex items-center justify-center">
-                      <FiCreditCard className="text-white" size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">•••• •••• •••• 4242</p>
-                      <p className="text-sm text-gray-600">Expires 12/25</p>
-                    </div>
-                    <button className="text-blue-600 hover:text-blue-700 transition-colors">
-                      Update
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'privacy' && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Privacy Settings</h2>
-              
-              <div className="space-y-6">
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Data & Privacy</h3>
-                  <div className="space-y-4">
-                    <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <h4 className="font-medium text-gray-900">Download Your Data</h4>
-                      <p className="text-sm text-gray-600">Get a copy of all your data</p>
-                    </button>
-                    <button className="w-full text-left p-4 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                      <h4 className="font-medium text-red-900">Delete Account</h4>
-                      <p className="text-sm text-red-600">Permanently delete your account and all data</p>
-                    </button>
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6">
+                <div className="flex items-start gap-3">
+                  <FiLock className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-yellow-900 mb-2">Fitur Dalam Pengembangan</h3>
+                    <p className="text-yellow-800 text-sm leading-relaxed">
+                      Fitur keamanan seperti ubah password dan two-factor authentication sedang dalam tahap pengembangan.
+                      Untuk saat ini, silakan hubungi administrator jika ingin mengubah password Anda.
+                    </p>
                   </div>
                 </div>
               </div>

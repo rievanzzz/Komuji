@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SettingController extends Controller
 {
@@ -43,6 +45,165 @@ class SettingController extends Controller
                 'message' => 'Gagal mengambil pengaturan'
             ], 500);
         }
+
+    }
+
+    /**
+     * ===== Banner Management (Admin + Public) =====
+     */
+    protected function getBanners(): array
+    {
+        $banners = Setting::get('homepage_banners', []);
+        return is_array($banners) ? $banners : [];
+    }
+
+    protected function saveBanners(array $banners): void
+    {
+        // Reindex array
+        $banners = array_values($banners);
+        Setting::set('homepage_banners', json_encode($banners), 'json');
+    }
+
+    public function publicBanners(): JsonResponse
+    {
+        try {
+            $banners = collect($this->getBanners())
+                ->filter(fn ($b) => !empty($b['is_active']))
+                ->sortBy([['order', 'asc']])
+                ->take(3)
+                ->values()
+                ->map(function ($b) {
+                    return [
+                        'id' => $b['id'] ?? null,
+                        'title' => $b['title'] ?? '',
+                        'subtitle' => $b['subtitle'] ?? '',
+                        'image_url' => isset($b['image_path']) ? asset('storage/' . $b['image_path']) : ($b['image_url'] ?? null),
+                        'bg_color' => $b['bg_color'] ?? null,
+                    ];
+                });
+
+            return response()->json(['data' => $banners]);
+        } catch (\Exception $e) {
+            Log::error('Get public banners error: ' . $e->getMessage());
+            return response()->json(['data' => []]);
+        }
+    }
+
+    public function indexBanners(): JsonResponse
+    {
+        $banners = $this->getBanners();
+        return response()->json(['data' => $banners]);
+    }
+
+    public function createBanner(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title' => 'required|string|max:100',
+            'subtitle' => 'nullable|string|max:150',
+            'bg_color' => 'nullable|string|max:20',
+            'image' => 'required|file|mimes:jpg,jpeg,png,webp|max:4096'
+        ]);
+
+        try {
+            $path = $request->file('image')->store('banners', 'public');
+            if (!$path) {
+                throw new \Exception('Gagal mengunggah gambar banner');
+            }
+
+            $banners = $this->getBanners();
+            $banners[] = [
+                'id' => (string) Str::ulid(),
+                'title' => $request->input('title'),
+                'subtitle' => $request->input('subtitle', ''),
+                'bg_color' => $request->input('bg_color', null),
+                'image_path' => $path,
+                'is_active' => false,
+                'order' => count($banners),
+                'created_at' => now()->toISOString(),
+            ];
+            $this->saveBanners($banners);
+
+            return response()->json(['message' => 'Banner berhasil dibuat', 'data' => end($banners)], 201);
+        } catch (\Exception $e) {
+            Log::error('Create banner error: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal membuat banner'], 500);
+        }
+    }
+
+    public function updateBanner(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'title' => 'sometimes|string|max:100',
+            'subtitle' => 'sometimes|nullable|string|max:150',
+            'bg_color' => 'sometimes|nullable|string|max:20',
+            'order' => 'sometimes|integer|min:0',
+            'image' => 'sometimes|file|mimes:jpg,jpeg,png,webp|max:4096'
+        ]);
+
+        $banners = $this->getBanners();
+        $index = collect($banners)->search(fn ($b) => ($b['id'] ?? null) == $id);
+        if ($index === false) {
+            return response()->json(['message' => 'Banner tidak ditemukan'], 404);
+        }
+
+        $banner = $banners[$index];
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('banners', 'public');
+            if (!empty($banner['image_path'])) {
+                Storage::disk('public')->delete($banner['image_path']);
+            }
+            $banner['image_path'] = $path;
+        }
+
+        foreach (['title', 'subtitle', 'bg_color', 'order'] as $field) {
+            if ($request->has($field)) {
+                $banner[$field] = $request->input($field);
+            }
+        }
+
+        $banners[$index] = $banner;
+        $this->saveBanners($banners);
+
+        return response()->json(['message' => 'Banner berhasil diperbarui', 'data' => $banner]);
+    }
+
+    public function deleteBanner($id): JsonResponse
+    {
+        $banners = $this->getBanners();
+        $index = collect($banners)->search(fn ($b) => ($b['id'] ?? null) == $id);
+        if ($index === false) {
+            return response()->json(['message' => 'Banner tidak ditemukan'], 404);
+        }
+        $banner = $banners[$index];
+        if (!empty($banner['image_path'])) {
+            Storage::disk('public')->delete($banner['image_path']);
+        }
+        array_splice($banners, $index, 1);
+        $this->saveBanners($banners);
+
+        return response()->json(['message' => 'Banner dihapus']);
+    }
+
+    public function activateBanners(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'string'
+        ]);
+
+        $ids = array_values(array_unique($request->input('ids')));
+        if (count($ids) > 3) {
+            return response()->json(['message' => 'Maksimal 3 banner yang dapat diaktifkan'], 422);
+        }
+
+        $banners = collect($this->getBanners())->map(function ($b) use ($ids) {
+            $b['is_active'] = in_array(($b['id'] ?? null), $ids);
+            return $b;
+        })->values()->all();
+
+        $this->saveBanners($banners);
+        return response()->json(['message' => 'Banner aktif diperbarui', 'data' => $banners]);
     }
 
     /**

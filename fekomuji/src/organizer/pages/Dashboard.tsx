@@ -425,455 +425,400 @@ const Dashboard: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{getGreeting()}, {user?.name}!</h1>
+            <h1 className="text-3xl font-bold" style={{ color: '#004aad' }}>{getGreeting()}, {user?.name}!</h1>
             <p className="text-gray-600 mt-1">Kelola acara Anda dengan mudah dan pantau progress secara real-time</p>
           </div>
+          <button
+            onClick={() => window.location.href = '/organizer/finance'}
+            className="flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' }}
+          >
+            <FiDollarSign className="w-5 h-5" />
+            Kelola Keuangan
+          </button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-md border-2" style={{ borderColor: '#004aad' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Total Acara</p>
-              <p className="text-3xl font-bold mt-2">{stats.totalEvents}</p>
-              <p className="text-blue-100 text-xs mt-1">+2 dari bulan lalu</p>
+              <p className="text-gray-600 text-sm font-medium">Total Acara</p>
+              <p className="text-3xl font-bold mt-2" style={{ color: '#004aad' }}>{stats.totalEvents}</p>
+              <p className="text-gray-500 text-xs mt-1">Semua event</p>
             </div>
-            <div className="w-12 h-12 bg-blue-400 bg-opacity-30 rounded-xl flex items-center justify-center">
-              <FiCalendar className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#004aad20' }}>
+              <FiCalendar className="w-6 h-6" style={{ color: '#004aad' }} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-md border-2" style={{ borderColor: '#5eed9c' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Total Peserta</p>
-              <p className="text-3xl font-bold mt-2">{stats.totalParticipants}</p>
-              <p className="text-green-100 text-xs mt-1">+15% dari bulan lalu</p>
+              <p className="text-gray-600 text-sm font-medium">Total Peserta</p>
+              <p className="text-3xl font-bold mt-2" style={{ color: '#5eed9c' }}>{stats.totalParticipants}</p>
+              <p className="text-gray-500 text-xs mt-1">Terdaftar</p>
             </div>
-            <div className="w-12 h-12 bg-green-400 bg-opacity-30 rounded-xl flex items-center justify-center">
-              <FiUsers className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#5eed9c20' }}>
+              <FiUsers className="w-6 h-6" style={{ color: '#5eed9c' }} />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-md border-2 border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm font-medium">Total Pendapatan</p>
-              <p className="text-3xl font-bold mt-2">{formatCurrency(stats.totalRevenue)}</p>
-              <p className="text-purple-100 text-xs mt-1">+8% dari bulan lalu</p>
+              <p className="text-gray-600 text-sm font-medium">Total Pendapatan</p>
+              <p className="text-3xl font-bold mt-2" style={{ color: '#004aad' }}>{formatCurrency(stats.totalRevenue)}</p>
+              <p className="text-gray-500 text-xs mt-1">Revenue</p>
             </div>
-            <div className="w-12 h-12 bg-purple-400 bg-opacity-30 rounded-xl flex items-center justify-center">
-              <FiDollarSign className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-100">
+              <FiDollarSign className="w-6 h-6 text-gray-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-2xl text-white shadow-lg">
+        <div className="bg-white p-6 rounded-2xl shadow-md border-2 border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm font-medium">Acara Aktif</p>
-              <p className="text-3xl font-bold mt-2">{stats.activeEvents}</p>
-              <p className="text-orange-100 text-xs mt-1">Sedang berlangsung</p>
+              <p className="text-gray-600 text-sm font-medium">Acara Aktif</p>
+              <p className="text-3xl font-bold mt-2 text-gray-900">{stats.activeEvents}</p>
+              <p className="text-gray-500 text-xs mt-1">Berlangsung</p>
             </div>
-            <div className="w-12 h-12 bg-orange-400 bg-opacity-30 rounded-xl flex items-center justify-center">
-              <FiActivity className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-100">
+              <FiActivity className="w-6 h-6 text-gray-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Monthly Revenue Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Pendapatan Bulanan</h3>
-            <FiTrendingUp className="w-5 h-5 text-green-500" />
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600">Event Published</h3>
+            <FiCalendar className="w-5 h-5" style={{ color: '#004aad' }} />
           </div>
-          <div className="space-y-4">
-            {[
-              { month: 'Jan', amount: 4200000, percentage: 60 },
-              { month: 'Feb', amount: 6800000, percentage: 85 },
-              { month: 'Mar', amount: 5500000, percentage: 70 },
-              { month: 'Apr', amount: 8200000, percentage: 100 },
-              { month: 'Mei', amount: 7100000, percentage: 90 },
-              { month: 'Jun', amount: 9500000, percentage: 95 }
-            ].map((data, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600 w-8">{data.month}</span>
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
+          <p className="text-3xl font-bold" style={{ color: '#004aad' }}>{stats.publishedEvents}</p>
+          <p className="text-xs text-gray-500 mt-2">Event yang sudah dipublikasi</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600">Event Draft</h3>
+            <FiEdit className="w-5 h-5 text-gray-600" />
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{stats.draftEvents}</p>
+          <p className="text-xs text-gray-500 mt-2">Event yang belum dipublikasi</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600">Pending Approval</h3>
+            <FiClock className="w-5 h-5" style={{ color: '#5eed9c' }} />
+          </div>
+          <p className="text-3xl font-bold" style={{ color: '#5eed9c' }}>{stats.pendingApprovals}</p>
+          <p className="text-xs text-gray-500 mt-2">Peserta menunggu persetujuan</p>
+        </div>
+      </div>
+
+      {/* Event Terpopuler */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold" style={{ color: '#004aad' }}>Event Terpopuler</h3>
+          <FiTrendingUp className="w-5 h-5" style={{ color: '#5eed9c' }} />
+        </div>
+        <div className="space-y-4">
+          {stats.recentEvents
+            .sort((a, b) => (b.terdaftar || 0) - (a.terdaftar || 0))
+            .slice(0, 5)
+            .map((event, index) => {
+              const percentage = ((event.terdaftar || 0) / (event.kuota || 1)) * 100;
+              return (
+                <div key={event.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900 truncate flex-1">
+                      {event.judul}
+                    </span>
+                    <span className="text-sm font-semibold ml-4" style={{ color: '#004aad' }}>
+                      {event.terdaftar || 0}/{event.kuota}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${data.percentage}%` }}
+                      className="h-2 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(percentage, 100)}%`,
+                        background: 'linear-gradient(90deg, #004aad 0%, #5eed9c 100%)'
+                      }}
                     ></div>
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
-                  {formatCurrency(data.amount)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Popular Events Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Event Terpopuler</h3>
-            <FiUsers className="w-5 h-5 text-blue-500" />
-          </div>
-          <div className="space-y-4">
-            {stats.recentEvents
-              .sort((a, b) => (b.terdaftar || 0) - (a.terdaftar || 0))
-              .slice(0, 5)
-              .map((event, index) => {
-                const percentage = ((event.terdaftar || 0) / (event.kuota || 1)) * 100;
-                return (
-                  <div key={event.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {event.judul}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {event.terdaftar || 0}/{event.kuota}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-500 ${
-                          index === 0 ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                          index === 1 ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                          index === 2 ? 'bg-gradient-to-r from-purple-400 to-purple-500' :
-                          'bg-gradient-to-r from-gray-400 to-gray-500'
-                        }`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })
-            }
-            {stats.recentEvents.length === 0 && (
-              <div className="text-center py-8">
-                <FiCalendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">Belum ada data event</p>
-              </div>
-            )}
-          </div>
+              );
+            })
+          }
+          {stats.recentEvents.length === 0 && (
+            <div className="text-center py-8">
+              <FiCalendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-sm">Belum ada data event</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Popular Events & Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Most Popular Events */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Event Paling Rame</h3>
-            <FiStar className="w-5 h-5 text-yellow-500" />
-          </div>
-          <div className="space-y-4">
-            {stats.popularEvents.slice(0, 5).map((event, index) => (
-              <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+      {/* Recent Events */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold" style={{ color: '#004aad' }}>Event Terbaru</h3>
+          <button
+            onClick={() => window.location.href = '/organizer/events-card'}
+            className="text-sm font-medium hover:opacity-70 transition-all"
+            style={{ color: '#5eed9c' }}
+          >
+            Lihat Semua →
+          </button>
+        </div>
+        <div className="space-y-3">
+          {stats.recentEvents.slice(0, 5).map((event) => {
+            const percentage = ((event.terdaftar || 0) / (event.kuota || 1)) * 100;
+            const getStatusColor = () => {
+              if (!event.is_published) return 'bg-gray-100 text-gray-700';
+              if (percentage >= 90) return 'bg-red-100 text-red-700';
+              if (percentage >= 70) return 'bg-yellow-100 text-yellow-700';
+              return 'text-green-700';
+            };
+
+            return (
+              <div key={event.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-all border border-gray-100">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                      index === 0 ? 'bg-yellow-500' :
-                      index === 1 ? 'bg-gray-400' :
-                      index === 2 ? 'bg-orange-400' :
-                      'bg-blue-400'
-                    }`}>
-                      {index + 1}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{ background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' }}>
+                      <FiCalendar className="w-6 h-6" />
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 text-sm">{event.judul}</h4>
-                      <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                        <span className="flex items-center gap-1">
-                          <FiUsers className="w-3 h-3" />
-                          {event.terdaftar || 0}/{event.kuota}
-                        </span>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1">{event.judul}</h4>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <FiMapPin className="w-3 h-3" />
                           {event.lokasi}
                         </span>
+                        <span className="flex items-center gap-1">
+                          <FiUsers className="w-3 h-3" />
+                          {event.terdaftar || 0}/{event.kuota}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {event.registration_rate.toFixed(1)}%
-                  </div>
-                  <div className="text-xs text-gray-500">Fill Rate</div>
-                </div>
-              </div>
-            ))}
-            {stats.popularEvents.length === 0 && (
-              <div className="text-center py-8">
-                <FiAward className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">Belum ada data popularitas event</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Detailed Statistics */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Statistik Detail</h3>
-            <FiBarChart className="w-5 h-5 text-blue-500" />
-          </div>
-          <div className="space-y-6">
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <FiCalendar className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">Published</span>
-                </div>
-                <div className="text-2xl font-bold text-blue-600">{stats.publishedEvents}</div>
-                <div className="text-xs text-blue-600">Event aktif</div>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <FiEdit className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-900">Draft</span>
-                </div>
-                <div className="text-2xl font-bold text-gray-600">{stats.draftEvents}</div>
-                <div className="text-xs text-gray-600">Belum publish</div>
-              </div>
-
-              <div className="bg-yellow-50 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <FiAlertCircle className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-900">Pending</span>
-                </div>
-                <div className="text-2xl font-bold text-yellow-600">{stats.pendingApprovals}</div>
-                <div className="text-xs text-yellow-600">Perlu approval</div>
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <FiTarget className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-900">Rata-rata</span>
-                </div>
-                <div className="text-2xl font-bold text-green-600">{stats.avgParticipantsPerEvent}</div>
-                <div className="text-xs text-green-600">Peserta/event</div>
-              </div>
-            </div>
-
-            {/* This Month Performance */}
-            <div className="border-t pt-4">
-              <h4 className="font-medium text-gray-900 mb-3">Performa Bulan Ini</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pendapatan</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(stats.thisMonthRevenue)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Peserta Baru</span>
-                  <span className="font-semibold text-gray-900">{stats.thisMonthParticipants}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Tingkat Konversi</span>
-                  <span className="font-semibold text-green-600">
-                    {stats.totalEvents > 0 ? ((stats.totalParticipants / (stats.totalEvents * 50)) * 100).toFixed(1) : 0}%
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor()}`} style={getStatusColor().includes('text-green') ? { backgroundColor: '#5eed9c20', color: '#5eed9c' } : {}}>
+                    {!event.is_published ? 'Draft' : percentage >= 90 ? 'Penuh' : percentage >= 70 ? 'Hampir Penuh' : 'Tersedia'}
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activities */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Aktivitas Terbaru</h3>
-          <FiClock className="w-5 h-5 text-gray-400" />
-        </div>
-        <div className="space-y-4">
-          {stats.recentActivities.map((activity) => (
-            <div key={activity.id} className="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                activity.type === 'registration' ? 'bg-blue-100 text-blue-600' :
-                activity.type === 'approval' ? 'bg-green-100 text-green-600' :
-                activity.type === 'payment' ? 'bg-purple-100 text-purple-600' :
-                'bg-gray-100 text-gray-600'
-              }`}>
-                {activity.type === 'registration' ? <FiUserCheck className="w-5 h-5" /> :
-                 activity.type === 'approval' ? <FiUserCheck className="w-5 h-5" /> :
-                 activity.type === 'payment' ? <FiDollarSign className="w-5 h-5" /> :
-                 <FiActivity className="w-5 h-5" />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">{activity.user_name}</span>
-                  {activity.type === 'registration' && ' mendaftar ke '}
-                  {activity.type === 'approval' && ' menunggu approval untuk '}
-                  {activity.type === 'payment' && ' melakukan pembayaran untuk '}
-                  {activity.type === 'checkin' && ' check-in ke '}
-                  <span className="font-medium">{activity.event_title}</span>
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(activity.timestamp).toLocaleString('id-ID')}
-                </p>
-              </div>
-              {activity.status && (
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  activity.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  activity.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {activity.status}
-                </span>
-              )}
-            </div>
-          ))}
-          {stats.recentActivities.length === 0 && (
-            <div className="text-center py-8">
-              <FiActivity className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-sm">Belum ada aktivitas terbaru</p>
+            );
+          })}
+          {stats.recentEvents.length === 0 && (
+            <div className="text-center py-12">
+              <FiCalendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Belum ada event</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Events Management */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Kelola Acara</h3>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
-            >
-              <FiPlus className="w-4 h-4" />
-              Buat Acara
-            </button>
+      {/* Charts & Analytics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* Statistik Peserta per Bulan */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold" style={{ color: '#004aad' }}>Peserta per Bulan</h3>
+            <FiTrendingUp className="w-5 h-5" style={{ color: '#5eed9c' }} />
           </div>
-        </div>
-        <div className="p-4">
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-gray-100 rounded-lg"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {stats.recentEvents.length > 0 ? (
-                stats.recentEvents.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{event.judul}</h4>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="text-sm text-gray-500">
-                          {event.terdaftar}/{event.kuota} peserta
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(event.tanggal_mulai)}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          event.is_published
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {event.is_published ? 'Aktif' : 'Draft'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleViewEvent(event.id)}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Lihat Detail"
-                      >
-                        <FiEye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditEvent(event)}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Edit Acara"
-                      >
-                        <FiEdit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Hapus Acara"
-                      >
-                        <FiTrash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+          <div className="space-y-4">
+            {[
+              { month: 'Jan', count: 45, max: 100 },
+              { month: 'Feb', count: 78, max: 100 },
+              { month: 'Mar', count: 62, max: 100 },
+              { month: 'Apr', count: 95, max: 100 },
+              { month: 'Mei', count: 88, max: 100 },
+              { month: 'Jun', count: stats.thisMonthParticipants || 0, max: 100 }
+            ].map((data, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-600 w-10">{data.month}</span>
+                <div className="flex-1 bg-gray-100 rounded-full h-8 relative overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+                    style={{
+                      width: `${(data.count / data.max) * 100}%`,
+                      background: 'linear-gradient(90deg, #004aad 0%, #5eed9c 100%)'
+                    }}
+                  >
+                    <span className="text-xs font-bold text-white">{data.count}</span>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <FiCalendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Belum ada acara. Buat acara pertama Anda!</p>
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Event Status Distribution */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold" style={{ color: '#004aad' }}>Status Event</h3>
+            <FiActivity className="w-5 h-5" style={{ color: '#5eed9c' }} />
+          </div>
+          <div className="space-y-6">
+            {/* Published Events */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Published</span>
+                <span className="text-sm font-bold" style={{ color: '#004aad' }}>{stats.publishedEvents}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3">
+                <div
+                  className="h-3 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${stats.totalEvents > 0 ? (stats.publishedEvents / stats.totalEvents) * 100 : 0}%`,
+                    backgroundColor: '#004aad'
+                  }}
+                ></div>
+              </div>
             </div>
-          )}
+
+            {/* Draft Events */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Draft</span>
+                <span className="text-sm font-bold text-gray-600">{stats.draftEvents}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3">
+                <div
+                  className="bg-gray-400 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${stats.totalEvents > 0 ? (stats.draftEvents / stats.totalEvents) * 100 : 0}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Active Events */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Aktif</span>
+                <span className="text-sm font-bold" style={{ color: '#5eed9c' }}>{stats.activeEvents}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3">
+                <div
+                  className="h-3 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${stats.totalEvents > 0 ? (stats.activeEvents / stats.totalEvents) * 100 : 0}%`,
+                    backgroundColor: '#5eed9c'
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#004aad20' }}>
+              <FiUsers className="w-6 h-6" style={{ color: '#004aad' }} />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Rata-rata Peserta</p>
+              <p className="text-2xl font-bold" style={{ color: '#004aad' }}>{stats.avgParticipantsPerEvent}</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Per event yang dipublikasi</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#5eed9c20' }}>
+              <FiDollarSign className="w-6 h-6" style={{ color: '#5eed9c' }} />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Pendapatan Bulan Ini</p>
+              <p className="text-2xl font-bold" style={{ color: '#5eed9c' }}>{formatCurrency(stats.thisMonthRevenue)}</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Total revenue bulan ini</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100">
+              <FiClock className="w-6 h-6 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Pending Approval</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.pendingApprovals}</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Menunggu persetujuan</p>
         </div>
       </div>
 
       {/* Recent Registrations */}
-      <div className="bg-white rounded-lg border border-gray-200 mt-6">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Pendaftaran Terbaru</h3>
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold" style={{ color: '#004aad' }}>Pendaftaran Terbaru</h3>
+          <FiUserCheck className="w-5 h-5" style={{ color: '#5eed9c' }} />
         </div>
-        <div className="p-4">
-          <div className="space-y-3">
-            {stats.recentRegistrations.length > 0 ? (
-              stats.recentRegistrations.map((registration) => (
-                <div key={registration.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {registration.user.name.charAt(0).toUpperCase()}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b border-gray-200">
+              <tr>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Peserta</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Event</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Tanggal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {stats.recentRegistrations.slice(0, 5).map((reg) => (
+                <tr key={reg.id} className="hover:bg-gray-50">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold" style={{ background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' }}>
+                        {reg.user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{reg.user.name}</p>
+                        <p className="text-xs text-gray-500">{reg.user.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{registration.user.name}</p>
-                      <p className="text-xs text-gray-500">{registration.event.judul}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-900">{reg.event.judul}</td>
+                  <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      registration.status === 'approved'
-                        ? 'bg-gray-100 text-gray-700'
-                        : 'bg-gray-50 text-gray-500'
-                    }`}>
-                      {registration.status === 'approved' ? 'Disetujui' : 'Pending'}
+                      reg.status === 'approved' ? 'text-white' :
+                      reg.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`} style={reg.status === 'approved' ? { backgroundColor: '#5eed9c' } : {}}>
+                      {reg.status === 'approved' ? 'Disetujui' : reg.status === 'rejected' ? 'Ditolak' : 'Pending'}
                     </span>
-                    <p className="text-xs text-gray-400 mt-1">{formatDate(registration.created_at)}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <FiUsers className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Belum ada pendaftaran</p>
-              </div>
-            )}
-          </div>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-600">
+                    {new Date(reg.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {stats.recentRegistrations.length === 0 && (
+            <div className="text-center py-12">
+              <FiUsers className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Belum ada pendaftaran</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Event Modal */}
-      <EventModal
-        isOpen={showCreateModal}
-        onClose={handleCloseModal}
-        onSave={handleSaveEvent}
-        editingEvent={editingEvent}
-      />
     </OrganizerLayout>
   );
 };

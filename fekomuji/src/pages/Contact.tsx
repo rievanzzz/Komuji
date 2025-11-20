@@ -37,6 +37,8 @@ const Contact: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify(formData)
       });
@@ -45,6 +47,9 @@ const Contact: React.FC = () => {
         setSubmitStatus('success');
         setFormData({ name: '', email: '', subject: '', message: '' });
       } else {
+        // Try to parse error message
+        const data = await response.json().catch(() => null);
+        console.error('Contact submit failed', data || response.statusText);
         setSubmitStatus('error');
       }
     } catch (error) {
@@ -93,11 +98,11 @@ const Contact: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      
+
       {/* Hero Section */}
 <section className="pt-32 pb-16 px-4 bg-gray-50 min-h-screen flex items-center">
         <div className="container mx-auto max-w-7xl">
-          
+
           {/* Simple Title */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -115,7 +120,7 @@ const Contact: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 max-w-6xl mx-auto"
           >
-            
+
             {/* WhatsApp */}
             <div className="text-center group">
               <div className="w-12 h-12 flex items-center justify-center mx-auto mb-4 transform group-hover:scale-110 transition-transform duration-300">
@@ -125,9 +130,9 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">WhatsApp</h3>
               <p className="text-sm text-gray-600 mb-4">Chat with us directly</p>
-              <a 
-                href="https://wa.me/6281234567890" 
-                target="_blank" 
+              <a
+                href="https://wa.me/6281234567890"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
               >
@@ -144,9 +149,9 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Instagram</h3>
               <p className="text-sm text-gray-600 mb-4">Follow our updates</p>
-              <a 
-                href="https://instagram.com/miluan.events" 
-                target="_blank" 
+              <a
+                href="https://instagram.com/miluan.events"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
               >
@@ -163,9 +168,9 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">TikTok</h3>
               <p className="text-sm text-gray-600 mb-4">Watch our content</p>
-              <a 
-                href="https://tiktok.com/@miluan.events" 
-                target="_blank" 
+              <a
+                href="https://tiktok.com/@miluan.events"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
               >
@@ -182,9 +187,9 @@ const Contact: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">YouTube</h3>
               <p className="text-sm text-gray-600 mb-4">Watch our videos</p>
-              <a 
-                href="https://youtube.com/@miluanevents" 
-                target="_blank" 
+              <a
+                href="https://youtube.com/@miluanevents"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
               >
@@ -205,7 +210,7 @@ const Contact: React.FC = () => {
               {/* Background decoration */}
               <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full -translate-y-10 translate-x-10 opacity-40"></div>
               <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-gray-50 to-gray-100 rounded-full translate-y-8 -translate-x-8 opacity-40"></div>
-              
+
               <div className="relative z-10">
                 <div className="text-center mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
@@ -365,7 +370,7 @@ const Contact: React.FC = () => {
                       )}
                     </div>
                   </button>
-                  
+
                   <motion.div
                     initial={false}
                     animate={{

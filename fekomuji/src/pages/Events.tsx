@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation as useRouterLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMapPin, FiChevronLeft, FiChevronRight, FiFilter, FiTag, FiBarChart, FiCalendar, FiMusic, FiBriefcase, FiCoffee, FiGrid, FiCode, FiBookOpen, FiActivity } from 'react-icons/fi';
@@ -85,6 +85,7 @@ interface EventData {
   ticketsSold?: number;
   totalQuota?: number;
   popularity?: string;
+  has_certificate?: boolean;
 }
 
 interface Category {
@@ -115,6 +116,7 @@ const Events: React.FC = () => {
   const [currentOrganizerIndex, setCurrentOrganizerIndex] = useState(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [banners, setBanners] = useState<Array<{ id: string; title: string; subtitle?: string; image_url?: string | null; bg_color?: string | null }>>([]);
   const [sortFilter, setSortFilter] = useState('popularity'); // popularity, tickets_sold, quota_remaining
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -357,14 +359,49 @@ const Events: React.FC = () => {
   // Simple debug
   console.log('Events loaded:', events.length, 'Displaying:', eventsToDisplay.length);
 
+  // Derived sections
+  // Stable per-day random order for recommendations
+  const dayKey = useMemo(() => new Date().toDateString(), []);
+  const eventsIdsKey = useMemo(() => {
+    return eventsToDisplay.map((e) => e.id).sort((a, b) => a - b).join(',');
+  }, [eventsToDisplay]);
+  const hash = (s: string) => {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) / 4294967295;
+  };
+  const recommendedEvents = useMemo(() => {
+    const key = dayKey;
+    return [...eventsToDisplay].sort((a, b) => (hash(key + String(b.id)) - hash(key + String(a.id))));
+  }, [eventsIdsKey, dayKey]);
+
+  const nearestEvents = useMemo(() => {
+    return [...eventsToDisplay].sort((a, b) => {
+      const da = a.tanggal_mulai ? new Date(a.tanggal_mulai as any).getTime() : (a.date ? new Date(a.date).getTime() : Infinity);
+      const db = b.tanggal_mulai ? new Date(b.tanggal_mulai as any).getTime() : (b.date ? new Date(b.date).getTime() : Infinity);
+      return da - db;
+    });
+  }, [eventsToDisplay]);
+
+  const popularEvents = useMemo(() => {
+    return [...eventsToDisplay].sort((a, b) => ((b.ticketsSold ?? 0) - (a.ticketsSold ?? 0)));
+  }, [eventsToDisplay]);
+
+  const certificateEvents = useMemo(() => {
+    const arr = eventsToDisplay.filter((e) => (e as any).has_certificate);
+    return arr.sort((a, b) => {
+      const da = a.tanggal_mulai ? new Date(a.tanggal_mulai as any).getTime() : (a.date ? new Date(a.date).getTime() : Infinity);
+      const db = b.tanggal_mulai ? new Date(b.tanggal_mulai as any).getTime() : (b.date ? new Date(b.date).getTime() : Infinity);
+      return da - db;
+    });
+  }, [eventsToDisplay]);
+
   // Handle event card click
   const handleEventClick = (event: EventData) => {
-    if (!isAuthenticated) {
-      setSelectedEventTitle(event.title || event.judul || 'Event');
-      setShowAuthModal(true);
-      return;
-    }
-    // Navigate to event detail page
+    // Public can view event detail
     navigate(`/events/${event.id}`);
   };
 
@@ -494,39 +531,28 @@ const Events: React.FC = () => {
     }
   ];
 
-  const banners = [
-    {
-      id: 1,
-      title: 'The',
-      subtitle: 'Eagles',
-      category: 'Concert • Featured Event',
-      imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop&crop=faces',
-      bgColor: 'bg-purple-800'
-    },
-    {
-      id: 2,
-      title: 'Manchester',
-      subtitle: 'United',
-      category: 'Premier League',
-      imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&h=300&fit=crop&crop=center',
-      bgColor: 'bg-blue-600'
-    },
-    {
-      id: 3,
-      title: 'Lakers vs',
-      subtitle: 'Warriors',
-      category: 'NBA • Championship',
-      imageUrl: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=300&fit=crop&crop=center',
-      bgColor: 'bg-blue-600'
-    }
-  ];
+  // Load banners configured by admin (max 3 active)
+  useEffect(() => {
+    const loadBanners = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/banners');
+        const json = await res.json().catch(() => ({ data: [] }));
+        setBanners(Array.isArray(json.data) ? json.data : []);
+        setCurrentBannerIndex(0);
+        setProgress(0);
+      } catch (e) {
+        setBanners([]);
+      }
+    };
+    loadBanners();
+  }, []);
 
 
   // Auto-scroll banner every 4 seconds with progress bar
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
+        if (prev >= 100 && banners.length > 0) {
           setCurrentBannerIndex((prevIndex) =>
             prevIndex === banners.length - 1 ? 0 : prevIndex + 1
           );
@@ -577,8 +603,8 @@ const Events: React.FC = () => {
       {/* Top spacer to account for fixed header */}
       <div className="pt-24" />
 
-      {/* Hero Banner Carousel */}
-      {!isSearching && (
+      {/* Hero Banner Carousel (admin-configured) */}
+      {!isSearching && banners.length > 0 && (
       <section className="bg-white pb-12">
         <div className="container mx-auto px-4 md:px-6">
           <div className="relative">
@@ -599,8 +625,8 @@ const Events: React.FC = () => {
               <div className="absolute inset-0">
                 <img
                   key={currentBannerIndex}
-                  src={banners[currentBannerIndex].imageUrl}
-                  alt={`${banners[currentBannerIndex].title} ${banners[currentBannerIndex].subtitle}`}
+                  src={banners[currentBannerIndex]?.image_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1600&h=600&fit=crop'}
+                  alt={`${banners[currentBannerIndex]?.title || ''} ${banners[currentBannerIndex]?.subtitle || ''}`}
                   className="w-full h-full object-cover transition-all duration-700 ease-in-out"
                 />
               </div>
@@ -611,12 +637,10 @@ const Events: React.FC = () => {
                 <div className="w-1/2 px-8 md:px-12 lg:px-16">
                   <div>
                     <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight transition-all duration-500 ease-in-out">
-                      {banners[currentBannerIndex].title}<br />
-                      {banners[currentBannerIndex].subtitle}
+                      {banners[currentBannerIndex]?.title}<br />
+                      {banners[currentBannerIndex]?.subtitle}
                     </h2>
-                    <button className="bg-white/15 backdrop-blur-md text-white border border-white/40 px-6 py-3 rounded-xl font-semibold hover:bg-white/25 transition-all duration-300 shadow-lg mb-8">
-                      See Tickets
-                    </button>
+                    {/* Removed CTA button per request */}
 
                     {/* Enhanced Progress Bar System - Below Button */}
                     <div className="flex items-center space-x-3">
@@ -1070,7 +1094,7 @@ const Events: React.FC = () => {
                         <p className="text-xs text-blue-600 font-medium mb-1">{event.category}</p>
                       )}
                       <p className="text-sm font-semibold text-gray-900">
-                        <PriceDisplay eventId={event.id} />
+                        {event.price}
                       </p>
                     </div>
                   </motion.div>
@@ -1080,14 +1104,14 @@ const Events: React.FC = () => {
           </div>
         )}
 
-        {/* Great deals near you */}
+        {/* Event Rekomendasi (random) */}
         {!isSearching && (
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Great deals near you</h3>
+            <h3 className="text-2xl font-bold text-gray-900">Event Rekomendasi</h3>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
-                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
+                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(recommendedEvents.length / 8)}
               </span>
               <button
                 onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
@@ -1097,8 +1121,8 @@ const Events: React.FC = () => {
                 <FiChevronLeft className="text-gray-600" />
               </button>
               <button
-                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
-                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
+                onClick={() => setCurrentEventIndex(Math.min(Math.max(0, recommendedEvents.length - 8), currentEventIndex + 8))}
+                disabled={currentEventIndex + 8 >= recommendedEvents.length}
                 className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronRight className="text-gray-600" />
@@ -1136,13 +1160,9 @@ const Events: React.FC = () => {
                 Retry
               </button>
             </div>
-          ) : eventsToDisplay.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Tidak ada event untuk kategori/filters ini saat ini.</p>
-            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {eventsToDisplay.slice(currentEventIndex, currentEventIndex + 8).map((event, index) => (
+              {recommendedEvents.slice(currentEventIndex, currentEventIndex + 8).map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1218,30 +1238,11 @@ const Events: React.FC = () => {
 
         {/* Promotional Banner removed per request */}
 
-        {/* Latest Events */}
+        {/* Event Terdekat */}
         {!isSearching && (
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Latest Events</h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">
-                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
-              </span>
-              <button
-                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
-                disabled={currentEventIndex === 0}
-                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiChevronLeft className="text-gray-600" />
-              </button>
-              <button
-                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
-                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
-                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiChevronRight className="text-gray-600" />
-              </button>
-            </div>
+            <h3 className="text-2xl font-bold text-gray-900">Event Terdekat</h3>
           </div>
 
           {loading ? (
@@ -1259,7 +1260,7 @@ const Events: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {eventsToDisplay.slice(8, 16).map((event, index) => (
+              {nearestEvents.slice(0, 8).map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1328,30 +1329,11 @@ const Events: React.FC = () => {
         </div>
         )}
 
-        {/* Regular Events */}
+        {/* Event Terpopuler */}
         {!isSearching && (
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Regular Events</h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">
-                {Math.floor(currentEventIndex / 8) + 1} of {Math.ceil(eventsToDisplay.length / 8)}
-              </span>
-              <button
-                onClick={() => setCurrentEventIndex(Math.max(0, currentEventIndex - 8))}
-                disabled={currentEventIndex === 0}
-                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiChevronLeft className="text-gray-600" />
-              </button>
-              <button
-                onClick={() => setCurrentEventIndex(Math.min(eventsToDisplay.length - 8, currentEventIndex + 8))}
-                disabled={currentEventIndex + 8 >= eventsToDisplay.length}
-                className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FiChevronRight className="text-gray-600" />
-              </button>
-            </div>
+            <h3 className="text-2xl font-bold text-gray-900">Event Terpopuler</h3>
           </div>
 
           {loading ? (
@@ -1369,7 +1351,7 @@ const Events: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {eventsToDisplay.slice(16, 24).map((event, index) => (
+              {popularEvents.slice(0, 8).map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -1433,6 +1415,70 @@ const Events: React.FC = () => {
                 </div>
               </motion.div>
             ))}
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* Event Bersertifikat */}
+        {!isSearching && (
+        <div className="mb-12">
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Event Bersertifikat</h3>
+          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, index) => (
+                <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md animate-pulse">
+                  <div className="w-full h-48 bg-gray-300"></div>
+                  <div className="p-4">
+                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : certificateEvents.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">Belum ada event bersertifikat saat ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {certificateEvents.slice(0, 8).map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+                  onClick={() => handleEventClick(event)}
+                >
+                  <div className="relative">
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {(((event.ticketsSold ?? (event as any).terdaftar ?? 0) as number) >= ((event.totalQuota ?? (event as any).kuota ?? 0) as number)) && (
+                      <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">
+                        Kehabisan tiket
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                      {event.title}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-1">
+                      {event.date}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {event.price}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           )}
         </div>
@@ -1440,88 +1486,7 @@ const Events: React.FC = () => {
 
         {/* Categories grid removed per request */}
 
-        {/* Top Organizers */}
-        {!isSearching && (
-        <div className="mb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Top Organizers</h3>
-              <p className="text-gray-600 text-sm">Discover events from the most popular organizers</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-sm text-gray-400 font-medium">
-                {Math.floor(currentOrganizerIndex / organizersPerPage) + 1} of {Math.ceil(organizers.length / organizersPerPage)}
-              </span>
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={prevOrganizers}
-                  className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={currentOrganizerIndex === 0}
-                >
-                  <FiChevronLeft className="text-gray-600 text-lg" />
-                </button>
-                <button
-                  onClick={nextOrganizers}
-                  className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={currentOrganizerIndex + organizersPerPage >= organizers.length}
-                >
-                  <FiChevronRight className="text-gray-600 text-lg" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {visibleOrganizers.map((organizer, index) => (
-              <motion.div
-                key={organizer.id}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: index * 0.1,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-                className="group cursor-pointer"
-              >
-                <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2">
-                  <div className="relative h-56 overflow-hidden rounded-t-3xl">
-                    <img
-                      src={organizer.image}
-                      alt={organizer.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-t-3xl"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-
-                    {/* Removed favorite button */}
-
-                    {/* Clean Name Overlay */}
-                    <div className="absolute bottom-5 left-5 right-5">
-                      <h4 className="text-white text-xl font-semibold mb-1 tracking-tight">{organizer.name}</h4>
-                      <p className="text-white/80 text-sm font-medium">{organizer.category}</p>
-                    </div>
-                  </div>
-
-                  {/* Clean Stats Section */}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">{organizer.eventsCount}</div>
-                        <div className="text-xs text-gray-500 font-medium">Events</div>
-                      </div>
-                      <div className="w-px h-8 bg-gray-200"></div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">{organizer.monthlyTicketSales}</div>
-                        <div className="text-xs text-gray-500 font-medium">Monthly Sales</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-        )}
+        {/* Top Organizers removed per request */}
       </div>
 
       {/* Footer */}

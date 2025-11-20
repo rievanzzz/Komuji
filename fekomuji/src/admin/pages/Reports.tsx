@@ -243,8 +243,8 @@ const Reports: React.FC = () => {
                         <div className="text-sm text-green-600">{formatCurrency(data.revenue)}</div>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
                           style={{ width: `${(data.events / 30) * 100}%` }}
                         ></div>
                       </div>

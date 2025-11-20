@@ -151,6 +151,129 @@ const EventAttendance: React.FC = () => {
     }
   };
 
+  // NEW: Export Participants dengan Status Kehadiran Lengkap
+  const exportParticipantsExcel = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`http://localhost:8000/api/events/${eventId}/export-participants`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `peserta-lengkap-${event?.judul}-${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error exporting participants:', error);
+    }
+  };
+
+  // NEW: Print Daftar Kehadiran
+  const printAttendanceList = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`http://localhost:8000/api/events/${eventId}/attendance-list`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Open in new window for print
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Daftar Kehadiran - ${data.data.event.judul}</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h1 { text-align: center; margin-bottom: 10px; }
+                .info { text-align: center; margin-bottom: 30px; color: #666; }
+                .stats { margin-bottom: 30px; padding: 15px; background: #f5f5f5; border-radius: 8px; }
+                .stats div { display: inline-block; margin-right: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                th { background-color: #4a5568; color: white; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .signature { margin-top: 15px; border-top: 1px solid #000; width: 150px; display: inline-block; }
+                @media print {
+                  button { display: none; }
+                }
+              </style>
+            </head>
+            <body>
+              <h1>DAFTAR KEHADIRAN</h1>
+              <div class="info">
+                <strong>${data.data.event.judul}</strong><br/>
+                ${data.data.event.lokasi}<br/>
+                ${data.data.event.tanggal} • ${data.data.event.waktu || ''}<br/>
+              </div>
+
+              <div class="stats">
+                <div><strong>Total Terdaftar:</strong> ${data.data.statistics.total_registered}</div>
+                <div><strong>Hadir:</strong> ${data.data.statistics.total_checked_in + data.data.statistics.total_checked_out}</div>
+                <div><strong>Belum Hadir:</strong> ${data.data.statistics.total_not_attended}</div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">No</th>
+                    <th>Nama Peserta</th>
+                    <th>Email</th>
+                    <th style="width: 120px;">Kode Pendaftaran</th>
+                    <th style="width: 100px;">Status</th>
+                    <th style="width: 150px;">Tanda Tangan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.data.participants.map((p: any) => `
+                    <tr>
+                      <td>${p.no}</td>
+                      <td>${p.nama}</td>
+                      <td>${p.email}</td>
+                      <td style="font-size: 11px;">${p.kode_pendaftaran}</td>
+                      <td>${p.status_kehadiran}</td>
+                      <td><div class="signature"></div></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+              <div style="margin-top: 40px; text-align: right;">
+                <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+              </div>
+
+              <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Print Daftar Kehadiran
+              </button>
+            </body>
+            </html>
+          `);
+          printWindow.document.close();
+        }
+      }
+    } catch (error) {
+      console.error('Error printing attendance list:', error);
+    }
+  };
+
   const filteredRecords = attendanceRecords.filter(record => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -218,7 +341,7 @@ const EventAttendance: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={fetchEventAttendance}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
@@ -228,10 +351,24 @@ const EventAttendance: React.FC = () => {
                 </button>
                 <button
                   onClick={exportAttendance}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <FiDownload className="w-4 h-4" />
+                  Export Basic
+                </button>
+                <button
+                  onClick={exportParticipantsExcel}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
                 >
                   <FiDownload className="w-4 h-4" />
-                  Export Excel
+                  Export Lengkap
+                </button>
+                <button
+                  onClick={printAttendanceList}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                >
+                  <FiDownload className="w-4 h-4" />
+                  Print Absensi
                 </button>
               </div>
             </div>

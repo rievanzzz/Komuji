@@ -15,6 +15,8 @@ class Transaction extends Model
         'user_id',
         'panitia_id',
         'registration_id',
+        'transaction_id',
+        'order_id',
         'transaction_code',
         'type',
         'gross_amount',
@@ -113,7 +115,7 @@ class Transaction extends Model
             'cancelled' => ['text' => 'Dibatalkan', 'color' => 'gray'],
             'refunded' => ['text' => 'Dikembalikan', 'color' => 'blue']
         ];
-        
+
         return $badges[$this->status] ?? ['text' => 'Unknown', 'color' => 'gray'];
     }
 
@@ -125,7 +127,7 @@ class Transaction extends Model
             'payout' => ['text' => 'Penarikan Saldo', 'color' => 'green'],
             'refund' => ['text' => 'Pengembalian', 'color' => 'orange']
         ];
-        
+
         return $badges[$this->type] ?? ['text' => 'Unknown', 'color' => 'gray'];
     }
 
@@ -135,7 +137,7 @@ class Transaction extends Model
         do {
             $code = $type . '-' . date('Ymd') . '-' . strtoupper(Str::random(6));
         } while (self::where('transaction_code', $code)->exists());
-        
+
         return $code;
     }
 
@@ -144,7 +146,7 @@ class Transaction extends Model
         $feePercentage = Setting::get('platform_fee_percentage', 10);
         $platformFee = ($grossAmount * $feePercentage) / 100;
         $netAmount = $grossAmount - $platformFee;
-        
+
         return self::create([
             'event_id' => $eventId,
             'user_id' => $userId,

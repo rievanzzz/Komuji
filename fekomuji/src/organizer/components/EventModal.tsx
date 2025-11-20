@@ -907,25 +907,23 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             <div className="space-y-5">
               {/* Start Time */}
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <FiClock className="w-4 h-4" style={{ color: '#004aad' }} />
                   Waktu Mulai *
                 </label>
-                <select
+                <input
+                  type="time"
                   name="waktu_mulai"
                   value={formData.waktu_mulai}
                   onChange={handleInputChange}
                   disabled={isFieldDisabled('waktu_mulai')}
-                  className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 bg-white ${
-                    errors.waktu_mulai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
+                  step="60"
+                  className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-200 text-gray-900 bg-white text-lg ${
+                    errors.waktu_mulai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300 focus:ring-blue-100'
                   } ${isFieldDisabled('waktu_mulai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-                >
-                  <option value="">Pilih waktu mulai</option>
-                  {timeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  style={!errors.waktu_mulai && !isFieldDisabled('waktu_mulai') ? { borderColor: '#004aad' } : {}}
+                />
+                <p className="text-xs text-gray-500 mt-2">Format 24 jam (contoh: 08:00, 14:30)</p>
                 {errors.waktu_mulai && (
                   <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
@@ -993,22 +991,21 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
 
                 {/* Time Selector (only show if not open-ended) */}
                 {!isOpenEnded && (
-                  <select
-                    name="waktu_selesai"
-                    value={formData.waktu_selesai}
-                    onChange={handleInputChange}
-                    disabled={isFieldDisabled('waktu_selesai')}
-                    className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-900 bg-white ${
-                      errors.waktu_selesai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300'
-                    } ${isFieldDisabled('waktu_selesai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-                  >
-                    <option value="">Pilih waktu selesai</option>
-                    {timeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <input
+                      type="time"
+                      name="waktu_selesai"
+                      value={formData.waktu_selesai}
+                      onChange={handleInputChange}
+                      disabled={isFieldDisabled('waktu_selesai')}
+                      step="60"
+                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-200 text-gray-900 bg-white text-lg ${
+                        errors.waktu_selesai ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 hover:border-gray-300 focus:ring-blue-100'
+                      } ${isFieldDisabled('waktu_selesai') ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                      style={!errors.waktu_selesai && !isFieldDisabled('waktu_selesai') ? { borderColor: '#5eed9c' } : {}}
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Format 24 jam (contoh: 17:00, 20:30)</p>
+                  </div>
                 )}
 
                 {/* Status Messages */}
@@ -1358,7 +1355,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, editin
             <button
               type="submit"
               disabled={loading}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center gap-2"
+              className="px-8 py-3 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center gap-2 hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' }}
             >
               {loading ? (
                 <>

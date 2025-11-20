@@ -131,12 +131,19 @@ class EventController extends Controller
             }
 
             // For public view, return formatted data
+            $minPrice = $event->ticketCategories()->where('is_active', true)->min('harga');
+            if ($minPrice === null) {
+                $minPrice = (float) ($event->harga_tiket ?? 0);
+            }
+            $minPrice = (float) $minPrice;
+
             return [
                 'id' => $event->id,
                 'title' => $event->judul,
                 'date' => $event->tanggal_mulai ? $event->tanggal_mulai->format('M d, Y') : null,
                 'location' => $event->lokasi,
-                'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
+                'price' => 'From Rp ' . number_format($minPrice, 0, ',', '.'),
+                'min_price' => $minPrice,
                 'image' => $this->getEventImageUrl($event),
                 'category' => $event->category ? $event->category->nama_kategori : 'General',
                 'ticketsSold' => $event->terdaftar,
@@ -250,6 +257,12 @@ class EventController extends Controller
         }
 
         // For public view, return formatted data similar to index
+        $minPrice = $event->ticketCategories()->where('is_active', true)->min('harga');
+        if ($minPrice === null) {
+            $minPrice = (float) ($event->harga_tiket ?? 0);
+        }
+        $minPrice = (float) $minPrice;
+
         return response()->json([
             'id' => $event->id,
             'title' => $event->judul,
@@ -262,7 +275,8 @@ class EventController extends Controller
             'waktu_selesai' => $event->waktu_selesai ? $event->waktu_selesai->format('H:i') : null,
             'location' => $event->lokasi,
             'lokasi' => $event->lokasi,
-            'price' => $event->harga_tiket ? 'From $' . number_format($event->harga_tiket, 0) : 'Free',
+            'price' => 'From Rp ' . number_format($minPrice, 0, ',', '.'),
+            'min_price' => $minPrice,
             'harga_tiket' => $event->harga_tiket,
             'image' => $this->getEventImageUrl($event),
             'flyer_path' => $event->flyer_path,
@@ -914,6 +928,243 @@ class EventController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Get Top 10 Events dengan Peserta Terbanyak
+     */
+    public function topEvents(Request $request)
+    {
+        $query = Event::query()
+            ->with(['category', 'creator'])
+            ->withCount([
+                'registrations as total_registrations',
+                'registrations as approved_registrations' => function($q) {
+                    $q->where('status', 'approved');
+                },
+                'registrations as attended_count' => function($q) {
+                    $q->whereHas('attendance', function($qq) {
+                        $qq->whereIn('status', ['checked_in', 'checked_out']);
+                    });
+                }
+            ])
+            ->where('is_published', true);
+
+        // Filter by date range if provided
+        if ($request->filled('start_date')) {
+            $query->where('tanggal_mulai', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('tanggal_selesai', '<=', $request->end_date);
+        }
+
+        // Filter by category
+        if ($request->filled('category_id')) {
+            $query->where('kategori_id', $request->category_id);
+        }
+
+        $events = $query->orderBy('total_registrations', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'judul' => $event->judul,
+                    'kategori' => $event->category->nama_kategori ?? 'Uncategorized',
+                    'lokasi' => $event->lokasi,
+                    'tanggal_mulai' => $event->tanggal_mulai ? $event->tanggal_mulai->format('Y-m-d') : null,
+                    'tanggal_selesai' => $event->tanggal_selesai ? $event->tanggal_selesai->format('Y-m-d') : null,
+                    'total_pendaftar' => $event->total_registrations,
+                    'peserta_approved' => $event->approved_registrations,
+                    'peserta_hadir' => $event->attended_count,
+                    'kuota' => $event->kuota,
+                    'persentase_kehadiran' => $event->approved_registrations > 0
+                        ? round(($event->attended_count / $event->approved_registrations) * 100, 2)
+                        : 0,
+                    'image' => $this->getEventImageUrl($event),
+                    'organizer' => $event->creator ? $event->creator->name : 'Unknown',
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $events
+        ]);
+    }
+
+    /**
+     * Export Excel dengan Data Peserta dan Status Kehadiran
+     */
+    public function exportParticipantsExcel(Event $event)
+    {
+        // Check authorization
+        $user = auth()->user();
+        if (!($user->role === 'admin' || $event->created_by === $user->id)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $registrations = $event->registrations()
+            ->with(['user', 'ticketCategory', 'attendance'])
+            ->get();
+
+        $headers = [
+            'No',
+            'Nama Peserta',
+            'Email',
+            'No. HP',
+            'Kategori Tiket',
+            'Harga',
+            'Status Registrasi',
+            'Status Kehadiran',
+            'Waktu Check-In',
+            'Waktu Check-Out',
+            'Token Kehadiran',
+            'Kode Pendaftaran',
+            'Tanggal Daftar'
+        ];
+
+        $data = [];
+        $no = 1;
+
+        foreach ($registrations as $registration) {
+            $attendanceStatus = 'Belum Absen';
+            $checkInTime = '-';
+            $checkOutTime = '-';
+
+            if ($registration->attendance) {
+                if ($registration->attendance->status === 'checked_out') {
+                    $attendanceStatus = 'Selesai (Check-Out)';
+                } elseif ($registration->attendance->status === 'checked_in') {
+                    $attendanceStatus = 'Hadir (Check-In)';
+                } else {
+                    $attendanceStatus = 'Belum Hadir';
+                }
+
+                $checkInTime = $registration->attendance->check_in_time
+                    ? $registration->attendance->check_in_time->format('Y-m-d H:i:s')
+                    : '-';
+                $checkOutTime = $registration->attendance->check_out_time
+                    ? $registration->attendance->check_out_time->format('Y-m-d H:i:s')
+                    : '-';
+            }
+
+            $data[] = [
+                $no++,
+                $registration->nama_peserta ?? $registration->user->name,
+                $registration->email_peserta ?? $registration->user->email,
+                $registration->user->no_handphone ?? '-',
+                $registration->ticketCategory->nama_kategori ?? 'General',
+                'Rp ' . number_format($registration->total_harga, 0, ',', '.'),
+                ucfirst($registration->status),
+                $attendanceStatus,
+                $checkInTime,
+                $checkOutTime,
+                $registration->attendance->token ?? '-',
+                $registration->kode_pendaftaran,
+                $registration->created_at->format('Y-m-d H:i:s')
+            ];
+        }
+
+        $filename = 'peserta_' . Str::slug($event->judul) . '_' . now()->format('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function() use ($headers, $data) {
+            $handle = fopen('php://output', 'w');
+
+            // Add BOM for Excel UTF-8 support
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($handle, $headers);
+
+            foreach ($data as $row) {
+                fputcsv($handle, $row);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Generate Daftar Kehadiran (Attendance List) untuk Print
+     */
+    public function generateAttendanceList(Event $event)
+    {
+        // Check authorization
+        $user = auth()->user();
+        if (!($user->role === 'admin' || $event->created_by === $user->id)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $registrations = $event->registrations()
+            ->with(['user', 'attendance'])
+            ->where('status', 'approved')
+            ->orderBy('nama_peserta')
+            ->get();
+
+        $statistics = [
+            'total_registered' => $registrations->count(),
+            'total_checked_in' => $registrations->filter(function($r) {
+                return $r->attendance && $r->attendance->status === 'checked_in';
+            })->count(),
+            'total_checked_out' => $registrations->filter(function($r) {
+                return $r->attendance && $r->attendance->status === 'checked_out';
+            })->count(),
+            'total_not_attended' => $registrations->filter(function($r) {
+                return !$r->attendance || $r->attendance->status === 'pending';
+            })->count(),
+        ];
+
+        $attendanceList = $registrations->map(function ($registration, $index) {
+            $attendanceStatus = 'Belum Hadir';
+            $checkInTime = null;
+            $checkOutTime = null;
+
+            if ($registration->attendance) {
+                if ($registration->attendance->status === 'checked_out') {
+                    $attendanceStatus = 'Selesai';
+                } elseif ($registration->attendance->status === 'checked_in') {
+                    $attendanceStatus = 'Hadir';
+                }
+
+                $checkInTime = $registration->attendance->check_in_time
+                    ? $registration->attendance->check_in_time->format('Y-m-d H:i:s')
+                    : null;
+                $checkOutTime = $registration->attendance->check_out_time
+                    ? $registration->attendance->check_out_time->format('Y-m-d H:i:s')
+                    : null;
+            }
+
+            return [
+                'no' => $index + 1,
+                'nama' => $registration->nama_peserta ?? $registration->user->name,
+                'email' => $registration->email_peserta ?? $registration->user->email,
+                'kode_pendaftaran' => $registration->kode_pendaftaran,
+                'token' => $registration->attendance->token ?? '-',
+                'status_kehadiran' => $attendanceStatus,
+                'waktu_check_in' => $checkInTime,
+                'waktu_check_out' => $checkOutTime,
+                // For manual signature
+                'tanda_tangan' => null
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'event' => [
+                    'id' => $event->id,
+                    'judul' => $event->judul,
+                    'lokasi' => $event->lokasi,
+                    'tanggal' => $event->tanggal_mulai ? $event->tanggal_mulai->format('d M Y') : null,
+                    'waktu' => $event->waktu_mulai ? $event->waktu_mulai->format('H:i') : null,
+                ],
+                'statistics' => $statistics,
+                'participants' => $attendanceList,
+                'generated_at' => now()->format('Y-m-d H:i:s')
+            ]
         ]);
     }
     }

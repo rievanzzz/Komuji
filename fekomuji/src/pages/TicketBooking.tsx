@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import PublicHeader from '../components/PublicHeader';
 import Invoice from '../components/Invoice';
 import ETicket from '../components/ETicket';
-import { EmailService, type EmailTicketData } from '../services/emailService';
 import { QRCodeService, type TicketQRData } from '../services/qrCodeService';
 import { generateToken, generateQRData } from '../utils/tokenGenerator';
 import { generateQRCode } from '../utils/qrGenerator';
@@ -133,7 +132,6 @@ const TicketBookingPage: React.FC = () => {
     }
   };
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
-  const [paymentMethod, setPaymentMethod] = useState<string>('');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -160,6 +158,8 @@ const TicketBookingPage: React.FC = () => {
       return () => clearInterval(timer);
     }
   }, [step, navigate, eventId]);
+
+  // Payment langsung triggered dari handleParticipantSubmit, tidak perlu auto-trigger lagi
 
   // Fetch event and ticket categories
   useEffect(() => {
@@ -256,10 +256,18 @@ const TicketBookingPage: React.FC = () => {
       return;
     }
 
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(participantData.email_peserta)) {
+      setError('Format email tidak valid');
+      return;
+    }
+
     if (selectedCategory?.harga === 0) {
       await handleRegistration();
     } else {
-      setStep('payment');
+      // Langsung redirect ke Xendit untuk pilih metode pembayaran
+      await handlePayment();
     }
   };
 
@@ -294,7 +302,7 @@ const TicketBookingPage: React.FC = () => {
         jenis_kelamin: participantData.jenis_kelamin,
         tanggal_lahir: participantData.tanggal_lahir,
         email_peserta: participantData.email_peserta,
-        payment_method: selectedCategory?.harga === 0 ? 'free' : (paymentMethod || 'free'),
+        payment_method: 'free',
         // Add unique identifier to allow multiple registrations
         registration_note: `Registered by user for ${participantData.email_peserta} at ${new Date().toISOString()}`
       };
@@ -378,13 +386,21 @@ const TicketBookingPage: React.FC = () => {
   };
 
   const handlePayment = async () => {
-    if (!paymentMethod) {
-      setError('Pilih metode pembayaran');
+    if (!selectedCategory || !event) {
+      setError('Data event tidak lengkap');
       return;
     }
 
-    if (!selectedCategory || !eventData) {
-      setError('Data event tidak lengkap');
+    // Validasi data participant
+    if (!participantData.nama_peserta || !participantData.email_peserta || !participantData.tanggal_lahir) {
+      setError('Semua field harus diisi');
+      return;
+    }
+
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(participantData.email_peserta)) {
+      setError('Format email tidak valid');
       return;
     }
 
@@ -392,85 +408,99 @@ const TicketBookingPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Create payment via API
+      // Create Xendit invoice via API
+      // Tidak perlu kirim method, Xendit akan tampilkan semua payment methods
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/payment/event', {
+      const response = await fetch('http://localhost:8000/api/payment/event', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          event_id: eventData.id,
-          ticket_quantity: 1
+          event_id: Number(eventId),
+          ticket_quantity: 1,
+          ticket_category_id: selectedCategory.id,
+          // method: undefined, // Xendit akan tampilkan semua payment methods
+          nama_peserta: participantData.nama_peserta,
+          jenis_kelamin: participantData.jenis_kelamin,
+          tanggal_lahir: participantData.tanggal_lahir,
+          email_peserta: participantData.email_peserta
         })
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Gagal membuat pembayaran');
+        console.error('❌ Payment creation failed:', result);
+        throw new Error(result.message || 'Gagal membuat invoice pembayaran');
       }
 
-      // Load Midtrans Snap
-      const script = document.createElement('script');
-      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-      script.setAttribute('data-client-key', 'SB-Mid-client-YOUR_CLIENT_KEY'); // Will be from env
-      document.head.appendChild(script);
+      console.log('✅ Xendit invoice created:', result);
+      console.log('📄 Invoice URL:', result.data?.invoice_url);
 
-      script.onload = () => {
-        // @ts-ignore
-        window.snap.pay(result.data.snap_token, {
-          onSuccess: function(result: any) {
-            console.log('Payment success:', result);
-            // Handle successful payment
-            handlePaymentSuccess(result);
-          },
-          onPending: function(result: any) {
-            console.log('Payment pending:', result);
-            alert('Pembayaran sedang diproses. Silakan cek status pembayaran Anda.');
-          },
-          onError: function(result: any) {
-            console.log('Payment error:', result);
-            setError('Pembayaran gagal. Silakan coba lagi.');
-            setLoading(false);
-          },
-          onClose: function() {
-            console.log('Payment popup closed');
-            setLoading(false);
-          }
-        });
-      };
+      // Save transaction ID to localStorage for status checking
+      if (result.data?.transaction_id) {
+        localStorage.setItem('pending_transaction_id', result.data.transaction_id.toString());
+      }
+
+      // Redirect to Xendit invoice URL
+      if (result.data?.invoice_url) {
+        localStorage.setItem('payment_return_url', window.location.href);
+
+        console.log('🚀 Redirecting to Xendit...');
+        // Redirect to Xendit checkout page
+        window.location.href = result.data.invoice_url;
+      } else {
+        console.error('❌ No invoice URL in response');
+        throw new Error('Invoice URL tidak ditemukan');
+      }
 
     } catch (err) {
       console.error('Payment error:', err);
       setError(err instanceof Error ? err.message : 'Gagal memproses pembayaran. Silakan coba lagi.');
-    } finally {
       setLoading(false);
     }
   };
 
-  const handlePaymentSuccess = async (paymentResult: any) => {
-    try {
-      // Register participant after successful payment
-      await handleRegistration();
+  // Check payment status on component mount (for return from Xendit)
+  useEffect(() => {
+    const checkPendingPayment = async () => {
+      const pendingTxId = localStorage.getItem('pending_transaction_id');
+      if (pendingTxId && step === 'payment') {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:8000/api/payment/check/${pendingTxId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            }
+          });
 
-      // Set success step
-      setStep('success');
-      setLoading(false);
+          if (response.ok) {
+            const result = await response.json();
+            console.log('Payment status:', result);
 
-      // Store payment result for display
-      setRegistrationResult({
-        ...registrationResult,
-        payment: paymentResult
-      });
+            if (result.data?.status === 'paid') {
+              localStorage.removeItem('pending_transaction_id');
+              setRegistrationResult({ transaction: result.data });
+              setStep('success');
+            } else if (result.data?.status === 'expired') {
+              localStorage.removeItem('pending_transaction_id');
+              setError('Pembayaran telah kadaluarsa. Silakan buat pembayaran baru.');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking payment status:', error);
+        }
+      }
+    };
 
-    } catch (err) {
-      console.error('Registration after payment error:', err);
-      setError('Pembayaran berhasil, tetapi gagal mendaftarkan peserta. Silakan hubungi admin.');
-      setLoading(false);
-    }
-  };
+    checkPendingPayment();
+  }, [step]);
+
+  // After paying via Xendit, registration akan dibuat via backend saat invoice PAID.
 
   if (loading && !event) {
     return (
@@ -743,43 +773,7 @@ const TicketBookingPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Step 3: Payment */}
-              {step === 'payment' && selectedCategory && (
-                <div className="bg-white rounded-xl p-6 shadow-sm">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Metode Pembayaran</h2>
-
-                  <div className="space-y-4 mb-6">
-                    {['Bank Transfer', 'E-Wallet (GoPay, OVO, DANA)', 'Virtual Account'].map((method) => (
-                      <label key={method} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          value={method}
-                          checked={paymentMethod === method}
-                          onChange={(e) => setPaymentMethod(e.target.value)}
-                          className="mr-4 text-blue-600"
-                        />
-                        <span className="font-medium">{method}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setStep('participant')}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                      Kembali
-                    </button>
-                    <button
-                      onClick={handlePayment}
-                      disabled={!paymentMethod}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      Bayar Sekarang
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Step 3: Payment - Tidak digunakan, langsung redirect ke Xendit */}
 
               {/* Step 4: Success - Invoice/E-Ticket */}
               {step === 'success' && registrationResult && (
@@ -1040,19 +1034,13 @@ const TicketBookingPage: React.FC = () => {
                           return;
                         }
 
-                        // Debug log untuk memastikan harga tiket
-                        console.log('Selected category:', selectedCategory);
-                        console.log('Harga tiket:', selectedCategory?.harga);
-                        console.log('Is free ticket?', selectedCategory?.harga === 0);
-
-                        // Jika gratis, langsung daftar. Jika berbayar, ke payment
+                        // Jika gratis, langsung daftar. Jika berbayar, langsung redirect Xendit
                         const harga = Number(selectedCategory?.harga) || 0;
                         if (harga === 0) {
-                          console.log('Processing free ticket registration...');
                           handleRegistration();
                         } else {
-                          console.log('Going to payment step...');
-                          setStep('payment');
+                          // Langsung redirect ke Xendit
+                          handlePayment();
                         }
                       }}
                       disabled={loading}
@@ -1062,15 +1050,7 @@ const TicketBookingPage: React.FC = () => {
                     </button>
                   )}
 
-                  {step === 'payment' && (
-                    <button
-                      onClick={handlePayment}
-                      disabled={loading}
-                      className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                    >
-                      {loading ? 'Memproses...' : 'Bayar Sekarang'}
-                    </button>
-                  )}
+                  {/* Payment button removed - langsung redirect dari participant form */}
 
                   {step !== 'success' && (
                     <button

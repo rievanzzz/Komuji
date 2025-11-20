@@ -1,14 +1,17 @@
 import React from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
-import { 
-  FiHome, 
-  FiUsers, 
-  FiSettings, 
+import {
+  FiHome,
+  FiUsers,
+  FiSettings,
   FiLogOut,
   FiUserCheck,
   FiDollarSign,
   FiBarChart,
-  FiCreditCard
+  FiCreditCard,
+  FiImage,
+  FiMail,
+  FiTag
 } from 'react-icons/fi';
 
 interface SidebarItem {
@@ -17,14 +20,14 @@ interface SidebarItem {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
+// Sidebar yang lebih sederhana dengan fitur yang digabung
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', path: '/admin', icon: FiHome },
-  { name: 'Persetujuan Panitia', path: '/admin/panitia-approval', icon: FiUserCheck },
-  { name: 'Kelola Panitia', path: '/admin/panitia-management', icon: FiUsers },
-  { name: 'Transaksi & Keuangan', path: '/admin/transactions', icon: FiDollarSign },
-  { name: 'Withdrawal Management', path: '/admin/withdrawals', icon: FiCreditCard },
-  { name: 'Laporan & Analitik', path: '/admin/reports', icon: FiBarChart },
-  { name: 'Pengaturan Sistem', path: '/admin/settings', icon: FiSettings },
+  { name: 'Manajemen User', path: '/admin/users', icon: FiUsers }, // Gabung: User + Panitia
+  { name: 'Kategori Event', path: '/admin/categories', icon: FiTag },
+  { name: 'Keuangan', path: '/admin/finance', icon: FiDollarSign }, // Gabung: Transaksi + Withdrawal
+  { name: 'Konten', path: '/admin/content', icon: FiImage }, // Gabung: Banner + Messages
+  { name: 'Pengaturan', path: '/admin/settings', icon: FiSettings },
 ];
 
 const AdminSidebar: React.FC = () => {
@@ -50,19 +53,22 @@ const AdminSidebar: React.FC = () => {
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative ${
                     isActive
-                      ? 'bg-red-50 text-red-600 border-r-2 border-red-600'
+                      ? 'text-white'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <Icon size={20} />
-                  <span className="font-medium">{item.name}</span>
+                  {isActive && (
+                    <div className="absolute inset-0 rounded-lg" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' }}></div>
+                  )}
+                  <Icon size={20} className="relative z-10" />
+                  <span className="font-medium relative z-10">{item.name}</span>
                 </NavLink>
               </li>
             );

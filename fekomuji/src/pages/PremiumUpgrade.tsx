@@ -87,12 +87,13 @@ const PremiumUpgrade: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Create payment
+      // Create Xendit invoice
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/payment/premium', {
+      const response = await fetch('http://localhost:8000/api/payment/premium', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
@@ -103,37 +104,26 @@ const PremiumUpgrade: React.FC = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Gagal membuat pembayaran');
+        throw new Error(result.message || 'Gagal membuat invoice pembayaran');
       }
 
-      // Load Midtrans Snap
-      const script = document.createElement('script');
-      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-      script.setAttribute('data-client-key', 'SB-Mid-client-YOUR_CLIENT_KEY');
-      document.head.appendChild(script);
+      console.log('Xendit invoice created:', result);
 
-      script.onload = () => {
-        // @ts-ignore
-        window.snap.pay(result.data.snap_token, {
-          onSuccess: function(result: any) {
-            console.log('Premium payment success:', result);
-            handlePaymentSuccess();
-          },
-          onPending: function(result: any) {
-            console.log('Premium payment pending:', result);
-            alert('Pembayaran sedang diproses. Silakan cek status pembayaran Anda.');
-          },
-          onError: function(result: any) {
-            console.log('Premium payment error:', result);
-            setError('Pembayaran gagal. Silakan coba lagi.');
-            setLoading(false);
-          },
-          onClose: function() {
-            console.log('Premium payment popup closed');
-            setLoading(false);
-          }
-        });
-      };
+      // Save transaction ID for status checking
+      if (result.data?.transaction_id) {
+        localStorage.setItem('pending_premium_transaction_id', result.data.transaction_id.toString());
+      }
+
+      // Redirect to Xendit invoice URL
+      if (result.data?.invoice_url) {
+        // Store return URL
+        localStorage.setItem('premium_return_url', window.location.href);
+
+        // Redirect to Xendit checkout page
+        window.location.href = result.data.invoice_url;
+      } else {
+        throw new Error('Invoice URL tidak ditemukan');
+      }
 
     } catch (err) {
       console.error('Premium upgrade error:', err);
@@ -186,8 +176,8 @@ const PremiumUpgrade: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Status Akun Saat Ini</h2>
             <div className="flex items-center gap-4">
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                currentStatus.is_premium 
-                  ? 'bg-purple-100 text-purple-800' 
+                currentStatus.is_premium
+                  ? 'bg-purple-100 text-purple-800'
                   : 'bg-gray-100 text-gray-800'
               }`}>
                 {currentStatus.is_premium ? 'Premium' : 'Free'}
@@ -260,8 +250,8 @@ const PremiumUpgrade: React.FC = () => {
             <div
               key={plan.id}
               className={`bg-white rounded-2xl p-8 shadow-sm border-2 transition-all duration-300 ${
-                plan.popular 
-                  ? 'border-purple-500 ring-4 ring-purple-100' 
+                plan.popular
+                  ? 'border-purple-500 ring-4 ring-purple-100'
                   : 'border-gray-200 hover:border-purple-300'
               }`}
             >
@@ -270,13 +260,13 @@ const PremiumUpgrade: React.FC = () => {
                   Most Popular
                 </div>
               )}
-              
+
               <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-gray-900">{formatPrice(plan.price)}</span>
                 <span className="text-gray-600">/{plan.duration} bulan</span>
               </div>
-              
+
               {plan.savings && (
                 <div className="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full inline-block mb-6">
                   Hemat {formatPrice(plan.savings)}
@@ -333,7 +323,7 @@ const PremiumUpgrade: React.FC = () => {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Metode pembayaran apa saja?</h3>
-              <p className="text-gray-600 text-sm">Kami menerima transfer bank, e-wallet (GoPay, OVO), dan kartu kredit melalui Midtrans.</p>
+              <p className="text-gray-600 text-sm">Kami menerima transfer bank (VA), e-wallet (OVO, DANA, LinkAja, ShopeePay), QRIS, dan kartu kredit melalui Xendit.</p>
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Apakah ada trial period?</h3>

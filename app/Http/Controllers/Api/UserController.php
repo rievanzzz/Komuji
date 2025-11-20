@@ -19,7 +19,7 @@ class UserController extends Controller
     public function profile(): JsonResponse
     {
         $user = auth()->user();
-        
+
         // Map database field names to frontend expected field names
         $userData = [
             'id' => $user->id,
@@ -37,7 +37,7 @@ class UserController extends Controller
             'updated_at' => $user->updated_at,
             'email_verified_at' => $user->email_verified_at
         ];
-        
+
         return response()->json([
             'status' => 'success',
             'data' => $userData
@@ -92,7 +92,7 @@ class UserController extends Controller
     {
         try {
             $user = auth()->user();
-            
+
             // Update password
             $user->update([
                 'password' => Hash::make($request->new_password)
@@ -252,7 +252,7 @@ class UserController extends Controller
     public function getOrganizerEarnings(Request $request)
     {
         $user = auth()->user();
-        
+
         if (!$user->isPanitia()) {
             return response()->json([
                 'status' => 'error',
@@ -262,7 +262,7 @@ class UserController extends Controller
 
         try {
             $panitiaProfile = \App\Models\PanitiaProfile::where('user_id', $user->id)->first();
-            
+
             if (!$panitiaProfile) {
                 return response()->json([
                     'status' => 'error',
@@ -337,6 +337,276 @@ class UserController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal mengambil data earnings',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all users untuk admin
+     * Endpoint: GET /api/admin/all-users
+     */
+    public function getAllUsers(): JsonResponse
+    {
+        try {
+            // Ambil semua users dengan relasi registrations
+            $users = \App\Models\User::with(['registrations'])
+                ->select('id', 'name', 'email', 'role', 'status_akun', 'email_verified_at', 'created_at')
+                ->get();
+
+            // Map data dan tambahkan events_count
+            $users = $users->map(function ($user) {
+                $isPanitia = in_array($user->role, ['panitia', 'organizer']);
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role ?? 'user',
+                    // Panitia selalu aktif kecuali di-suspend (role berubah jadi user)
+                    // status_akun ENUM: 'aktif' atau 'belum_verifikasi'
+                    'is_active' => $isPanitia ? true : ($user->status_akun === 'aktif'),
+                    'email_verified_at' => $user->email_verified_at,
+                    'created_at' => $user->created_at,
+                    'events_count' => $user->registrations ? $user->registrations->count() : 0,
+                    // Panitia: cek email_verified_at, User biasa: selalu approved
+                    'status' => $isPanitia
+                        ? ($user->email_verified_at ? 'approved' : 'pending')
+                        : 'approved'
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $users
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch users',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle user active status
+     * Endpoint: PATCH /api/users/{id}/toggle-status
+     */
+    public function toggleStatus(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::findOrFail($id);
+
+            // Toggle status
+            $newStatus = $request->has('is_active')
+                ? ($request->is_active ? 'active' : 'inactive')
+                : ($user->status_akun === 'active' ? 'inactive' : 'active');
+
+            $user->status_akun = $newStatus;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'User status updated successfully',
+                'data' => [
+                    'id' => $user->id,
+                    'is_active' => $user->status_akun === 'active'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update user status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete user
+     * Endpoint: DELETE /api/users/{id}
+     */
+    public function deleteUser($id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::findOrFail($id);
+
+            // Cek jangan hapus admin
+            if ($user->role === 'admin') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Cannot delete admin user'
+                ], 403);
+            }
+
+            // Soft delete atau hard delete
+            $user->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'User deleted successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete user',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user events/registrations
+     * Endpoint: GET /api/users/{id}/events
+     */
+    public function getUserEvents($id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::with(['registrations.event'])->findOrFail($id);
+
+            $events = $user->registrations->map(function ($registration) {
+                // Debug: cek apakah event ada
+                $event = $registration->event;
+
+                if (!$event) {
+                    \Log::warning("Registration {$registration->id} has no event");
+                    return [
+                        'id' => $registration->id,
+                        'event_name' => 'Event Tidak Ditemukan',
+                        'event_date' => null,
+                        'status' => $registration->status ?? 'registered',
+                        'registered_at' => $registration->created_at
+                    ];
+                }
+
+                return [
+                    'id' => $registration->id,
+                    'event_name' => $event->judul ?? 'Unknown Event',
+                    'event_date' => $event->tanggal_mulai ?? null,
+                    'status' => $registration->status ?? 'registered',
+                    'registered_at' => $registration->created_at
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $events
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch user events',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve organizer/panitia
+     * Endpoint: POST /api/organizers/{id}/approve
+     */
+    public function approveOrganizer($id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::findOrFail($id);
+
+            // Update dengan nilai ENUM yang benar
+            $user->email_verified_at = \Carbon\Carbon::now();
+            $user->status_akun = 'aktif'; // ✅ Sesuai ENUM database
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Organizer approved successfully',
+                'data' => [
+                    'id' => $user->id,
+                    'email_verified_at' => $user->email_verified_at,
+                    'status' => 'approved'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to approve organizer',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject organizer/panitia
+     * Endpoint: POST /api/organizers/{id}/reject
+     */
+    public function rejectOrganizer($id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::findOrFail($id);
+
+            // Update dengan nilai ENUM yang benar
+            $user->email_verified_at = null;
+            $user->status_akun = 'belum_verifikasi'; // ✅ Sesuai ENUM database
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Organizer rejected successfully',
+                'data' => [
+                    'id' => $user->id,
+                    'status' => 'rejected'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to reject organizer',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Suspend panitia - ubah role jadi user biasa
+     * Endpoint: POST /api/organizers/{id}/suspend
+     */
+    public function suspendOrganizer($id): JsonResponse
+    {
+        try {
+            $user = \App\Models\User::findOrFail($id);
+
+            // Cek apakah user adalah panitia
+            if (!in_array($user->role, ['panitia', 'organizer'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User is not an organizer'
+                ], 400);
+            }
+
+            // Update dengan nilai ENUM yang benar
+            $user->role = 'user';
+            $user->status_akun = 'aktif'; // ✅ Sesuai ENUM database
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Organizer suspended successfully. Role changed to user.',
+                'data' => [
+                    'id' => $user->id,
+                    'role' => 'user',
+                    'status' => 'suspended'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to suspend organizer',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -39,17 +39,35 @@ const Transactions: React.FC = () => {
   const [dateRange, setDateRange] = useState('30');
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [commissionRate, setCommissionRate] = useState<number>(5);
 
   useEffect(() => {
     fetchTransactions();
     fetchStats();
+    fetchCommissionRate();
   }, [dateRange]);
+
+  const fetchCommissionRate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8000/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const s = data.settings || {};
+        const rate = parseFloat(s.platform_fee_percentage ?? s.commission_rate ?? 5);
+        if (!Number.isNaN(rate)) setCommissionRate(rate);
+      }
+    } catch {}
+  };
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/admin/transactions-admin?days=${dateRange}`, {
+      // Use real transactions endpoint
+      const response = await fetch(`http://localhost:8000/api/admin/transactions?days=${dateRange}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -58,51 +76,24 @@ const Transactions: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setTransactions(data.data || []);
+        const payload = data.data || data; // paginator or direct
+        const rows = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
+        const mapped: Transaction[] = rows.map((t: any) => ({
+          id: String(t.id),
+          event_id: String(t.event?.id || ''),
+          event_title: t.event?.judul || (t.type === 'premium_subscription' ? 'Premium Upgrade' : '-'),
+          organizer_name: t.panitia?.name || '-',
+          participant_name: t.user?.name || '-',
+          amount: Number(t.gross_amount) || 0,
+          commission: Number(t.platform_fee) || 0,
+          net_amount: Number(t.net_amount) || 0,
+          status: t.status === 'paid' ? 'completed' : (t.status || 'pending'),
+          payment_method: t.payment_method || '-',
+          created_at: t.created_at
+        }));
+        setTransactions(mapped);
       } else {
-        // Mock data untuk development
-        const mockTransactions: Transaction[] = [
-          {
-            id: '1',
-            event_id: 'evt_001',
-            event_title: 'Tech Conference 2024',
-            organizer_name: 'John Organizer',
-            participant_name: 'Alice Johnson',
-            amount: 500000,
-            commission: 25000,
-            net_amount: 475000,
-            status: 'completed',
-            payment_method: 'Credit Card',
-            created_at: '2024-11-10T10:30:00Z'
-          },
-          {
-            id: '2',
-            event_id: 'evt_002',
-            event_title: 'Workshop Design Thinking',
-            organizer_name: 'Jane Smith',
-            participant_name: 'Bob Wilson',
-            amount: 250000,
-            commission: 12500,
-            net_amount: 237500,
-            status: 'completed',
-            payment_method: 'Bank Transfer',
-            created_at: '2024-11-09T14:15:00Z'
-          },
-          {
-            id: '3',
-            event_id: 'evt_003',
-            event_title: 'Music Festival',
-            organizer_name: 'Mike Producer',
-            participant_name: 'Carol Davis',
-            amount: 750000,
-            commission: 37500,
-            net_amount: 712500,
-            status: 'pending',
-            payment_method: 'E-Wallet',
-            created_at: '2024-11-08T16:45:00Z'
-          }
-        ];
-        setTransactions(mockTransactions);
+        setTransactions([]);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -114,7 +105,8 @@ const Transactions: React.FC = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/admin/revenue-stats?days=${dateRange}`, {
+      // Use real revenue dashboard
+      const response = await fetch(`http://localhost:8000/api/admin/revenue-dashboard?days=${dateRange}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -122,8 +114,15 @@ const Transactions: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setStats(data);
+        const res = await response.json();
+        const s = res.data?.summary || {};
+        setStats({
+          total_revenue: s.total_revenue || 0,
+          total_commission: s.monthly_revenue ? s.monthly_revenue : (s.total_revenue ? s.total_revenue * (commissionRate/100) : 0),
+          monthly_revenue: s.monthly_revenue || 0,
+          monthly_commission: s.monthly_revenue ? s.monthly_revenue * (commissionRate/100) : 0,
+          growth_percentage: 0
+        });
       } else {
         // Mock stats untuk development
         setStats({
@@ -264,12 +263,12 @@ const Transactions: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Sistem Komisi Platform</h3>
               <p className="text-gray-600 mt-1">
-                Platform mengambil komisi 5% dari setiap transaksi event yang berhasil
+                Platform mengambil komisi {commissionRate}% dari setiap transaksi event yang berhasil
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Komisi Rate</p>
-              <p className="text-2xl font-bold text-blue-600">5%</p>
+              <p className="text-2xl font-bold text-blue-600">{commissionRate}%</p>
             </div>
           </div>
         </div>
@@ -322,7 +321,7 @@ const Transactions: React.FC = () => {
                     Amount
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Komisi (5%)
+                    Komisi ({commissionRate}%)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Net Amount
@@ -410,7 +409,7 @@ const Transactions: React.FC = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Detail Transaksi</h3>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -424,12 +423,12 @@ const Transactions: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Event</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.event_title}</p>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Organizer</label>
@@ -440,7 +439,7 @@ const Transactions: React.FC = () => {
                     <p className="text-sm text-gray-900">{selectedTransaction.participant_name}</p>
                   </div>
                 </div>
-                
+
                 <div className="border-t pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -457,12 +456,12 @@ const Transactions: React.FC = () => {
                     <p className="text-xl font-bold text-blue-600">{formatCurrency(selectedTransaction.net_amount)}</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Payment Method</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.payment_method}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Tanggal Transaksi</label>
                   <p className="text-sm text-gray-900">{formatDate(selectedTransaction.created_at)}</p>
@@ -485,4 +484,4 @@ const Transactions: React.FC = () => {
   );
 };
 
-export default Transactions;
+export { Transactions };

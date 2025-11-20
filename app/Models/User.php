@@ -19,6 +19,9 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
 {
     use HasApiTokens, HasFactory, Notifiable, CanResetPassword;
 
+    // Disable timestamps karena tabel users tidak punya created_at & updated_at
+    public $timestamps = false;
+
     protected $fillable = [
         'name',
         'email',

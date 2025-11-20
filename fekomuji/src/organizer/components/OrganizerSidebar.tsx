@@ -1,13 +1,11 @@
 import React from 'react';
-import { useLocation, NavLink } from 'react-router-dom';
-import { 
-  FiHome, 
-  FiCalendar, 
-  FiCreditCard, 
-  FiUsers, 
-  FiDollarSign, 
-  FiSettings, 
-  FiLogOut 
+import { Link, useLocation } from 'react-router-dom';
+import {
+  FiHome,
+  FiCalendar,
+  FiSettings,
+  FiLogOut,
+  FiDollarSign
 } from 'react-icons/fi';
 
 interface SidebarItem {
@@ -18,9 +16,7 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', path: '/organizer', icon: FiHome },
-  { name: 'Kelola Acara', path: '/organizer/events', icon: FiCalendar },
-  { name: 'Peserta', path: '/organizer/participants', icon: FiUsers },
-  { name: 'Tiket', path: '/organizer/tickets', icon: FiCreditCard },
+  { name: 'Kelola Event', path: '/organizer/events-card', icon: FiCalendar },
   { name: 'Keuangan', path: '/organizer/finance', icon: FiDollarSign },
   { name: 'Pengaturan', path: '/organizer/settings', icon: FiSettings },
 ];
@@ -48,20 +44,21 @@ const OrganizerSidebar: React.FC = () => {
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
               <li key={item.path}>
-                <NavLink
+                <Link
                   to={item.path}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
+                      ? 'text-white'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
+                  style={isActive ? { background: 'linear-gradient(135deg, #004aad 0%, #5eed9c 100%)' } : {}}
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.name}</span>
-                </NavLink>
+                </Link>
               </li>
             );
           })}

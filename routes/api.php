@@ -11,10 +11,11 @@ use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\RegistrationController;
-use App\Http\Controllers\Api\TicketCategoryController;
 use App\Http\Controllers\Api\PanitiaUpgradeController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\CertificateController;
+use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\TicketCategoryController;
 use App\Models\Category;
 
 /*
@@ -36,12 +37,19 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Payment routes
-Route::post('/payment/notification', [\App\Http\Controllers\Api\PaymentController::class, 'handleNotification']);
+Route::match(['get','post'], '/payment/notification', [\App\Http\Controllers\Api\PaymentController::class, 'handleNotification']);
+Route::get('/payment/config', [\App\Http\Controllers\Api\PaymentController::class, 'clientConfig']);
 
 // Public routes
 Route::get('/test', function () {
     return response()->json(['message' => 'API is working!']);
 });
+
+// Public contact endpoint
+Route::post('/contact', [ContactMessageController::class, 'store']);
+
+// Public: ticket categories for an event
+Route::get('/events/{event}/ticket-categories', [TicketCategoryController::class, 'index']);
 
 // Public categories list
 Route::get('/categories', function () {
@@ -50,6 +58,9 @@ Route::get('/categories', function () {
         ->get();
     return response()->json(['data' => $categories]);
 });
+
+// Public banners (max 3 active)
+Route::get('/banners', [AdminSettingController::class, 'publicBanners']);
 
 // Authentication routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -63,6 +74,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{event}', [EventController::class, 'show']);
 Route::get('/events/{event}/ticket-categories', [TicketCategoryController::class, 'index']);
+
+// Top 10 Events dengan Peserta Terbanyak (Public)
+Route::get('/top-events', [EventController::class, 'topEvents']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
@@ -98,6 +112,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('/payment/event', [\App\Http\Controllers\Api\PaymentController::class, 'createEventPayment']);
     Route::post('/payment/premium', [\App\Http\Controllers\Api\PaymentController::class, 'createPremiumPayment']);
     Route::get('/payment/status/{transactionId}', [\App\Http\Controllers\Api\PaymentController::class, 'getTransactionStatus']);
+    Route::get('/payment/check/{transactionId}', [\App\Http\Controllers\Api\PaymentController::class, 'checkPaymentStatus']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -136,6 +151,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Event registration - available for all authenticated users
     Route::post('/events/{event}/register', [RegistrationController::class, 'register']);
     Route::get('/my-registrations', [RegistrationController::class, 'myRegistrations']);
+    Route::get('/registrations/{registration}', [RegistrationController::class, 'show']);
 
     // Email service endpoints
     Route::post('/send-eticket', [RegistrationController::class, 'sendETicket']);
@@ -179,6 +195,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/events/{event}/registrations', [EventController::class, 'registrations']);
         Route::get('/events/{event}/export-attendance', [EventController::class, 'exportAttendance'])
             ->name('events.export-attendance');
+
+        // Export Excel Peserta dengan Status Kehadiran
+        Route::get('/events/{event}/export-participants', [EventController::class, 'exportParticipantsExcel'])
+            ->name('events.export-participants');
+
+        // Generate Daftar Kehadiran untuk Print
+        Route::get('/events/{event}/attendance-list', [EventController::class, 'generateAttendanceList'])
+            ->name('events.attendance-list');
 
         // Attendance verification for organizer/admin (scan QR or manual token)
         Route::post('/organizer/events/{event}/attendance/verify', [AttendanceController::class, 'verify']);
@@ -250,6 +274,22 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::put('/settings', [AdminController::class, 'updateSettings']);
 
+        // Platform (admin) primary bank account
+        Route::get('/platform-bank-account', [AdminController::class, 'getPlatformBankAccount']);
+        Route::put('/platform-bank-account', [AdminController::class, 'updatePlatformBankAccount']);
+
+        // Banner management
+        Route::get('/banners', [AdminSettingController::class, 'indexBanners']);
+        Route::post('/banners', [AdminSettingController::class, 'createBanner']);
+        Route::post('/banners/activate', [AdminSettingController::class, 'activateBanners']);
+        Route::put('/banners/{id}', [AdminSettingController::class, 'updateBanner']);
+        Route::delete('/banners/{id}', [AdminSettingController::class, 'deleteBanner']);
+
+        // Contact messages management
+        Route::get('/contact-messages', [ContactMessageController::class, 'index']);
+        Route::put('/contact-messages/{contactMessage}', [ContactMessageController::class, 'update']);
+        Route::delete('/contact-messages/{contactMessage}', [ContactMessageController::class, 'destroy']);
+
         // Additional admin endpoints
         Route::get('/panitias-management', [AdminController::class, 'getPanitias']);
         Route::get('/transactions-admin', [AdminController::class, 'getTransactions']);
@@ -262,6 +302,15 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/withdrawals', [AdminController::class, 'getAllWithdrawals']);
         Route::post('/withdrawals/{id}/approve', [AdminController::class, 'approveWithdrawal']);
         Route::post('/withdrawals/{id}/reject', [AdminController::class, 'rejectWithdrawal']);
+
+        // User Management routes
+        Route::get('/all-users', [UserController::class, 'getAllUsers']);
+        Route::patch('/users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
+        Route::delete('/users/{id}', [UserController::class, 'deleteUser']);
+        Route::get('/users/{id}/events', [UserController::class, 'getUserEvents']);
+        Route::post('/organizers/{id}/approve', [UserController::class, 'approveOrganizer']);
+        Route::post('/organizers/{id}/reject', [UserController::class, 'rejectOrganizer']);
+        Route::post('/organizers/{id}/suspend', [UserController::class, 'suspendOrganizer']);
     });
 
     // Public settings (accessible by all authenticated users)
