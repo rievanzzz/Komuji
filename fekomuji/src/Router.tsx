@@ -22,6 +22,7 @@ import EventAttendance from './pages/EventAttendance';
 import { Dashboard, EventManagementFixed, Tickets, Finance, Settings } from './organizer/pages';
 import CertificateSettings from './organizer/pages/CertificateSettings';
 import CertificateIssuance from './organizer/pages/CertificateIssuance';
+import CertificateTemplates from './pages/CertificateTemplates';
 import EventsCardView from './organizer/pages/EventsCardView';
 import EventManage from './organizer/pages/EventManage';
 import Financial from './organizer/pages/Financial';
@@ -81,6 +82,7 @@ const AppRouter = () => {
           <Route path="/organizer/events/:eventId/attendance" element={<ProtectedOrganizerRoute><ErrorBoundary><EventAttendance /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events/:eventId/certificates/settings" element={<ProtectedOrganizerRoute><ErrorBoundary><CertificateSettings /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/events/:eventId/certificates" element={<ProtectedOrganizerRoute><ErrorBoundary><CertificateIssuance /></ErrorBoundary></ProtectedOrganizerRoute>} />
+          <Route path="/certificate-templates" element={<ProtectedOrganizerRoute><ErrorBoundary><CertificateTemplates /></ErrorBoundary></ProtectedOrganizerRoute>} />
 
           <Route path="/organizer/participants" element={<ProtectedOrganizerRoute><ErrorBoundary><ParticipantsNew /></ErrorBoundary></ProtectedOrganizerRoute>} />
           <Route path="/organizer/tickets" element={<ProtectedOrganizerRoute><ErrorBoundary><Tickets /></ErrorBoundary></ProtectedOrganizerRoute>} />
@@ -95,6 +97,7 @@ const AppRouter = () => {
           <Route path="/admin/users" element={<ProtectedAdminRoute><ErrorBoundary><UsersManagement /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/categories" element={<ProtectedAdminRoute><ErrorBoundary><CategoriesManagement /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/finance" element={<ProtectedAdminRoute><ErrorBoundary><Transactions /></ErrorBoundary></ProtectedAdminRoute>} />
+          <Route path="/admin/withdrawals" element={<ProtectedAdminRoute><ErrorBoundary><WithdrawalManagement /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/content" element={<ProtectedAdminRoute><ErrorBoundary><BannerManagement /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/messages" element={<ProtectedAdminRoute><ErrorBoundary><ContactMessages /></ErrorBoundary></ProtectedAdminRoute>} />
           <Route path="/admin/settings" element={<ProtectedAdminRoute><ErrorBoundary><AdminSettings /></ErrorBoundary></ProtectedAdminRoute>} />

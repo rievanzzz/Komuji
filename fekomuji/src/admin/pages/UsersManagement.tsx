@@ -8,10 +8,11 @@ interface User {
   email: string;
   role: 'user' | 'panitia' | 'organizer' | 'admin';
   is_active: boolean;
-  status?: 'pending' | 'approved' | 'rejected';
+  status?: 'pending' | 'approved' | 'rejected' | 'waiting_approval';
   email_verified_at?: string | null;
   created_at: string;
   events_count?: number;
+  is_approved?: boolean | number | null;
 }
 
 interface UserEvent {
@@ -67,6 +68,12 @@ const UsersManagement: React.FC = () => {
       console.log('Users data:', usersData);
       console.log('Users count:', usersData.length);
 
+      // Debug: Tampilkan detail setiap user untuk cek role dan email_verified_at
+      console.log('=== USER DETAILS ===');
+      usersData.forEach((u: any) => {
+        console.log(`User: ${u.name}, Role: ${u.role}, Email Verified: ${u.email_verified_at}, Type: ${typeof u.email_verified_at}`);
+      });
+
       // Jika masih kosong, tampilkan pesan dan instruksi
       if (usersData.length === 0) {
         console.error('❌ No users found from any endpoint!');
@@ -100,12 +107,43 @@ const UsersManagement: React.FC = () => {
         );
         console.log('Filtered panitia:', filteredUsers.length);
       } else if (activeTab === 'pending') {
-        // Hanya panitia/organizer yang pending (belum verified)
-        filteredUsers = usersData.filter((u: any) =>
-          (u.role === 'panitia' || u.role === 'organizer') &&
-          !u.email_verified_at
-        );
-        console.log('Filtered pending:', filteredUsers.length);
+        // Hanya panitia/organizer yang pending (belum approved)
+        // Cek berbagai kemungkinan status pending
+        filteredUsers = usersData.filter((u: any) => {
+          const isPanitiaOrOrganizer = u.role === 'panitia' || u.role === 'organizer';
+
+          // Berbagai kondisi pending:
+          const isNotEmailVerified = !u.email_verified_at || u.email_verified_at === '' || u.email_verified_at === null;
+          const isPendingStatus = u.status === 'pending' || u.status === 'waiting_approval';
+          const isNotApproved = u.is_approved === false || u.is_approved === 0 || u.is_approved === null;
+          const isNotActive = u.is_active === false;
+
+          // User dianggap pending jika:
+          // 1. Role panitia/organizer DAN (email belum verified ATAU status pending ATAU belum approved ATAU tidak aktif)
+          const isPending = isPanitiaOrOrganizer && (isNotEmailVerified || isPendingStatus || isNotApproved || isNotActive);
+
+          if (isPanitiaOrOrganizer) {
+            console.log(`🔍 Checking user ${u.name}:`, {
+              role: u.role,
+              email_verified_at: u.email_verified_at,
+              status: u.status,
+              is_approved: u.is_approved,
+              is_active: u.is_active,
+              isPending: isPending
+            });
+          }
+
+          return isPending;
+        });
+        console.log('✅ Filtered pending users:', filteredUsers.length);
+        console.log('📋 Pending users list:', filteredUsers.map((u: any) => ({
+          name: u.name,
+          role: u.role,
+          email_verified_at: u.email_verified_at,
+          status: u.status,
+          is_approved: u.is_approved,
+          is_active: u.is_active
+        })));
       } else {
         // Tab "Semua User" - tampilkan SEMUA users
         filteredUsers = usersData;
@@ -303,7 +341,14 @@ const UsersManagement: React.FC = () => {
     total: allUsers.length,
     active: allUsers.filter(u => u.is_active).length,
     panitia: allUsers.filter(u => (u.role === 'panitia' || u.role === 'organizer') && u.email_verified_at).length,
-    pending: allUsers.filter(u => (u.role === 'panitia' || u.role === 'organizer') && !u.email_verified_at).length
+    pending: allUsers.filter(u => {
+      const isPanitiaOrOrganizer = u.role === 'panitia' || u.role === 'organizer';
+      const isNotEmailVerified = !u.email_verified_at || u.email_verified_at === '' || u.email_verified_at === null;
+      const isPendingStatus = u.status === 'pending' || u.status === 'waiting_approval';
+      const isNotApproved = u.is_approved === false || u.is_approved === 0 || u.is_approved === null;
+      const isNotActive = u.is_active === false;
+      return isPanitiaOrOrganizer && (isNotEmailVerified || isPendingStatus || isNotApproved || isNotActive);
+    }).length
   };
 
   return (
@@ -497,7 +542,8 @@ const UsersManagement: React.FC = () => {
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-center gap-2">
                         {/* Untuk Panitia Pending: Approve & Reject */}
-                        {(user.role === 'panitia' || user.role === 'organizer') && user.status === 'pending' && (
+                        {(user.role === 'panitia' || user.role === 'organizer') &&
+                         (user.status === 'pending' || !user.is_active || !user.email_verified_at) && (
                           <>
                             <button
                               onClick={() => handleApprovePanitia(user.id, 'approve')}

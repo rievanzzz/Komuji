@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiUsers, FiCalendar, FiMapPin, FiEdit, FiTrash2, FiPlus, FiEye, FiClock, FiDownload } from 'react-icons/fi';
+import { FiUsers, FiCalendar, FiMapPin, FiEdit, FiTrash2, FiPlus, FiEye, FiClock, FiDownload, FiSearch, FiFilter } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import OrganizerLayout from '../components/OrganizerLayout';
 import { EventModal } from '../components';
@@ -33,6 +33,9 @@ const EventsCardView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
 
   useEffect(() => {
     fetchEvents();
@@ -42,7 +45,8 @@ const EventsCardView: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/organizer/events', {
+      // Fetch ALL events without pagination limit
+      const response = await fetch('http://localhost:8000/api/organizer/events?per_page=999999', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -133,8 +137,43 @@ const EventsCardView: React.FC = () => {
     return 'Tersedia';
   };
 
+  // Filter events
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.deskripsi.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' ||
+                         (statusFilter === 'published' && event.is_published) ||
+                         (statusFilter === 'draft' && !event.is_published);
+
+    // Filter berdasarkan tanggal
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const eventDate = new Date(event.tanggal_mulai);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (dateFilter === 'upcoming') {
+        matchesDate = eventDate >= today;
+      } else if (dateFilter === 'past') {
+        matchesDate = eventDate < today;
+      } else if (dateFilter === 'thisMonth') {
+        const thisMonth = today.getMonth();
+        const thisYear = today.getFullYear();
+        matchesDate = eventDate.getMonth() === thisMonth && eventDate.getFullYear() === thisYear;
+      } else if (dateFilter === 'nextMonth') {
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const monthAfter = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+        matchesDate = eventDate >= nextMonth && eventDate < monthAfter;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
   const handleExportAllEvents = () => {
-    if (events.length === 0) {
+    if (filteredEvents.length === 0) {
       alert('Tidak ada event untuk di-export');
       return;
     }
@@ -160,7 +199,7 @@ const EventsCardView: React.FC = () => {
     ].join(','));
 
     // Data rows
-    events.forEach((event, index) => {
+    filteredEvents.forEach((event, index) => {
       const status = event.is_published ? 'Published' : 'Draft';
       const tanggalMulai = new Date(event.tanggal_mulai).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -197,15 +236,15 @@ const EventsCardView: React.FC = () => {
     });
 
     // Tambahkan summary
-    const totalKuota = events.reduce((sum, e) => sum + e.kuota, 0);
-    const totalTerdaftar = events.reduce((sum, e) => sum + (e.terdaftar || 0), 0);
+    const totalKuota = filteredEvents.reduce((sum, e) => sum + e.kuota, 0);
+    const totalTerdaftar = filteredEvents.reduce((sum, e) => sum + (e.terdaftar || 0), 0);
     const totalSisa = totalKuota - totalTerdaftar;
     const avgPersentase = ((totalTerdaftar / totalKuota) * 100).toFixed(1);
 
     csvRows.push(''); // Baris kosong
     csvRows.push([
       '',
-      `"TOTAL (${events.length} Event)"`,
+      `"TOTAL (${filteredEvents.length} Event)"`,
       '',
       '',
       '',
@@ -233,7 +272,7 @@ const EventsCardView: React.FC = () => {
     link.click();
     document.body.removeChild(link);
 
-    alert(`Berhasil export ${events.length} event!\nFile: Semua_Event_${currentDate}.csv`);
+    alert(`Berhasil export ${filteredEvents.length} event!\nFile: Semua_Event_${currentDate}.csv`);
   };
 
   return (
@@ -262,6 +301,54 @@ const EventsCardView: React.FC = () => {
               <FiPlus className="w-5 h-5" />
               Buat Event Baru
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white rounded-2xl border-2 border-gray-100 shadow-md p-6 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cari event berdasarkan judul, lokasi, atau deskripsi..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all"
+              />
+            </div>
+          </div>
+          <div className="lg:w-56">
+            <div className="relative">
+              <FiFilter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-gray-50 focus:bg-white transition-all"
+              >
+                <option value="all">Semua Status</option>
+                <option value="published">Aktif</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+          <div className="lg:w-56">
+            <div className="relative">
+              <FiClock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-gray-50 focus:bg-white transition-all"
+              >
+                <option value="all">Semua Tanggal</option>
+                <option value="upcoming">Akan Datang</option>
+                <option value="past">Sudah Lewat</option>
+                <option value="thisMonth">Bulan Ini</option>
+                <option value="nextMonth">Bulan Depan</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -333,7 +420,7 @@ const EventsCardView: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const fillPercentage = ((event.terdaftar || 0) / event.kuota) * 100;
             return (
               <div
@@ -458,7 +545,7 @@ const EventsCardView: React.FC = () => {
             );
           })}
 
-          {events.length === 0 && (
+          {filteredEvents.length === 0 && events.length === 0 && (
             <div className="col-span-full text-center py-16">
               <FiCalendar className="w-20 h-20 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Belum Ada Event</h3>
@@ -469,6 +556,24 @@ const EventsCardView: React.FC = () => {
               >
                 <FiPlus className="w-5 h-5" />
                 Buat Event Baru
+              </button>
+            </div>
+          )}
+          {filteredEvents.length === 0 && events.length > 0 && (
+            <div className="col-span-full text-center py-16">
+              <FiSearch className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak Ada Event yang Sesuai</h3>
+              <p className="text-gray-500 mb-6">Coba ubah filter atau kata kunci pencarian Anda</p>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setDateFilter('all');
+                }}
+                className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium transition-colors"
+                style={{ backgroundColor: '#004aad' }}
+              >
+                Reset Filter
               </button>
             </div>
           )}

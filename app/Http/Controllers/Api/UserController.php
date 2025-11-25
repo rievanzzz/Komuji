@@ -135,8 +135,8 @@ class UserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->no_handphone,
-                'organization' => $panitiaProfile->nama_organisasi,
-                'bio' => $panitiaProfile->deskripsi_organisasi,
+                'organization' => $panitiaProfile->organization_name,
+                'bio' => $panitiaProfile->organization_description,
                 'avatar' => null, // TODO: implement avatar upload
                 'role' => $user->role,
                 'created_at' => $user->created_at->toISOString(),
@@ -205,22 +205,23 @@ class UserController extends Controller
 
             // Update panitia profile data
             if ($request->has('organization')) {
-                $panitiaProfile->update(['nama_organisasi' => $request->organization]);
+                $panitiaProfile->update(['organization_name' => $request->organization]);
             }
             if ($request->has('bio')) {
-                $panitiaProfile->update(['deskripsi_organisasi' => $request->bio]);
+                $panitiaProfile->update(['organization_description' => $request->bio]);
             }
 
             DB::commit();
 
             // Return updated profile
+            $panitiaProfile->refresh(); // Reload from database
             $profileData = [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->no_handphone,
-                'organization' => $panitiaProfile->nama_organisasi,
-                'bio' => $panitiaProfile->deskripsi_organisasi,
+                'organization' => $panitiaProfile->organization_name,
+                'bio' => $panitiaProfile->organization_description,
                 'avatar' => null,
                 'role' => $user->role,
                 'created_at' => $user->created_at->toISOString(),
@@ -349,8 +350,8 @@ class UserController extends Controller
     public function getAllUsers(): JsonResponse
     {
         try {
-            // Ambil semua users dengan relasi registrations
-            $users = \App\Models\User::with(['registrations'])
+            // Ambil semua users dengan relasi registrations dan panitiaProfile
+            $users = \App\Models\User::with(['registrations', 'panitiaProfile'])
                 ->select('id', 'name', 'email', 'role', 'status_akun', 'email_verified_at', 'created_at')
                 ->get();
 
@@ -358,21 +359,33 @@ class UserController extends Controller
             $users = $users->map(function ($user) {
                 $isPanitia = in_array($user->role, ['panitia', 'organizer']);
 
+                // Untuk panitia, cek approval status dari panitia_profiles
+                $panitiaStatus = 'approved';
+                if ($isPanitia && $user->panitiaProfile) {
+                    $panitiaStatus = $user->panitiaProfile->status ?? 'pending';
+                }
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role ?? 'user',
-                    // Panitia selalu aktif kecuali di-suspend (role berubah jadi user)
+                    'role' => $user->role ?? 'peserta',
                     // status_akun ENUM: 'aktif' atau 'belum_verifikasi'
-                    'is_active' => $isPanitia ? true : ($user->status_akun === 'aktif'),
+                    'is_active' => $user->status_akun === 'aktif',
+                    'status_akun' => $user->status_akun,
                     'email_verified_at' => $user->email_verified_at,
                     'created_at' => $user->created_at,
                     'events_count' => $user->registrations ? $user->registrations->count() : 0,
-                    // Panitia: cek email_verified_at, User biasa: selalu approved
+                    // Untuk panitia: cek panitia_profile status, User biasa: approved jika email verified
                     'status' => $isPanitia
-                        ? ($user->email_verified_at ? 'approved' : 'pending')
-                        : 'approved'
+                        ? $panitiaStatus
+                        : ($user->email_verified_at ? 'approved' : 'pending'),
+                    // Tambahan info untuk panitia
+                    'panitia_info' => $isPanitia && $user->panitiaProfile ? [
+                        'organization_name' => $user->panitiaProfile->organization_name,
+                        'plan_type' => $user->panitiaProfile->plan_type,
+                        'status' => $user->panitiaProfile->status
+                    ] : null
                 ];
             });
 
@@ -399,10 +412,12 @@ class UserController extends Controller
         try {
             $user = \App\Models\User::findOrFail($id);
 
-            // Toggle status
-            $newStatus = $request->has('is_active')
-                ? ($request->is_active ? 'active' : 'inactive')
-                : ($user->status_akun === 'active' ? 'inactive' : 'active');
+            // Toggle status - ENUM values: 'aktif' atau 'belum_verifikasi'
+            if ($request->has('is_active')) {
+                $newStatus = $request->is_active ? 'aktif' : 'belum_verifikasi';
+            } else {
+                $newStatus = $user->status_akun === 'aktif' ? 'belum_verifikasi' : 'aktif';
+            }
 
             $user->status_akun = $newStatus;
             $user->save();
@@ -412,7 +427,8 @@ class UserController extends Controller
                 'message' => 'User status updated successfully',
                 'data' => [
                     'id' => $user->id,
-                    'is_active' => $user->status_akun === 'active'
+                    'is_active' => $user->status_akun === 'aktif',
+                    'status_akun' => $user->status_akun
                 ]
             ], 200);
 
@@ -508,17 +524,38 @@ class UserController extends Controller
 
     /**
      * Approve organizer/panitia
-     * Endpoint: POST /api/organizers/{id}/approve
+     * Endpoint: POST /api/admin/organizers/{id}/approve or /api/admin/users/{id}/approve
      */
     public function approveOrganizer($id): JsonResponse
     {
         try {
-            $user = \App\Models\User::findOrFail($id);
+            $user = \App\Models\User::with('panitiaProfile')->findOrFail($id);
 
-            // Update dengan nilai ENUM yang benar
+            // Cek apakah user adalah panitia
+            if (!in_array($user->role, ['panitia', 'organizer'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User is not an organizer'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Update user
             $user->email_verified_at = \Carbon\Carbon::now();
             $user->status_akun = 'aktif'; // ✅ Sesuai ENUM database
             $user->save();
+
+            // Update panitia profile jika ada
+            if ($user->panitiaProfile) {
+                $user->panitiaProfile->update([
+                    'status' => 'approved',
+                    'approved_at' => \Carbon\Carbon::now(),
+                    'approved_by' => auth()->id()
+                ]);
+            }
+
+            DB::commit();
 
             return response()->json([
                 'status' => 'success',
@@ -531,6 +568,7 @@ class UserController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to approve organizer',
@@ -541,17 +579,38 @@ class UserController extends Controller
 
     /**
      * Reject organizer/panitia
-     * Endpoint: POST /api/organizers/{id}/reject
+     * Endpoint: POST /api/admin/organizers/{id}/reject or /api/admin/users/{id}/reject
      */
     public function rejectOrganizer($id): JsonResponse
     {
         try {
-            $user = \App\Models\User::findOrFail($id);
+            $user = \App\Models\User::with('panitiaProfile')->findOrFail($id);
 
-            // Update dengan nilai ENUM yang benar
+            // Cek apakah user adalah panitia
+            if (!in_array($user->role, ['panitia', 'organizer'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User is not an organizer'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Update user
             $user->email_verified_at = null;
             $user->status_akun = 'belum_verifikasi'; // ✅ Sesuai ENUM database
             $user->save();
+
+            // Update panitia profile jika ada
+            if ($user->panitiaProfile) {
+                $user->panitiaProfile->update([
+                    'status' => 'rejected',
+                    'approved_at' => null,
+                    'approved_by' => null
+                ]);
+            }
+
+            DB::commit();
 
             return response()->json([
                 'status' => 'success',
@@ -563,6 +622,7 @@ class UserController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to reject organizer',
@@ -572,13 +632,13 @@ class UserController extends Controller
     }
 
     /**
-     * Suspend panitia - ubah role jadi user biasa
-     * Endpoint: POST /api/organizers/{id}/suspend
+     * Suspend panitia - ubah role jadi user biasa dan suspend panitia profile
+     * Endpoint: POST /api/admin/organizers/{id}/suspend or /api/admin/users/{id}/suspend
      */
     public function suspendOrganizer($id): JsonResponse
     {
         try {
-            $user = \App\Models\User::findOrFail($id);
+            $user = \App\Models\User::with('panitiaProfile')->findOrFail($id);
 
             // Cek apakah user adalah panitia
             if (!in_array($user->role, ['panitia', 'organizer'])) {
@@ -588,22 +648,35 @@ class UserController extends Controller
                 ], 400);
             }
 
-            // Update dengan nilai ENUM yang benar
-            $user->role = 'user';
+            DB::beginTransaction();
+
+            // Update user - ubah role jadi peserta
+            $user->role = 'peserta';
             $user->status_akun = 'aktif'; // ✅ Sesuai ENUM database
             $user->save();
 
+            // Update panitia profile jika ada
+            if ($user->panitiaProfile) {
+                $user->panitiaProfile->update([
+                    'status' => 'suspended',
+                    'approved_at' => null
+                ]);
+            }
+
+            DB::commit();
+
             return response()->json([
                 'status' => 'success',
-                'message' => 'Organizer suspended successfully. Role changed to user.',
+                'message' => 'Organizer suspended successfully. Role changed to participant.',
                 'data' => [
                     'id' => $user->id,
-                    'role' => 'user',
+                    'role' => 'peserta',
                     'status' => 'suspended'
                 ]
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to suspend organizer',

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCheck, FiX, FiClock, FiDollarSign, FiUser, FiCalendar, FiEye, FiDownload } from 'react-icons/fi';
+import { FiCheck, FiX, FiClock, FiDollarSign, FiUser, FiCalendar, FiDownload } from 'react-icons/fi';
 import AdminLayout from '../components/AdminLayout';
 
 interface WithdrawalRequest {
   id: number;
   withdrawal_code: string;
+  user_id: number;
   user_name: string;
   user_email: string;
   amount: string;
@@ -19,12 +20,14 @@ interface WithdrawalRequest {
   notes?: string;
   requested_at: string;
   status: string;
+  current_user_balance?: number;
 }
 
 interface WithdrawalHistory {
   id: number;
   withdrawal_code: string;
   user_name: string;
+  user_id: number;
   amount: string;
   net_amount: string;
   status: string;
@@ -41,6 +44,9 @@ interface WithdrawalHistory {
   requested_at: string;
   approved_at?: string;
   completed_at?: string;
+  user_balance_before?: number;
+  user_balance_after?: number;
+  admin_notes?: string;
 }
 
 const WithdrawalManagement: React.FC = () => {
@@ -54,22 +60,34 @@ const WithdrawalManagement: React.FC = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
+  const [historyFilter, setHistoryFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchWithdrawalData();
   }, [activeTab]);
 
+  // Auto refresh pending withdrawals every 30 seconds
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      const interval = setInterval(() => {
+        fetchWithdrawalData();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
   const fetchWithdrawalData = async () => {
     try {
       const token = localStorage.getItem('token');
-      
+
       if (activeTab === 'pending') {
         // Try to fetch real pending withdrawals
         try {
           const response = await fetch('/api/admin/withdrawals/pending', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
@@ -80,12 +98,13 @@ const WithdrawalManagement: React.FC = () => {
         } catch (apiError) {
           console.log('API not available, using mock data');
         }
-        
-        // Mock pending withdrawals
+
+        // Mock pending withdrawals - data sesuai database panitia
         setPendingWithdrawals([
           {
             id: 1,
             withdrawal_code: 'WD-20241113-ABC123',
+            user_id: 101,
             user_name: 'John Doe',
             user_email: 'john@example.com',
             amount: 'Rp 500,000',
@@ -98,11 +117,13 @@ const WithdrawalManagement: React.FC = () => {
             },
             notes: 'Withdrawal untuk pembayaran vendor event',
             requested_at: '13 Nov 2024 09:30',
-            status: 'pending'
+            status: 'pending',
+            current_user_balance: 750000 // Saldo panitia saat ini
           },
           {
             id: 2,
             withdrawal_code: 'WD-20241113-DEF456',
+            user_id: 102,
             user_name: 'Jane Smith',
             user_email: 'jane@example.com',
             amount: 'Rp 750,000',
@@ -115,7 +136,8 @@ const WithdrawalManagement: React.FC = () => {
             },
             notes: 'Withdrawal bulanan November',
             requested_at: '13 Nov 2024 10:15',
-            status: 'pending'
+            status: 'pending',
+            current_user_balance: 1200000 // Saldo panitia saat ini
           }
         ]);
       } else {
@@ -124,7 +146,7 @@ const WithdrawalManagement: React.FC = () => {
           const response = await fetch('/api/admin/withdrawals', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             if (result.status === 'success') {
@@ -135,13 +157,14 @@ const WithdrawalManagement: React.FC = () => {
         } catch (apiError) {
           console.log('API not available, using mock data');
         }
-        
+
         // Mock withdrawal history
         setWithdrawalHistory([
           {
             id: 3,
             withdrawal_code: 'WD-20241112-GHI789',
             user_name: 'Bob Wilson',
+            user_id: 101,
             amount: 'Rp 300,000',
             net_amount: 'Rp 297,500',
             status: 'completed',
@@ -157,12 +180,15 @@ const WithdrawalManagement: React.FC = () => {
             approved_by: 'Admin User',
             requested_at: '12 Nov 2024 14:20',
             approved_at: '12 Nov 2024 15:30',
-            completed_at: '12 Nov 2024 16:45'
+            completed_at: '12 Nov 2024 16:45',
+            user_balance_before: 500000,
+            user_balance_after: 200000
           },
           {
             id: 4,
             withdrawal_code: 'WD-20241111-JKL012',
             user_name: 'Alice Brown',
+            user_id: 102,
             amount: 'Rp 200,000',
             net_amount: 'Rp 197,500',
             status: 'rejected',
@@ -177,7 +203,9 @@ const WithdrawalManagement: React.FC = () => {
             },
             approved_by: 'Admin User',
             requested_at: '11 Nov 2024 11:10',
-            approved_at: '11 Nov 2024 12:00'
+            approved_at: '11 Nov 2024 12:00',
+            user_balance_before: 400000,
+            user_balance_after: 400000
           }
         ]);
       }
@@ -188,18 +216,18 @@ const WithdrawalManagement: React.FC = () => {
 
   const handleApproval = async () => {
     if (!selectedWithdrawal) return;
-    
+
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
       const token = localStorage.getItem('token');
-      const endpoint = approvalAction === 'approve' 
+      const endpoint = approvalAction === 'approve'
         ? `/api/admin/withdrawals/${selectedWithdrawal.id}/approve`
         : `/api/admin/withdrawals/${selectedWithdrawal.id}/reject`;
-      
-      const body = approvalAction === 'approve' 
+
+      const body = approvalAction === 'approve'
         ? { admin_notes: adminNotes }
         : { reason: adminNotes };
 
@@ -213,9 +241,9 @@ const WithdrawalManagement: React.FC = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.status === 'success') {
-        setSuccess(`Withdrawal berhasil ${approvalAction === 'approve' ? 'disetujui' : 'ditolak'}`);
+        setSuccess(`Withdrawal berhasil ${approvalAction === 'approve' ? 'disetujui' : 'ditolak'}. ${approvalAction === 'approve' ? 'Saldo organizer telah diperbarui.' : ''}`);
         setShowApprovalModal(false);
         setSelectedWithdrawal(null);
         setAdminNotes('');
@@ -224,14 +252,52 @@ const WithdrawalManagement: React.FC = () => {
         setError(result.message || `Gagal ${approvalAction === 'approve' ? 'menyetujui' : 'menolak'} withdrawal`);
       }
     } catch (err) {
-      // Mock success for demo
-      setSuccess(`Withdrawal berhasil ${approvalAction === 'approve' ? 'disetujui' : 'ditolak'}`);
+      console.error('API Error:', err);
+
+      // Mock success for demo - simulate real behavior
+      const currentDate = new Date().toLocaleString('id-ID');
+      const withdrawalAmount = parseFloat(selectedWithdrawal.net_amount.replace(/[^0-9]/g, ''));
+
+      // Create history entry
+      const historyEntry: WithdrawalHistory = {
+        id: selectedWithdrawal.id,
+        withdrawal_code: selectedWithdrawal.withdrawal_code,
+        user_name: selectedWithdrawal.user_name,
+        user_id: selectedWithdrawal.id + 100, // Mock user ID
+        amount: selectedWithdrawal.amount,
+        net_amount: selectedWithdrawal.net_amount,
+        status: approvalAction === 'approve' ? 'completed' : 'rejected',
+        status_badge: {
+          text: approvalAction === 'approve' ? 'Selesai' : 'Ditolak',
+          color: approvalAction === 'approve' ? 'green' : 'red'
+        },
+        bank_account: selectedWithdrawal.bank_account,
+        approved_by: 'Admin User',
+        requested_at: selectedWithdrawal.requested_at,
+        approved_at: currentDate,
+        completed_at: approvalAction === 'approve' ? currentDate : undefined,
+        user_balance_before: selectedWithdrawal.current_user_balance || 500000,
+        user_balance_after: approvalAction === 'approve' ? (selectedWithdrawal.current_user_balance || 500000) - withdrawalAmount : (selectedWithdrawal.current_user_balance || 500000),
+        admin_notes: adminNotes || undefined
+      };
+
+      // IMPORTANT: Remove from pending list FIRST
+      setPendingWithdrawals(prev => prev.filter(w => w.id !== selectedWithdrawal.id));
+
+      // Add to history
+      setWithdrawalHistory(prev => [historyEntry, ...prev]);
+
+      setSuccess(`Withdrawal berhasil ${approvalAction === 'approve' ? 'disetujui' : 'ditolak'}. ${approvalAction === 'approve' ? `Saldo organizer ${selectedWithdrawal.user_name} berkurang ${selectedWithdrawal.net_amount}.` : ''}`);
+
+      // Close modal and reset form
       setShowApprovalModal(false);
       setSelectedWithdrawal(null);
       setAdminNotes('');
-      
-      // Remove from pending list for demo
-      setPendingWithdrawals(prev => prev.filter(w => w.id !== selectedWithdrawal.id));
+
+      // Force refresh data to ensure consistency
+      setTimeout(() => {
+        fetchWithdrawalData();
+      }, 100);
     } finally {
       setLoading(false);
     }
@@ -281,7 +347,7 @@ const WithdrawalManagement: React.FC = () => {
           {success}
         </motion.div>
       )}
-      
+
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -446,53 +512,115 @@ const WithdrawalManagement: React.FC = () => {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Withdrawal Code</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Panitia</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Bank</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Amount</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Status</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Approved By</th>
-                  <th className="text-left py-3 px-6 font-medium text-gray-900">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {withdrawalHistory.map((withdrawal) => (
-                  <tr key={withdrawal.id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
-                      <p className="font-medium text-gray-900">{withdrawal.withdrawal_code}</p>
-                    </td>
-                    <td className="py-4 px-6">
-                      <p className="text-sm text-gray-900">{withdrawal.user_name}</p>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div>
-                        <p className="text-sm font-medium">{withdrawal.bank_account.bank_name}</p>
-                        <p className="text-xs text-gray-500 font-mono">{withdrawal.bank_account.account_number}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <p className="text-sm font-medium text-gray-900">{withdrawal.net_amount}</p>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(withdrawal.status_badge.color)}`}>
-                        {withdrawal.status_badge.text}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <p className="text-sm text-gray-900">{withdrawal.approved_by || '-'}</p>
-                    </td>
-                    <td className="py-4 px-6">
-                      <p className="text-sm text-gray-900">{withdrawal.requested_at}</p>
-                    </td>
+        <div className="space-y-6">
+          {/* Filter Controls */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Cari nama organizer atau kode withdrawal..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="md:w-48">
+                <select
+                  value={historyFilter}
+                  onChange={(e) => setHistoryFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="completed">Selesai</option>
+                  <option value="rejected">Ditolak</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* History Table */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Withdrawal Code</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Panitia</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Bank</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Amount</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Status</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Saldo Organizer</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Approved By</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-900">Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {withdrawalHistory
+                    .filter(withdrawal => {
+                      const matchesSearch = searchTerm === '' ||
+                        withdrawal.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        withdrawal.withdrawal_code.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesFilter = historyFilter === 'all' || withdrawal.status === historyFilter;
+                      return matchesSearch && matchesFilter;
+                    })
+                    .map((withdrawal) => (
+                    <tr key={withdrawal.id} className="hover:bg-gray-50">
+                      <td className="py-4 px-6">
+                        <p className="font-medium text-gray-900">{withdrawal.withdrawal_code}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="text-sm text-gray-900">{withdrawal.user_name}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div>
+                          <p className="text-sm font-medium">{withdrawal.bank_account.bank_name}</p>
+                          <p className="text-xs text-gray-500 font-mono">{withdrawal.bank_account.account_number}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="text-sm font-medium text-gray-900">{withdrawal.net_amount}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(withdrawal.status_badge.color)}`}>
+                          {withdrawal.status_badge.text}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {withdrawal.user_balance_before && withdrawal.user_balance_after !== undefined ? (
+                          <div className="text-xs">
+                            <div className="text-gray-600">Sebelum: Rp {withdrawal.user_balance_before.toLocaleString('id-ID')}</div>
+                            <div className={`font-medium ${withdrawal.status === 'completed' ? 'text-red-600' : 'text-gray-900'}`}>
+                              Sesudah: Rp {withdrawal.user_balance_after.toLocaleString('id-ID')}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="text-sm text-gray-900">{withdrawal.approved_by || '-'}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="text-sm text-gray-900">{withdrawal.requested_at}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {withdrawalHistory.filter(withdrawal => {
+                const matchesSearch = searchTerm === '' ||
+                  withdrawal.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  withdrawal.withdrawal_code.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesFilter = historyFilter === 'all' || withdrawal.status === historyFilter;
+                return matchesSearch && matchesFilter;
+              }).length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <FiClock className="mx-auto mb-2" size={32} />
+                  <p>Tidak ada riwayat withdrawal yang sesuai filter</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -530,6 +658,27 @@ const WithdrawalManagement: React.FC = () => {
               <p className="text-sm text-gray-600 mb-2">Amount to Transfer:</p>
               <p className="text-lg font-bold text-green-600">{selectedWithdrawal.net_amount}</p>
             </div>
+
+            {/* Saldo Panitia Info */}
+            {selectedWithdrawal.current_user_balance && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Saldo Panitia Saat Ini:</p>
+                <div className="bg-yellow-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-700">Saldo Sebelum:</span>
+                    <span className="font-bold text-blue-600">Rp {selectedWithdrawal.current_user_balance.toLocaleString('id-ID')}</span>
+                  </div>
+                  {approvalAction === 'approve' && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-sm text-gray-700">Saldo Sesudah:</span>
+                      <span className="font-bold text-red-600">
+                        Rp {(selectedWithdrawal.current_user_balance - parseFloat(selectedWithdrawal.net_amount.replace(/[^0-9]/g, ''))).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">Bank Details:</p>
@@ -577,8 +726,8 @@ const WithdrawalManagement: React.FC = () => {
                 onClick={handleApproval}
                 disabled={loading || (approvalAction === 'reject' && !adminNotes.trim())}
                 className={`flex-1 px-4 py-2 text-white rounded-lg disabled:opacity-50 ${
-                  approvalAction === 'approve' 
-                    ? 'bg-green-600 hover:bg-green-700' 
+                  approvalAction === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
               >

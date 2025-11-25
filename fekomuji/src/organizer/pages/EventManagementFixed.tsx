@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiSearch, FiFilter, FiCalendar, FiUsers, FiMapPin, FiImage, FiTrendingUp } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiSearch, FiFilter, FiCalendar, FiUsers, FiMapPin, FiImage, FiTrendingUp, FiClock } from 'react-icons/fi';
 import OrganizerLayout from '../components/OrganizerLayout';
 import { EventModal } from '../components';
 
@@ -31,13 +31,14 @@ interface Event {
 
 const EventManagementFixed: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,15 +50,15 @@ const EventManagementFixed: React.FC = () => {
       console.log('Fetching events from API...');
       setLoading(true);
       setError(null);
-      
+
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
 
       // For organizer, we need to fetch events created by the user
-      // Add per_page parameter to get more events and avoid pagination issues
-      const response = await fetch('http://localhost:8000/api/organizer/events?per_page=100', {
+      // Fetch ALL events without pagination limit
+      const response = await fetch('http://localhost:8000/api/organizer/events?per_page=999999', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -65,14 +66,14 @@ const EventManagementFixed: React.FC = () => {
       });
 
       console.log('API Response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Events data received:', data);
-        
+
         // Handle both paginated and direct array response
         const eventsArray = data.data || data;
-        
+
         if (Array.isArray(eventsArray)) {
           setEvents(eventsArray);
         } else {
@@ -86,7 +87,7 @@ const EventManagementFixed: React.FC = () => {
     } catch (error) {
       console.error('Error fetching events:', error);
       setError(error instanceof Error ? error.message : 'Failed to load events');
-      
+
       // Fallback to mock data for development
       const mockEvents: Event[] = [
         {
@@ -136,7 +137,7 @@ const EventManagementFixed: React.FC = () => {
 
   const handleDeleteEvent = async (eventId: number) => {
     if (!confirm('Apakah Anda yakin ingin menghapus acara ini?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:8000/api/events/${eventId}`, {
@@ -172,7 +173,7 @@ const EventManagementFixed: React.FC = () => {
       // Immediate refresh after save
       await fetchEvents();
       console.log('Events refreshed after save');
-      
+
       setShowCreateModal(false);
       setEditingEvent(null);
       console.log('Event saved successfully, modal closed');
@@ -207,11 +208,36 @@ const EventManagementFixed: React.FC = () => {
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.lokasi.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
+                         event.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.deskripsi.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' ||
                          (statusFilter === 'published' && event.is_published) ||
                          (statusFilter === 'draft' && !event.is_published);
-    return matchesSearch && matchesStatus;
+
+    // Filter berdasarkan tanggal
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const eventDate = new Date(event.tanggal_mulai);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (dateFilter === 'upcoming') {
+        matchesDate = eventDate >= today;
+      } else if (dateFilter === 'past') {
+        matchesDate = eventDate < today;
+      } else if (dateFilter === 'thisMonth') {
+        const thisMonth = today.getMonth();
+        const thisYear = today.getFullYear();
+        matchesDate = eventDate.getMonth() === thisMonth && eventDate.getFullYear() === thisYear;
+      } else if (dateFilter === 'nextMonth') {
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const monthAfter = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+        matchesDate = eventDate >= nextMonth && eventDate < monthAfter;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   console.log('Rendering EventManagementFixed, events:', events, 'loading:', loading, 'error:', error);
@@ -316,14 +342,14 @@ const EventManagementFixed: React.FC = () => {
                   <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search events..."
+                    placeholder="Cari event berdasarkan judul, lokasi, atau deskripsi..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all"
                   />
                 </div>
               </div>
-              <div className="lg:w-64">
+              <div className="lg:w-56">
                 <div className="relative">
                   <FiFilter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <select
@@ -331,9 +357,25 @@ const EventManagementFixed: React.FC = () => {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-gray-50 focus:bg-white transition-all"
                   >
-                    <option value="all">All Status</option>
-                    <option value="published">Active</option>
+                    <option value="all">Semua Status</option>
+                    <option value="published">Aktif</option>
                     <option value="draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+              <div className="lg:w-56">
+                <div className="relative">
+                  <FiClock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-gray-50 focus:bg-white transition-all"
+                  >
+                    <option value="all">Semua Tanggal</option>
+                    <option value="upcoming">Akan Datang</option>
+                    <option value="past">Sudah Lewat</option>
+                    <option value="thisMonth">Bulan Ini</option>
+                    <option value="nextMonth">Bulan Depan</option>
                   </select>
                 </div>
               </div>

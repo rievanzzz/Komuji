@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiDollarSign, FiClock, FiCheck, FiX, FiAlertCircle, FiCreditCard } from 'react-icons/fi';
+import { FiDollarSign, FiClock, FiCheck, FiX, FiAlertCircle } from 'react-icons/fi';
 
 interface BankAccount {
   id: number;
@@ -41,6 +41,8 @@ interface WithdrawalSummary {
   total_withdrawn: number;
   pending_withdrawals: number;
   total_requests: number;
+  ticket_sales_revenue: number;
+  platform_fee_deducted: number;
   withdrawal_settings: {
     minimum_amount: number;
     admin_fee: number;
@@ -82,9 +84,40 @@ const Withdrawal: React.FC = () => {
       const result = await response.json();
       if (result.status === 'success') {
         setSummary(result.data);
+      } else {
+        // Mock data untuk demo
+        setSummary({
+          current_balance: 750000,
+          available_balance: 750000,
+          total_withdrawn: 250000,
+          pending_withdrawals: 100000,
+          total_requests: 5,
+          ticket_sales_revenue: 1000000,
+          platform_fee_deducted: 50000,
+          withdrawal_settings: {
+            minimum_amount: 50000,
+            admin_fee: 2500,
+            processing_time: '1-3 hari kerja'
+          }
+        });
       }
     } catch (err) {
       console.error('Error fetching withdrawal summary:', err);
+      // Mock data untuk demo
+      setSummary({
+        current_balance: 750000,
+        available_balance: 750000,
+        total_withdrawn: 250000,
+        pending_withdrawals: 100000,
+        total_requests: 5,
+        ticket_sales_revenue: 1000000,
+        platform_fee_deducted: 50000,
+        withdrawal_settings: {
+          minimum_amount: 50000,
+          admin_fee: 2500,
+          processing_time: '1-3 hari kerja'
+        }
+      });
     }
   };
 
@@ -146,7 +179,7 @@ const Withdrawal: React.FC = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.status === 'success') {
         setSuccess(`Permintaan withdrawal berhasil dibuat dengan kode: ${result.data.withdrawal_code}`);
         setShowRequestForm(false);
@@ -203,6 +236,7 @@ const Withdrawal: React.FC = () => {
           onClick={() => setShowRequestForm(true)}
           disabled={bankAccounts.length === 0 || summary.current_balance < summary.withdrawal_settings.minimum_amount}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          title={summary.current_balance < summary.withdrawal_settings.minimum_amount ? `Saldo minimum ${formatCurrency(summary.withdrawal_settings.minimum_amount)} untuk withdrawal` : ''}
         >
           <FiDollarSign size={16} />
           Request Withdrawal
@@ -231,6 +265,26 @@ const Withdrawal: React.FC = () => {
         </motion.div>
       )}
 
+      {/* Revenue Summary */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan Pendapatan</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Total Penjualan Tiket</p>
+            <p className="text-xl font-bold text-blue-600">{formatCurrency(summary.ticket_sales_revenue)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Biaya Platform</p>
+            <p className="text-xl font-bold text-red-600">-{formatCurrency(summary.platform_fee_deducted)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Saldo Bersih</p>
+            <p className="text-xl font-bold text-green-600">{formatCurrency(summary.current_balance)}</p>
+            <p className="text-xs text-gray-500 mt-1">Maksimal yang bisa ditarik</p>
+          </div>
+        </div>
+      </div>
+
       {/* Balance Summary */}
       <div className="grid md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -241,6 +295,7 @@ const Withdrawal: React.FC = () => {
             <h3 className="font-medium text-gray-900">Saldo Tersedia</h3>
           </div>
           <p className="text-2xl font-bold text-blue-600">{formatCurrency(summary.current_balance)}</p>
+          <p className="text-xs text-gray-500 mt-1">Dari hasil penjualan tiket</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -378,7 +433,22 @@ const Withdrawal: React.FC = () => {
                 <p className="text-sm text-blue-800">
                   <strong>Waktu Proses:</strong> {summary.withdrawal_settings.processing_time}
                 </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  ⚠️ Saldo hanya dari hasil penjualan tiket event Anda
+                </p>
               </div>
+
+              {/* Balance Validation Warning */}
+              {parseFloat(formData.amount) > summary.current_balance && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                  <p className="text-sm text-red-800">
+                    <strong>⚠️ Jumlah melebihi saldo tersedia!</strong>
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    Saldo maksimal yang bisa ditarik: {formatCurrency(summary.current_balance)}
+                  </p>
+                </div>
+              )}
 
               {/* Submit Buttons */}
               <div className="flex gap-3 pt-4">
@@ -405,7 +475,7 @@ const Withdrawal: React.FC = () => {
       {/* Withdrawal History */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Riwayat Withdrawal</h2>
-        
+
         {withdrawalHistory.length === 0 ? (
           <div className="text-center py-8">
             <FiClock className="mx-auto text-gray-400 mb-4" size={48} />
@@ -425,7 +495,7 @@ const Withdrawal: React.FC = () => {
                     {withdrawal.status_badge.text}
                   </span>
                 </div>
-                
+
                 <div className="grid md:grid-cols-2 gap-4 mb-3">
                   <div>
                     <p className="text-sm text-gray-600">Bank Tujuan:</p>

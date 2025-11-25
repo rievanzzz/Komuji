@@ -5,9 +5,7 @@ import {
   FiUsers,
   FiSettings,
   FiLogOut,
-  FiUserCheck,
   FiDollarSign,
-  FiBarChart,
   FiCreditCard,
   FiImage,
   FiMail,
@@ -25,8 +23,10 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', path: '/admin', icon: FiHome },
   { name: 'Manajemen User', path: '/admin/users', icon: FiUsers }, // Gabung: User + Panitia
   { name: 'Kategori Event', path: '/admin/categories', icon: FiTag },
-  { name: 'Keuangan', path: '/admin/finance', icon: FiDollarSign }, // Gabung: Transaksi + Withdrawal
-  { name: 'Konten', path: '/admin/content', icon: FiImage }, // Gabung: Banner + Messages
+  { name: 'Transaksi', path: '/admin/finance', icon: FiDollarSign },
+  { name: 'Penarikan Dana', path: '/admin/withdrawals', icon: FiCreditCard },
+  { name: 'Konten', path: '/admin/content', icon: FiImage }, // Banner Management
+  { name: 'Pesan Pengguna', path: '/admin/messages', icon: FiMail }, // Contact Messages
   { name: 'Pengaturan', path: '/admin/settings', icon: FiSettings },
 ];
 

@@ -28,74 +28,95 @@ class EventController extends Controller
     }
     public function index(Request $request)
     {
+        $isOrganizerPath = $request->is('api/organizer/*');
+        $userId = auth()->id();
+
         \Log::info('EventController@index called', [
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
             'request_path' => $request->path(),
-            'is_organizer_path' => $request->is('api/organizer/*'),
-            'has_organizer_param' => $request->has('organizer')
+            'is_organizer_path' => $isOrganizerPath,
+            'has_organizer_param' => $request->has('organizer'),
+            'auth_check' => auth()->check()
         ]);
+
         $query = Event::query()
-            ->with('category')
-            ->when($request->has('search'), function($q) use ($request) {
-                $search = $request->search;
+            ->with('category');
+
+        // PRIORITY: Filter by organizer first (for /api/organizer/* routes)
+        if ($isOrganizerPath || $request->has('organizer')) {
+            if (auth()->check()) {
+                \Log::info('Filtering events for organizer: ' . $userId);
+                $query->where('created_by', $userId);
+            } else {
+                \Log::warning('Organizer path accessed but user not authenticated');
+                $query->whereRaw('1 = 0'); // Return empty result
+            }
+        } else {
+            // For public view, only show published events
+            $query->where('is_published', true);
+
+            // Public listing should only show events that have NOT started yet
+            $today = now()->toDateString();
+            $nowTime = now()->format('H:i:s');
+            $query->where(function($q) use ($today, $nowTime) {
+                $q->where('tanggal_mulai', '>', $today)
+                   ->orWhere(function($qx) use ($today, $nowTime) {
+                       $qx->where('tanggal_mulai', '=', $today)
+                          ->where('waktu_mulai', '>', $nowTime);
+                   });
+            });
+        }
+
+        // Apply search filter
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
                 $q->where('judul', 'like', "%{$search}%")
                   ->orWhere('deskripsi', 'like', "%{$search}%")
                   ->orWhere('lokasi', 'like', "%{$search}%");
-            })
-            ->when($request->filled('category_id'), function($q) use ($request) {
-                $q->where('kategori_id', (int) $request->category_id);
-            })
-            ->when($request->filled('category'), function($q) use ($request) {
-                $cat = $request->category;
-                $q->whereHas('category', function($qq) use ($cat) {
-                    $qq->where('nama_kategori', 'like', "%{$cat}%");
-                });
-            })
-            ->when($request->has('sort'), function($q) use ($request) {
-                switch ($request->sort) {
-                    case 'tickets_sold':
-                        $q->orderBy('terdaftar', 'desc');
-                        break;
-                    case 'quota_remaining':
-                        $q->orderByRaw('(kuota - terdaftar) DESC');
-                        break;
-                    case 'popularity':
-                        // Sort by a combination of tickets sold and recency
-                        $q->orderByRaw('(terdaftar * 0.7 + DATEDIFF(NOW(), created_at) * -0.3) DESC');
-                        break;
-                    case 'terdekat':
-                        $q->orderBy('tanggal_mulai');
-                        break;
-                    case 'terpopuler':
-                    default:
-                        $q->orderBy('terdaftar', 'desc');
-                        break;
-                }
-            }, function($q) {
-                $q->orderBy('terdaftar', 'desc'); // Default to most popular
-            })
-            ->when($request->has('organizer') || $request->is('api/organizer/*'), function($q) use ($request) {
-                // For organizer view, show only events created by the authenticated user
-                if (auth()->check()) {
-                    \Log::info('Filtering events for organizer: ' . auth()->id());
-                    $q->where('created_by', auth()->id());
-                }
-            }, function($q) {
-                // For public view, only show published events
-                $q->where('is_published', true);
-            })
-            // Public listing should only show events that have NOT started yet
-            ->when(!$request->has('organizer') && !$request->is('api/organizer/*'), function($q) {
-                $today = now()->toDateString();
-                $nowTime = now()->format('H:i:s');
-                $q->where(function($qq) use ($today, $nowTime) {
-                    $qq->where('tanggal_mulai', '>', $today)
-                       ->orWhere(function($qx) use ($today, $nowTime) {
-                           $qx->where('tanggal_mulai', '=', $today)
-                              ->where('waktu_mulai', '>', $nowTime);
-                       });
-                });
             });
+        }
+
+        // Apply category filters
+        if ($request->filled('category_id')) {
+            $query->where('kategori_id', (int) $request->category_id);
+        }
+
+        if ($request->filled('category')) {
+            $cat = $request->category;
+            $query->whereHas('category', function($q) use ($cat) {
+                $q->where('nama_kategori', 'like', "%{$cat}%");
+            });
+        }
+
+        // Apply sorting
+        if ($request->has('sort')) {
+            switch ($request->sort) {
+                case 'tickets_sold':
+                    $query->orderBy('terdaftar', 'desc');
+                    break;
+                case 'quota_remaining':
+                    $query->orderByRaw('(kuota - terdaftar) DESC');
+                    break;
+                case 'popularity':
+                    $query->orderByRaw('(terdaftar * 0.7 + DATEDIFF(NOW(), created_at) * -0.3) DESC');
+                    break;
+                case 'terdekat':
+                    $query->orderBy('tanggal_mulai');
+                    break;
+                case 'terpopuler':
+                default:
+                    $query->orderBy('terdaftar', 'desc');
+                    break;
+            }
+        } else {
+            // Default sort: for organizer view, newest first; for public, most popular
+            if ($isOrganizerPath || $request->has('organizer')) {
+                $query->orderBy('created_at', 'desc');
+            } else {
+                $query->orderBy('terdaftar', 'desc');
+            }
+        }
 
         $events = $query->paginate($request->get('per_page', 12));
 
@@ -319,9 +340,18 @@ class EventController extends Controller
             $data['terdaftar'] = $data['terdaftar'] ?? 0;
             $data['is_published'] = $data['is_published'] ?? false;
             $data['approval_type'] = $data['approval_type'] ?? 'auto';
-            if (auth()->check()) {
-                $data['created_by'] = auth()->id();
+
+            // CRITICAL: Always set created_by for authenticated user
+            if (!auth()->check()) {
+                throw new \Exception('User must be authenticated to create event');
             }
+            $data['created_by'] = auth()->id();
+
+            \Log::info('Creating event with created_by: ' . $data['created_by'], [
+                'user_id' => auth()->id(),
+                'user_email' => auth()->user()->email ?? 'unknown',
+                'event_title' => $data['judul'] ?? 'unknown'
+            ]);
 
             // Handle file uploads
             if ($request->hasFile('flyer')) {
@@ -374,6 +404,13 @@ class EventController extends Controller
             $data['has_certificate'] = !empty($data['certificate_template_id'] ?? null) || !empty($data['sertifikat_template_path'] ?? null);
 
             $event = Event::create($data);
+
+            \Log::info('Event created successfully', [
+                'event_id' => $event->id,
+                'created_by' => $event->created_by,
+                'title' => $event->judul,
+                'is_published' => $event->is_published
+            ]);
 
             // Handle ticket categories if provided
             if ($request->has('ticket_categories')) {

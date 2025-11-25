@@ -209,6 +209,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/organizer/events/{event}/attendance/stats', [AttendanceController::class, 'stats']);
 
         // Certificates (organizer)
+        Route::get('/certificate-templates', [CertificateController::class, 'templates']); // Public/Organizer access
         Route::get('/organizer/certificate-templates', [CertificateController::class, 'templates']);
         Route::post('/organizer/certificate-templates', [CertificateController::class, 'createTemplate']);
         Route::get('/organizer/events/{event}/certificates/settings', [CertificateController::class, 'settings']);
@@ -305,12 +306,124 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
         // User Management routes
         Route::get('/all-users', [UserController::class, 'getAllUsers']);
+        Route::get('/users', [UserController::class, 'getAllUsers']); // Alias
         Route::patch('/users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
         Route::delete('/users/{id}', [UserController::class, 'deleteUser']);
         Route::get('/users/{id}/events', [UserController::class, 'getUserEvents']);
+
+        // Organizer/Panitia approval routes (support both /organizers and /users paths)
         Route::post('/organizers/{id}/approve', [UserController::class, 'approveOrganizer']);
         Route::post('/organizers/{id}/reject', [UserController::class, 'rejectOrganizer']);
         Route::post('/organizers/{id}/suspend', [UserController::class, 'suspendOrganizer']);
+        Route::post('/users/{id}/approve', [UserController::class, 'approveOrganizer']); // Alias
+        Route::post('/users/{id}/reject', [UserController::class, 'rejectOrganizer']); // Alias
+        Route::post('/users/{id}/suspend', [UserController::class, 'suspendOrganizer']); // Alias
+
+        // Category Management routes
+        Route::get('/categories', function () {
+            $categories = Category::withCount('events')
+                ->orderBy('nama_kategori')
+                ->get()
+                ->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'name' => $category->nama_kategori,
+                        'description' => $category->deskripsi,
+                        'is_active' => $category->is_active ?? true,
+                        'events_count' => $category->events_count,
+                        'created_at' => $category->created_at
+                    ];
+                });
+            return response()->json(['data' => $categories]);
+        });
+
+        Route::post('/categories', function (Request $request) {
+            $request->validate([
+                'name' => 'required|string|max:255|unique:categories,nama_kategori',
+                'description' => 'nullable|string|max:1000'
+            ]);
+
+            $category = Category::create([
+                'nama_kategori' => $request->name,
+                'deskripsi' => $request->description,
+                'is_active' => $request->is_active ?? true
+            ]);
+
+            return response()->json([
+                'message' => 'Category created successfully',
+                'data' => [
+                    'id' => $category->id,
+                    'name' => $category->nama_kategori,
+                    'description' => $category->deskripsi,
+                    'is_active' => $category->is_active ?? true,
+                    'events_count' => 0,
+                    'created_at' => $category->created_at
+                ]
+            ], 201);
+        });
+
+        Route::put('/categories/{id}', function (Request $request, $id) {
+            $category = Category::findOrFail($id);
+
+            $request->validate([
+                'name' => 'required|string|max:255|unique:categories,nama_kategori,' . $id,
+                'description' => 'nullable|string|max:1000'
+            ]);
+
+            $category->update([
+                'nama_kategori' => $request->name,
+                'deskripsi' => $request->description,
+                'is_active' => $request->is_active ?? $category->is_active
+            ]);
+
+            return response()->json([
+                'message' => 'Category updated successfully',
+                'data' => [
+                    'id' => $category->id,
+                    'name' => $category->nama_kategori,
+                    'description' => $category->deskripsi,
+                    'is_active' => $category->is_active ?? true,
+                    'events_count' => $category->events()->count(),
+                    'created_at' => $category->created_at
+                ]
+            ]);
+        });
+
+        Route::delete('/categories/{id}', function ($id) {
+            $category = Category::findOrFail($id);
+
+            // Check if category has events
+            if ($category->events()->count() > 0) {
+                return response()->json([
+                    'message' => 'Cannot delete category with existing events'
+                ], 422);
+            }
+
+            $category->delete();
+
+            return response()->json([
+                'message' => 'Category deleted successfully'
+            ]);
+        });
+
+        Route::patch('/categories/{id}/toggle-status', function ($id) {
+            $category = Category::findOrFail($id);
+            $category->update([
+                'is_active' => !($category->is_active ?? true)
+            ]);
+
+            return response()->json([
+                'message' => 'Category status updated successfully',
+                'data' => [
+                    'id' => $category->id,
+                    'name' => $category->nama_kategori,
+                    'description' => $category->deskripsi,
+                    'is_active' => $category->is_active ?? true,
+                    'events_count' => $category->events()->count(),
+                    'created_at' => $category->created_at
+                ]
+            ]);
+        });
     });
 
     // Public settings (accessible by all authenticated users)

@@ -5,7 +5,8 @@ import {
   FiCalendar,
   FiSettings,
   FiLogOut,
-  FiDollarSign
+  FiDollarSign,
+  FiAward
 } from 'react-icons/fi';
 
 interface SidebarItem {
@@ -17,6 +18,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', path: '/organizer', icon: FiHome },
   { name: 'Kelola Event', path: '/organizer/events-card', icon: FiCalendar },
+  { name: 'Template Sertifikat', path: '/certificate-templates', icon: FiAward },
   { name: 'Keuangan', path: '/organizer/finance', icon: FiDollarSign },
   { name: 'Pengaturan', path: '/organizer/settings', icon: FiSettings },
 ];
